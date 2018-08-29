@@ -34,8 +34,8 @@ int main(){
   //inset
 	v7.push_back("def");
 	v7.push_back("fgg");
-
-
+  v7.insert(v7.begin()+2,"xxx");  //insert in secode pos
+  cout<<"v7[2]:"<<v7[2]<<endl;
   //size()
 	cout<<"v7 element number :"<<v7.size()<<endl;
 	cout<<"v5 element number :"<<v5.size()<<endl;
