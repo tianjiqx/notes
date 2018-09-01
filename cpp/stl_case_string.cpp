@@ -43,7 +43,7 @@ int main(){
   //substr
 	int strlen=4;
 	s1=s1.substr(1,strlen); // retrun s1[1:1+strlen]
-
+  s2=s2.substr(1) ; // retrun s2[1:]
 
 	//find
 	s1.find("abc");  // return first index,or -1
