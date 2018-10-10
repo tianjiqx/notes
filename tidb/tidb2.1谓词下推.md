@@ -70,11 +70,11 @@ Tidb2.1的谓词下推
 	- `SemiJoin, AntiSemiJoin`:由于此类型的半连接为内连接，所以，左右孩子可以下推的谓词是来自join on和where和having以及外层查询中与左右孩子相关谓词。
 	- `InnerJoin`:左右孩子可以下推的谓词是来自join on和where和having以及外层查询中与左右孩子相关谓词。
 
-  注：关于在join算子上的谓词下推，有个关键的处理函数 `expression.ExtractFiltersFromDNFs()` ,DNF代表析取or表达式，CNF代表合取and表达式。在该函数中会从or表示中提取过滤条件（但是我暂时未弄理解这个是如何提取出来的），然后加入需要下推的谓词中。`SemiJoin, AntiSemiJoin`下推的时候并用到该函数，是与inner join下推所不同的地方。
+  注：关于在join算子上的谓词下推，有个关键的处理函数 `expression.ExtractFiltersFromDNFs()` ,DNF代表析取or表达式，CNF代表合取and表达式。在该函数中会从or表示中提取过滤条件，然后加入需要下推的谓词中。`SemiJoin, AntiSemiJoin`下推的时候并用到该函数，是与inner join下推所不同的地方。
 
 
 - `simplifyOuterJoin()`:
-	外连接消除在tidb2.1中大致流程为，先确定内外表，然后先对孩子节点进行外连接消除，先内表，后外表，当内外表都已经完成外连接消除，则处理当前节点的外联连接消除，判断是否能进行外连接消除，是通过`isNullRejected()`函数检查内表的谓词是否是null-rejected。【注：这种顺序，其实可以调整为先处理内表外连接消除，然后是当前节点的外连接消除，根据当前外联接消除，生成join列的null-rejected条件用于递归消除外表的外连接】
+	外连接消除在tidb2.1中大致流程为，先确定内外表，然后先对孩子节点进行外连接消除，先内表，后外表，当内外表都已经完成外连接消除，则处理当前节点的外联连接消除，判断是否能进行外连接消除，是通过`isNullRejected()`函数检查内表的谓词是否是null-rejected。【注：这种顺序，其实可以调整为先处理自身外连接消除，然后根据当前外联接消除，生成join列的null-rejected条件用于递归消除内外表的外连接】
 
 
 	
