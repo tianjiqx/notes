@@ -35,8 +35,8 @@ PostgreSQL文件目录说明：
       - data: 测试数据
       - sql: 测试SQL用例集，按子句功能划分，如join，limit等等
       - expected:sql执行期望结果
-	    - input:数据导入，更新等命令
-	    - output:input语句执行结果
+      - input:数据导入，更新等命令
+      - output:input语句执行结果
 	 - isolation: 隔离级别测试
 	 - examples: 少量sql测试用例
  - backend:数据库后台进程代码
@@ -48,7 +48,7 @@ PostgreSQL文件目录说明：
 MySQL是最流行的开源关系型数据库，目前仍在大量被中小企业使用，鉴于用户众多，后来的新NewSql都宣称兼容mysql的语法。地址：https://www.mysql.com/ (分析版本8.0.12)
 
 MySQL文件目录说明:
-- mysql-test:mysql功能测试目录,具体可参考官方说明:https://dev.mysql.com/doc/dev/mysql-server/latest/PAGE_MYSQL_TEST_RUN.html
+- mysql-test:mysql**回归测试目录**,具体可参考官方说明:https://dev.mysql.com/doc/dev/mysql-server/latest/PAGE_MYSQL_TEST_RUN.html
   - t: .test后缀的测试用例,主要是SQL查询正确性的案例，包括bug问题的测试用例
   - r: .result后缀的为测试用例结果，对应t目录的用例
   - suite:一些其他的按功能分目录的测试案例
@@ -60,7 +60,18 @@ MySQL文件目录说明:
 
 ### SQLite
 
+SQLite是一个高可用的，零配置，嵌入式的微型开源数据库系统库,由于体量小,被广泛的部署在各种设备中如安卓。地址:https://www.sqlite.org/index.html (分析版本3.23)
 
+SQLite文件目录说明:
+- art: 图标
+- autoconf: 自动配置
+- ext: 扩展
+- mptest: 并发测试
+- src: 源码目录
+- tool: 工具
+- vsixtest: 界面测试？
+- test: **回归测试用例**,包含1000+`.test`后缀的测试用例,注意内中包括一些SQLite定义的一些语法，重用前，需要相关脚本处理后，提取其中的测试sql
+  
 
 
 ### TiDB
