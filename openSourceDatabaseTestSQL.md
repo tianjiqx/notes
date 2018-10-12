@@ -95,8 +95,7 @@ TiDB是pingCAP开发的一款支持HTAP负载的分布式数据库，底层存�
 TiDB文件目录说明:
 - 详细目录的介绍见TiDB官方介绍:https://github.com/ngaut/builddatabase/blob/master/tidb/sourcecode.md
 - 测试用例:TiDB由于使用GO语言开发，其测试案例都依附在`xxx_test.go`文件中，例如`tidb/excutor/join_test.go`,并未采取mysql方式集中式的组织在一起，好处是对于xtidb自身的开发者而言方便了解定位某个模块的测试用例，避免bug，坏处是不够集中，无法利用到其他数据库，而且使用`tk.MustQuery()`和`result.Check(testkit.Rows("<nil> <nil> 1 1"))`进行执行SQL测试和结果验证。
-`
-  
+
 
 
 ### 总结
