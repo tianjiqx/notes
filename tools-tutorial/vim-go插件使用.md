@@ -4,7 +4,7 @@ vim-go是一个使用golang语言进行开发的vim插件，将vim搭建为合�
 
 
 ## vim-go 基本使用
-vim中已将将leader设置为`,`,`let mapleader=","`。
+vim中已将leader设置为`,`，`let mapleader=","`。
 - ,+r  运行 go run
 - ,+b  运行 go build
 - ,+t  运行 go test
