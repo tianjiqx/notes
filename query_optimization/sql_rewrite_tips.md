@@ -7,7 +7,7 @@
 
   
 - having：
-  - ；例子：select \* from t1 group by c1,c2,c3 having c1 <10 and c2 <10 and c3<10 and c4<10 ,将having上group by列的条件下推，select \* from t1 where c1 <10 and c2 <10 and c3<10 group by c1,c2,c3 having c4<10;
+  - 例子：select \* from t1 group by c1,c2,c3 having c1 <10 and c2 <10 and c3<10 and c4<10 ,将having上group by列的条件下推，select \* from t1 where c1 <10 and c2 <10 and c3<10 group by c1,c2,c3 having c4<10;
 
 
 
