@@ -1,4 +1,3 @@
-<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
 
 ## 数据倾斜解决方案
 
@@ -21,8 +20,9 @@
 
 主要场景优化场景是**主外键连接**，倾斜key也是指外键上的key。处理示意图下图所示。
 
+<div align=center>
 ![Flow join](https://raw.githubusercontent.com/tianjiqx/picture/master/flow-join1.png)
-
+</div>
 
   
 - 探测阶段
