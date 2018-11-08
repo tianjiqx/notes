@@ -55,7 +55,7 @@ R、S都倾斜key的连接方法，假设R和S上在每个服务上都右x和y�
 所谓的**对称分段复制SFR**,是指将服务器逻辑组织呈一个n1×n2的矩形(n1×n2=n,n为服务器的数量)，然后将R和S上的倾斜key分别同行同列之间进行广播，减少全域广播某一个小表R时导致的网络拥塞，同时也避免单点处理的时间瓶颈，而SFR的矩形n1，n2的比例根据R和S倾斜key元祖数的比例来确定，大致比例相等时n1=n2最好，而当比例相差极大的时候，原矩形退化成1×n,实际上变成了广播。SFR的传输的数据量为$n((n1-1)x+(n2-1)y)$。在最好的情况下，即n1=n2时，对比广播连接方式减少执行时间和网络拥塞的$\frac{\sqrt{n}+1}{2}$倍。
 
 
-如下图所示，Server0将产生$R_{0,3,6}\Join S_{0,1,2}$,Server1将产生$R_{0,3,6}\Join S_{3,4,5}$,Server1将产生$R_{0,3,6}\Join S_{6,7,8}$综合起来，将产生结果$R_{0-8}\Join S_{0-8}$。
+如下图所示，Server0将产生$R_{0,3,6} \biguplus S_{0,1,2}$,Server1将产生$R_{0,3,6}\biguplus  S_{3,4,5}$,Server1将产生$R_{0,3,6}\biguplus  S_{6,7,8}$综合起来，将产生结果$R_{0-8}\biguplus  S_{0-8}$。(注意，$\biguplus $代表join，mathjar不支持join符号，sadness)
 
 ![Flow join](https://raw.githubusercontent.com/tianjiqx/picture/master/flow-join3.png)
 
