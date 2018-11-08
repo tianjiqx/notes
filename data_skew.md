@@ -20,9 +20,7 @@
 
 主要场景优化场景是**主外键连接**，倾斜key也是指外键上的key。处理示意图下图所示。
 
-<div align=center>
 ![Flow join](https://raw.githubusercontent.com/tianjiqx/picture/master/flow-join1.png)
-</div>
 
   
 - 探测阶段
@@ -36,7 +34,7 @@
 
 细节：O(1)的频数记录（使用有序数组+hash table），RDMA，并行执行等细节，请参考论文.
 
-扩展：对于两表都存在倾斜key时，分别广播两边的倾斜key，后广播的表，检查要广播的key是否不是前广播的倾斜key,以及处理相同倾斜key的方法。
+扩展：对于两表都存在倾斜key时，广播左、右表的倾斜key（且非右、左表倾斜key），对称片段复制SFR处理左右同时存在的倾斜key。
 
 
 ### 大数据处理系统如Spark中的解决方法
