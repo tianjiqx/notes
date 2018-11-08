@@ -45,14 +45,19 @@
   - S上都倾斜key，满足阈值前在目标服务器上处理，满足之后物化到本地，最后通过SFR处理。
 
   
+![Flow join](https://raw.githubusercontent.com/tianjiqx/picture/master/flow-join2.png)
+
 注意：需要理解，在倾斜key未达到阈值前被认为是非倾斜的进行处理，在R、S都发现是倾斜key前，当作单边倾斜处理，R上的倾斜key插入本地的hash表，S上的倾斜key物化到本地，及时广播S上的R的倾斜key，交换完毕后，广播R上的S的倾斜key，最后用SFS处理R、S都倾斜的key。
 
 
 R、S都倾斜key的连接方法，假设R和S上在每个服务上都右x和y行倾斜key，一种是广播小表，则导致传输$n(n-1)x$的传输数据量，很容易造成网络拥塞，另一个方法是将所有的数据集中在一台服务器上，则传输$(n-1)×(x+y)$的数据量，网络上的数据量减少了，但是单台服务器进行join的时间将极慢。
 
-所谓的**对称分段复制SFR**,是指将服务器逻辑组织呈一个n1×n2的矩形(n1×n2=n,n为服务器的数量)，然后将R和S上的倾斜key分别同行同列之间进行广播，减少全域广播某一个小表R时导致的网络拥塞，同时也避免单点处理的时间瓶颈，而SFR的矩形n1，n2的比例根据R和S倾斜key元祖数的比例来确定，大致比例相等时n1=n2最好，而当比例相差极大的时候，原矩形退化成1×n,实际上变成了广播。SFR的传输的数据量为$n((n1-1)x+(n2-1)y)$。在最好的情况下，即n1=n2时，对比广播连接方式减少执行时间和网络拥塞的$\frac{\sqrt{n}+1}{2}$倍
+所谓的**对称分段复制SFR**,是指将服务器逻辑组织呈一个n1×n2的矩形(n1×n2=n,n为服务器的数量)，然后将R和S上的倾斜key分别同行同列之间进行广播，减少全域广播某一个小表R时导致的网络拥塞，同时也避免单点处理的时间瓶颈，而SFR的矩形n1，n2的比例根据R和S倾斜key元祖数的比例来确定，大致比例相等时n1=n2最好，而当比例相差极大的时候，原矩形退化成1×n,实际上变成了广播。SFR的传输的数据量为$n((n1-1)x+(n2-1)y)$。在最好的情况下，即n1=n2时，对比广播连接方式减少执行时间和网络拥塞的$\frac{\sqrt{n}+1}{2}$倍。
 
-![Flow join](https://raw.githubusercontent.com/tianjiqx/picture/master/flow-join2.png)
+
+如下图所示，Server0将产生$R_{0,3,6}\join S_{0,1,2}$,Server1将产生$R_{0,3,6}\join S_{3,4,5}$,Server1将产生$R_{0,3,6}\join S_{6,7,8}$综合起来，将产生结果$R_{0-8}\join S_{0-8}$。
+
+![Flow join](https://raw.githubusercontent.com/tianjiqx/picture/master/flow-join3.png)
 
   
 
