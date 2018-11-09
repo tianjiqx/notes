@@ -59,7 +59,8 @@ R、S都倾斜key的连接方法，假设R和S上在每个服务上都右x和y�
 
 ![Flow join](https://raw.githubusercontent.com/tianjiqx/picture/master/flow-join3.png)
 
-  
+
+后记，所谓的SFR（1993年提出），其实只是计算机体系结构中并行处理技术中一个很基本的矩阵乘法分块并行处理的例子。
 
 ### 大数据处理系统如Spark中的解决方法
 
