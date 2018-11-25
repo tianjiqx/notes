@@ -21,5 +21,5 @@
 
 - [看懂UML类图和时序图](https://design-patterns.readthedocs.io/zh_CN/latest/read_uml.html)
 - [图说设计模式](https://design-patterns.readthedocs.io/zh_CN/latest/index.html)
-
+- [git Q&A](https://github.com/k88hudson/git-flight-rules/blob/master/README_zh-CN.md)
 
