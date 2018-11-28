@@ -11,7 +11,8 @@
 
 ### 算法
 
-
+### 分布式系统
+- [Quorum协议](https://en.wikipedia.org/wiki/Quorum_(distributed_computing))
 
 ### Linux
 
