@@ -2,6 +2,12 @@
 ## 知识点链接
 
 
+
+
+### 计算机系统
+- [每个程序员都应该知道的时延](https://people.eecs.berkeley.edu/~rcs/research/interactive_latency.html)
+
+
 ### C++相关
 
 - [智能指针](https://www.cnblogs.com/wxquare/p/4759020.html)
