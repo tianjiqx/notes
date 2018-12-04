@@ -46,8 +46,8 @@
 - [Consistency models in modern distributed systems. An approach to Eventual Consistency](https://riunet.upv.es/bitstream/handle/10251/54786/TFMLeticiaPascual.pdf)
 - [Consistency Models](https://jepsen.io/consistency),jepsen
 - 《大数据日知录》2.2节
-
-
+- [线性一致性：什么是线性一致性？](https://zhuanlan.zhihu.com/p/42239873)
+- [分布式线性一致性：理论&验证](https://zhuanlan.zhihu.com/p/43949695)
 ### 待续..
 
 看了这么多一致性，希望你的脑子还好：)
