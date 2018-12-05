@@ -16,6 +16,8 @@
 
 
 ### 算法
+- [二分查找算法](https://www.cnblogs.com/luoxn28/p/5767571.html) 
+
 
 ### 分布式系统
 - [Quorum协议](https://en.wikipedia.org/wiki/Quorum_(distributed_computing))
