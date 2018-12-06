@@ -14,9 +14,9 @@
 - [gtest的Linux使用（Google test）](https://www.cnblogs.com/hcu5555/archive/2015/04/30/4468847.html)
 - [Makefile简易教程](https://www.cnblogs.com/owlman/p/5514724.html)
 - [C++ STL官方文档](http://www.cplusplus.com/reference/vector/vector/)
-
+- [Google C++ 开源项目风格](https://zh-google-styleguide.readthedocs.io/en/latest/google-cpp-styleguide/contents/)
 ### 算法
-- [二分查找算法](https://www.cnblogs.com/luoxn28/p/5767571.html) 
+- [二分查找算法](https://www.cnblogs.com/luoxn28/p/5767571.html)
 
 
 ### 分布式系统
