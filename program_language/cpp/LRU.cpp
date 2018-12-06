@@ -7,100 +7,98 @@ using namespace std;
 
 //key value >0
 
-typedef struct node{
+typedef struct node {
     int key;
     int value;
     node * next;
     node * head;
-    node(int k,int v){
-        key=k;
-        value=v;
-        next=NULL;
-        head=NULL;
+    node(int k, int v) {
+        key = k;
+        value = v;
+        next = NULL;
+        head = NULL;
     }
 
-}node;
+} node;
 
 
-class Qlist{
+class Qlist {
 
 public:
 
     node * head;
 
 public:
-    Qlist(){
-        head=new node(-1,-1);
-        head->head=head;
-        head->next=head;
+    Qlist() {
+        head = new node(-1, -1);
+        head->head = head;
+        head->next = head;
     }
 
 
     //insert
-    void insert(node * n){
-        if (n==NULL){
+    void insert(node * n) {
+        if (n == NULL) {
             return;
         }
 
-        n->next=head->next;
-        head->next->head=n;
-        n->head=head;
-        head->next=n;
+        n->next = head->next;
+        head->next->head = n;
+        n->head = head;
+        head->next = n;
     }
 
     //delete
-    int del(node * n){
-        if (n==NULL){
+    int del(node * n) {
+        if (n == NULL) {
             return -1;
         }
 
-        n->head->next=n->next;
-        n->next->head=n->head;
-        int ret=n->key;
+        n->head->next = n->next;
+        n->next->head = n->head;
+        int ret = n->key;
         delete n;
         return ret;
     }
 
     //delete back
-    int pop_back(){
-        if (head->head !=head)
-        {
+    int pop_back() {
+        if (head->head != head) {
             return del(head->head);
-        }
-        else{
+        } else {
             return -1;
         }
     }
 
     //move front
-    node*  movefront(node * n){
-        if (n==NULL){
+    node*  movefront(node * n) {
+        if (n == NULL) {
             return NULL;
-        }else if(n==head->next){ //not need move
+        } else if(n == head->next) { //not need move
             return n;
-        }else{ //move
+        } else { //move
             //lazy reuse node Orz.
-            node *tmp=new node(n->key,n->value);
+            node *tmp = new node(n->key, n->value);
             //first delete,then insert into front
             del(n);
             insert(tmp);
             return tmp;
         }
     }
-    void traverse(){
-        node *tmp=head->next;
-        cout<<"traverse:";
-        while(tmp!=head){
-            cout<<" key="<<tmp->key<<" value="<<tmp->value;
-            tmp=tmp->next;
+    void traverse() {
+        node *tmp = head->next;
+        cout << "traverse:";
+        while(tmp != head) {
+            cout << " key=" << tmp->key << " value=" << tmp->value;
+            tmp = tmp->next;
         }
-        cout<<endl;
+        cout << endl;
     }
 
 };
 
 
-typedef map<int,node *> M1;
+typedef map<int, node *> M1;
 
 class LRUCache {
 
@@ -111,39 +109,38 @@ public:
     int count;
 public:
     LRUCache(int capacity) {
-        cap=capacity;
-        count=0;
+        cap = capacity;
+        count = 0;
     }
 
     int get(int key) {
         M1::iterator it = m.find(key);
-        if (it!=m.end()){
-            int ret=(*it).second->value;
+        if (it != m.end()) {
+            int ret = (*it).second->value;
             //cout<<"GET:"<<(*it).first<<" "<<(*it).second<<endl;
-            node *newpos=l.movefront((*it).second);
-            (*it).second=newpos;
+            node *newpos = l.movefront((*it).second);
+            (*it).second = newpos;
             return ret;
-        }
-        else{
+        } else {
             return -1;
         }
     }
 
     void put(int key, int value) {
 
-        if (m.find(key)!=m.end()){
+        if (m.find(key) != m.end()) {
             return;
         }
 
 
-        node *n=new node(key,value);
-        m.insert(M1::value_type(key,n));
-        if(count<cap){
+        node *n = new node(key, value);
+        m.insert(M1::value_type(key, n));
+        if(count < cap) {
             l.insert(n);
             count++;
-        }else{
+        } else {
 
-            int delkey=l.pop_back();
+            int delkey = l.pop_back();
             l.insert(n);
             //del elimite key from map
             m.erase(m.find(delkey));
@@ -158,27 +155,26 @@ public:
  * obj.put(key,value);
  */
 
-int main(){
+int main() {
 
     LRUCache lru(2);
 
-    lru.put(1,2);
-    lru.put(2,3);
+    lru.put(1, 2);
+    lru.put(2, 3);
     lru.l.traverse();
-    cout<<"get key=1 :"<<lru.get(1)<<endl;
+    cout << "get key=1 :" << lru.get(1) << endl;
     lru.l.traverse();
-    cout<<"get key=2 :"<<lru.get(2)<<endl;
+    cout << "get key=2 :" << lru.get(2) << endl;
     lru.l.traverse();
-    cout<<"get key=1 :"<<lru.get(1)<<endl;
+    cout << "get key=1 :" << lru.get(1) << endl;
     lru.l.traverse();
-    lru.put(3,4);
+    lru.put(3, 4);
     lru.l.traverse();
-    cout<<"get key=2 :"<<lru.get(2)<<endl;
+    cout << "get key=2 :" << lru.get(2) << endl;
     lru.l.traverse();
-    cout<<"get key=3 :"<<lru.get(3)<<endl;
+    cout << "get key=3 :" << lru.get(3) << endl;
     lru.l.traverse();
 
     return 0;
 }
-
 
