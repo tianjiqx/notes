@@ -21,6 +21,10 @@
 
 ### 分布式系统
 - [Quorum协议](https://en.wikipedia.org/wiki/Quorum_(distributed_computing))
+- [GFS架构启示 | Google File System](https://mp.weixin.qq.com/s?__biz=MjM5ODYxMDA5OQ==&mid=2651961812&idx=1&sn=592e3cc722bdfc4201d07cb1b087ed06&chksm=bd2d0c088a5a851eec1e01cea1d68a365edab46bc6985c469adb4b0df17f0e6c2f07bda8da47&scene=21)
+
+
+
 
 ### Linux
 
