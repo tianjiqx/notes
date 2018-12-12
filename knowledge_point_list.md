@@ -28,6 +28,8 @@
 - [GFS架构启示 | Google File System](https://mp.weixin.qq.com/s?__biz=MjM5ODYxMDA5OQ==&mid=2651961812&idx=1&sn=592e3cc722bdfc4201d07cb1b087ed06&chksm=bd2d0c088a5a851eec1e01cea1d68a365edab46bc6985c469adb4b0df17f0e6c2f07bda8da47&scene=21)
 
 
+### Big Data
+- [Hadoop in practice 翻译博文目录](https://www.cnblogs.com/datacloud/p/3604492.html)
 
 
 ### Linux
