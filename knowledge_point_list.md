@@ -2,7 +2,8 @@
 ## 知识点链接
 
 
-
+### 概念
+- [ 原子更新（单、多行（变量））]()
 
 ### 计算机系统
 - [每个程序员都应该知道的时延](https://people.eecs.berkeley.edu/~rcs/research/interactive_latency.html)
