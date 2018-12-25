@@ -24,6 +24,8 @@
 
   扩展阅读：[链表法求解“微信群覆盖”](https://mp.weixin.qq.com/s?__biz=MjM5ODYxMDA5OQ==&mid=2651961762&idx=1&sn=5cc03810dfd50875937f1d89bac2d919&chksm=bd2d0c7e8a5a8568caada4b4f04369079286894b93786dfebff6fef1c193c3a19db172dcf5e8&scene=21)
 
+- [ACM动态规划总结](https://blog.csdn.net/cc_again/article/details/25866971)
+
 ### 分布式系统
 - [Quorum协议](https://en.wikipedia.org/wiki/Quorum_(distributed_computing))
 - [GFS架构启示 | Google File System](https://mp.weixin.qq.com/s?__biz=MjM5ODYxMDA5OQ==&mid=2651961812&idx=1&sn=592e3cc722bdfc4201d07cb1b087ed06&chksm=bd2d0c088a5a851eec1e01cea1d68a365edab46bc6985c469adb4b0df17f0e6c2f07bda8da47&scene=21)
