@@ -2,10 +2,8 @@
 ## 单元测试（unint testing）
 
 ### 概念
-> 又称为模块测试, 是针对程序模块（软件设计的最小单位）来进行正确性检验的测试工作。程序单元是应用的最小可测试部件。在过程化编程中，一个单元就是单个程序、函数、过程等；对于面向对象编程，最小单元就是方法，包括基类（超类）、抽象类、或者派生类（子类）中的方法。
-
+> 单元测试又称为模块测试, 是针对程序模块（软件设计的最小单位）来进行正确性检验的测试工作。程序单元是应用的最小可测试部件。在过程化编程中，一个单元就是单个程序、函数、过程等；对于面向对象编程，最小单元就是方法，包括基类（超类）、抽象类、或者派生类（子类）中的方法。
 > 每个理想的测试案例独立于其它案例；为测试时隔离模块，经常使用stubs、mock或fake等测试马甲程序。
-
 > -- wikipedia
 
 ### 好处
@@ -50,6 +48,6 @@
 
 ### 参考资料
 - [wiki单元测试](https://zh.wikipedia.org/wiki/%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95)
--[wiki unit testing](https://en.wikipedia.org/wiki/Unit_testing)
+- [wiki unit testing](https://en.wikipedia.org/wiki/Unit_testing)
 - [单元测试指南](https://petroware.no/unittesting.html) 
 - [google软件测试之道](https://pan.baidu.com/s/1dDgUSpz)  
