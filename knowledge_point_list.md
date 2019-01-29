@@ -38,7 +38,7 @@
 ### Linux
 
 - [linux命令行使用教程TLCL](http://billie66.github.io/TLCL/book/index.html)
-
+- [Shell编程简明教程](https://www.cnblogs.com/yinheyi/p/6648242.html)
 ### 容器相关
 - [插画版Kubernetes指南](https://www.cnblogs.com/kouryoushine/articles/8007648.html)
 
