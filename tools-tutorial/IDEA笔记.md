@@ -11,5 +11,11 @@
 
 - Ctrl+Alt+B 跳转到实现处,个人配置Ctrl+，（注意与搜狗快捷键冲突，需修改搜狗快键，同时与IDEA的Vim Emulator冲突）
 
+- Alt+F3 查找文件中的关键字
 
+- 注释，Ctrl+/,Ctrl+shift+/ 块注释
+
+#### 注意：
+
+idea工程显示代码标红，没有提示类的继承关系等等，注意通过project structure 标记源代码，设置依赖库等等
 
