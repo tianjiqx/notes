@@ -10,7 +10,8 @@ ag是一个强大的linux搜索工具，可以用来分析源码，搜索文件�
 - 全词匹配：ag -w "xxx"
 - 非正则匹配搜索：ag -Q "xxx"
 - 只搜索文件名： ag -g test (单关键字不需要"")
-
+- 仅列出包含内容的文件名： ag -l "xxx"
+- 同时限定文件名和内容：ag  "content-key" -G "filename-key"
 
 
 
