@@ -31,6 +31,7 @@ awk是一个可编程的文本处理、分析工具，相对与sed而言，具�
   - 打印一行的第1,4项：awk '{print $1,$4}'
   - 格式化输出 awk '{printf "|%-5s |%-10s |\n" ,$1,$4}'
   - 使用‘，’作为分隔符： awk -F, '{print $1,$2}' / awk 'BEGIN{FS=","} {print $1,$2}'
+  - 使用‘:’作为分割符号打印一行各段：awk -F: '{for(i=1;i<=NF;i++){print $i}}'
   - 输出第二列包含 "th"，并打印第二列与第四列(~表示模式开始。// 中是模式)：awk '$2 ~ /th/ {print $2,$4}'
   - 模式取反：awk '$2 !~ /th/ {print $2,$4}'
   - 忽略大小写：awk ' BEGIN{IGNORECASE=1} /this/ '
