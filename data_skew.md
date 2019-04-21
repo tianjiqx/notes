@@ -12,7 +12,7 @@
 
 - 数据实时采样
 
-  在2016年的VLDB上有一篇论文《Flow-Join: Adaptive skew handling for distributed joins over high-speed networks》，介绍了一种新的处理数据倾斜的分布式连接方法Flow-Join，该连接方法是在连接过程中，根据已经处理的部分数据(1%)，构建代价极小的近似直方图的结构，根据key的频率，判断数据是否存在倾斜(全局是否倾斜的共识)。这样可以不需要统计信息，并且适应在统计信息不可用（经过过滤条件过滤后）、中间结果集是否存在数据倾斜。
+  在2016年的ICDE上有一篇论文《Flow-Join: Adaptive skew handling for distributed joins over high-speed networks》，介绍了一种新的处理数据倾斜的分布式连接方法Flow-Join，该连接方法是在连接过程中，根据已经处理的部分数据(1%)，构建代价极小的近似直方图的结构，根据key的频率，判断数据是否存在倾斜(全局是否倾斜的共识)。这样可以不需要统计信息，并且适应在统计信息不可用（经过过滤条件过滤后）、中间结果集是否存在数据倾斜。
 
 
 
