@@ -8,6 +8,7 @@
 
 - [Linux下查看电脑硬件环境的命令](https://blog.csdn.net/wjlwangluo/article/details/77511692)
 
+- 磁盘命令lsblk，查看分区，逻辑卷物理磁盘位置
 
 - [CPU 信息](https://www.cnblogs.com/charlesblc/p/8309563.html)
 
