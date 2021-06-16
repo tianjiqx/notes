@@ -592,7 +592,7 @@ public int minimumTotal(List<List<Integer>> triangle) {
 
 数学归纳法、反证法可以证明贪心算法。
 
-题型特点：问题中带有最大/小，最多/少，是否满足可以转化为前者
+**题型特点：问题中带有最大/小，最多/少，是否满足可以转化为前者**
 
 ```java
 /*
@@ -771,11 +771,125 @@ public boolean lemonadeChange(int[] bills) {
 
 ### 4.1 快速排序
 
+```java
+// 递归
+public class QuickSort implements IArraySort {
+    @Override
+    public int[] sort(int[] sourceArray) throws Exception {
+        // 对 arr 进行拷贝，不改变参数内容
+        int[] arr = Arrays.copyOf(sourceArray, sourceArray.length);
+
+        return quickSort(arr, 0, arr.length - 1);
+    }
+    private int[] quickSort(int[] arr, int left, int right) {
+        // 区间范围大于1，继续递归
+        if (left < right) {
+            // 一轮排序，分区位置是最终位置
+            int partitionIndex = partition(arr, left, right);
+            // 左右区间，递归排序
+            quickSort(arr, left, partitionIndex - 1);
+            quickSort(arr, partitionIndex + 1, right);
+        }
+        return arr;
+    }
+    private int partition(int[] arr, int left, int right) {
+        // 设定基准值（pivot）
+        int pivot = left;
+        /*
+        int i = rand() % (right - left + 1) + l; // 随机选一个作为我们的主元
+        swap(arr,i, pivot);
+        */
+        // index表示[left+1,right]区间第一个比pivot大的位置，在它左边都是小于的pivot，右边是比pivot大的元素
+        int index = pivot + 1;
+        // pivot的位置暂时不处理
+        //从left+1开始，遍历，发现比pivot小的元素，交换与index的位置，并index后移，
+        //确保index位置左边都是小于的pivot，右边是比pivot大的元素。
+        for (int i = index; i <= right; i++) {
+            if (arr[i] < arr[pivot]) {
+                swap(arr, i, index);
+                index++;
+            }
+        }
+        // 更新基准值的位置，index是第一个比pivot大的元素，index - 1位置才是真正pivot的位置，
+        // 而index - 1位置的值，一定是小于或等于pivot的值，可以放心交换。
+        swap(arr, pivot, index - 1);
+        return index - 1;
+    }
+    private void swap(int[] arr, int i, int j) {
+        int temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+    }
+}
+// 传统，非递归需要双指针来回交换的值
+```
+
+算法步骤：
+
+- 从数列中挑出一个元素，称为 "基准"（pivot）;
+
+- 重新排序数列，所有元素比基准值小的摆放在基准前面，所有元素比基准值大的摆在基准的后面（相同的数可以到任一边）。在这个分区退出之后，该基准就处于数列的中间位置。这个称为分区（partition）操作；
+- 递归地（recursive）把小于基准值元素的子数列和大于基准值元素的子数列排序；
+
+
+
 
 
 ### 4.2 归并排序
 
+```java
+class Solution {
+    // 临时空间
+    int[] tmp;
 
+    public int[] sortArray(int[] nums) {
+        tmp = new int[nums.length];
+        mergeSort(nums, 0, nums.length - 1);
+        return nums;
+    }
+
+    public void mergeSort(int[] nums, int l, int r) {
+        // 区间为1，停止递归
+        if (l >= r) {
+            return;
+        }
+        int mid = (l + r) >> 1;
+        // 递归，排序左右
+        mergeSort(nums, l, mid);
+        mergeSort(nums, mid + 1, r);
+        // 合并有序子序列
+        int i = l, j = mid + 1;
+        int cnt = 0;
+        while (i <= mid && j <= r) {
+            if (nums[i] <= nums[j]) {
+                tmp[cnt++] = nums[i++];
+            } else {
+                tmp[cnt++] = nums[j++];
+            }
+        }
+        // 处理剩余部分
+        while (i <= mid) {
+            tmp[cnt++] = nums[i++];
+        }
+        while (j <= r) {
+            tmp[cnt++] = nums[j++];
+        }
+        for (int k = 0; k < r - l + 1; ++k) {
+            nums[k + l] = tmp[k];
+        }
+    }
+}
+```
+
+利用分治的思想来对序列进行排序。
+
+对一个长为n的待排序的序列，我们将其分解成两个长度为n/2的子序列。
+
+每次先递归调用函数使两个子序列有序，然后我们再线性合并两个有序的子序列使整个序列有序。
+
+
+
+TODO:文件排序
 
 
 
@@ -874,6 +988,8 @@ int BitAdd(int num1, int num2){
 
 ### 跳表SkipList
 
+
+
 ### 二叉树树
 
 ### B树
@@ -882,9 +998,90 @@ int BitAdd(int num1, int num2){
 
 ### 数组
 
-### 哈希表
 
-### 栈与队列
+
+### 哈希表Map
+
+映射的集合。
+
+```java
+import java.util.*;
+Map<String, Integer> map = new HashMap<String, Integer>();
+map.put("bill", 98);
+map.put("ryan", 99);
+boolean exist = map.containsKey("ryan"); // check key exists in map
+int point = map.get("bill"); // get value by key
+int point = map.remove("bill") // remove by key, return value
+Set<String> set = map.keySet();
+// iterate Map
+for (Map.Entry<String, Integer> entry : map.entrySet()) {
+	String key = entry.getKey();
+	int value = entry.getValue();
+}
+```
+
+
+
+### 栈Stack
+
+LIFO，先进后出。
+
+```java
+import java.util.*;
+// 双端队列代替stack，性能更好
+Deque<Integer> stack = new ArrayDeque<Integer>();
+s.size(); // size of stack
+```
+
+重要方法：
+
+- boolean isEmpty() - 判断栈是否为空， 若使用 Stack 类构造则为 empty()  
+- E peek() - 取栈顶元素， 不移除 
+- E pop() - 移除栈顶元素并返回该元素 
+- E push(E item) - 向栈顶添加元素
+
+
+
+### 队列Queue
+
+FIFO，先进先出。
+
+```java
+import java.util.*;
+Queue<Integer> q = new LinkedList<Integer>();
+int qLen = q.size(); // get queue length
+```
+
+重要方法：
+
+- boolean add(E e) - 加入队尾
+- E remove() - 移除队首，队列空抛出异常，poll返回null
+- E peek() - 返回队首元素，不移除，队列空返回null，element()抛出异常
+
+
+
+### 集合Set
+
+不重复元素集合。
+
+```java
+import java.util.*;
+Set<String> hash = new HashSet<String>();
+hash.add("billryan");
+hash.contains("billryan");
+hash.size();
+```
+
+- HashSet：散列函数，无序，查询最快
+- TreeSet：红黑树，有序
+
+重要方法：
+
+- boolean isEmpty() - 是否空集
+- boolean add(E e) - 添加元素
+- boolean remove(Object o) - 删除元素
+
+
 
 ### 字符串
 
