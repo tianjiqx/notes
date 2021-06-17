@@ -183,7 +183,7 @@ public int findPeakElement(int nums) {
 
 3特性：
 
-- 最优子结构：最优解所包含的的子问题的解也是最优的，或者所，子问题的最优解，可以推出整个问题的最优解
+- 最优子结构：最优解所包含的的子问题的解也是最优的，或者说，子问题的最优解，可以推出整个问题的最优解
 - 子问题重叠：使用递归，自顶向下对问题求解时，每次的子问题不是新问题，子问题会重复计算多次，将子问题结果保存，获得高效率。
 - 无后效性：每个状态都是过去历史的完整总结，以前的各个阶段的状态不影响。
 
@@ -436,7 +436,7 @@ public int longestPalindromeSubseq(String s) {
 2. leetcode647
 给定一个字符串，你的任务是计算这个字符串中有多少个回文子串。
 大问题：一个子串是否是回文串，统计回文串个数
-子问题：一个子串是回文串，那么，除去首位，仍然是回文串，所以 
+子问题：一个子串是回文串，那么，除去首尾，仍然是回文串，所以 
 
 
 */
@@ -580,7 +580,92 @@ public int minimumTotal(List<List<Integer>> triangle) {
 
 （pingcap19 面试题目）
 
+还是不太理解，贪心思想，sadness。。。
 
+```java
+/**
+leetcode678:
+给定一个只包含三种字符的字符串：（ ，） 和 *，写一个函数来检验这个字符串是否为有效字符串。有效字符串具有如下规则：
+任何左括号 ( 必须有相应的右括号 )。
+任何右括号 ) 必须有相应的左括号 ( 。
+左括号 ( 必须在对应的右括号之前 )。
+* 可以被视为单个右括号 ) ，或单个左括号 ( ，或一个空字符串。
+一个空字符串也被视为有效字符串。
+case:
+()  true
+(*) true
+(*)) true
+贪心思想：
+在处理字符串中的当前字符时，让 lo、hi 分别为可能的最小和最大左括号数
+遇到左括号：lo++, hi++
+遇到星号：lo--, hi++（因为星号有三种情况）
+遇到右括号：lo--, hi--
+lo要保持不小于0，
+如果hi < 0，说明把星号全变成左括号也不够了，False
+最後，如果lo > 0，说明末尾有多余的左括号，False
+时间复杂度O(n)
+*/
+class Solution {
+    public boolean checkValidString(String s) {
+       int lo = 0, hi = 0;
+       for (char c: s.toCharArray()) {
+           lo += c == '(' ? 1 : -1;
+           hi += c != ')' ? 1 : -1;
+           if (hi < 0) break;
+           lo = Math.max(lo, 0);
+       }
+       return lo == 0;
+    }
+}
+
+
+/*
+栈思路@Booooo_：
+栈(先进后出)
+定义两个栈，leftStack 存 ' ( ' 所在位置的下标，starStack 存 '*' 所在位置的下标。
+1.当遇到 ' ( ' 时，' ( ' 所在位置的下标入栈；当遇到 ' * ' 时，' * ' 所在位置的下标入栈。
+2.当遇到 ' ) ' 时，要令 leftStack 中的栈顶元素出栈，若此时 leftStack 为空，则继续看 starStack 是否为空，若不为空则 starStack 栈顶元素出栈，若为空返回则 false (遇到了 ' ) '，但在这之前一个 ' ( ' 和 ' * ' 都没遇到，则一定不会匹配)。
+3.当字符串全部遍历完时，若 starStack 的长度比 leftStack 的长度要小，则返回 false (有剩余的 ' ( '，但 ' * ' 的数量不够了，则一定不会匹配)；否则，比较两个栈的栈顶元素值的大小，要保证 ' ( ' 在 ' * ' 的左边(starStack.peek() > leftStack.peek())才能匹配成功，当遇到满足条件的栈顶元素时，栈顶元素出栈，继续比较下一个。只要有一次该条件不满足，则直接返回 false；否则，返回 true。
+时间、空间O(n)
+*/ 
+class Solution {
+
+    public boolean checkValidString(String s) {
+        int n = s.length();
+        Stack<Integer> leftStack = new Stack<>();
+        Stack<Integer> starStack = new Stack<>();
+
+        for (int i=0;i<n;i++) {
+            if (s.charAt(i) == '(') {
+                leftStack.push(i);//存的是下标
+            } else if (s.charAt(i) == '*') {
+                starStack.push(i);
+            } else {
+                if (!leftStack.isEmpty()) {
+                    leftStack.pop();
+                } else {
+                    if (!starStack.isEmpty()) {
+                        starStack.pop();
+                    } else {
+                        return false;
+                    }
+                }
+            }
+        }
+        if (starStack.size() < leftStack.size()) return false;
+        else {
+            while (!starStack.isEmpty()) {
+                if (starStack.peek() < leftStack.peek()) {
+                    return false;
+                }
+                starStack.pop();
+                leftStack.pop();
+            }
+            return true;
+        }
+    }
+}
+```
 
 
 
@@ -763,6 +848,33 @@ public boolean lemonadeChange(int[] bills) {
     return true;
 }
 
+/*
+LeetCode55：
+给定一个非负整数数组 nums ，你最初位于数组的 第一个下标 。
+数组中的每个元素代表你在该位置可以跳跃的最大长度。
+判断你是否能够到达最后一个下标。
+输入：nums = [2,3,1,1,4]
+输出：true
+解释：可以先跳 1 步，从下标 0 到达下标 1, 然后再从下标 1 跳 3 步到达最后一个下标。
+反例：[3,2,1,0,4]
+分析：
+记录每个位置能到达的最远位置，然后迭代，这个范围内能到达的最远位置。
+*/
+public class Solution {
+    public boolean canJump(int[] nums) {
+        int n = nums.length;
+        int rightmost = 0;
+        for (int i = 0; i < n; ++i) {
+            if (i <= rightmost) {
+                rightmost = Math.max(rightmost, i + nums[i]);
+                if (rightmost >= n - 1) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+}
 ```
 
 
@@ -1039,6 +1151,43 @@ s.size(); // size of stack
 - E peek() - 取栈顶元素， 不移除 
 - E pop() - 移除栈顶元素并返回该元素 
 - E push(E item) - 向栈顶添加元素
+
+```java
+/*
+leetcode20:有效的括号
+给定一个只包括 '('，')'，'{'，'}'，'['，']' 的字符串 s ，判断字符串是否有效。
+有效字符串需满足：
+左括号必须用相同类型的右括号闭合。
+左括号必须以正确的顺序闭合。
+*/
+class Solution {
+    public boolean isValid(String s) {
+        int n = s.length();
+        if (n % 2 == 1) {
+            return false;
+        }
+
+        Map<Character, Character> pairs = new HashMap<Character, Character>() {{
+            put(')', '(');
+            put(']', '[');
+            put('}', '{');
+        }};
+        Deque<Character> stack = new ArrayDeque<Character>();
+        for (int i = 0; i < n; i++) {
+            char ch = s.charAt(i);
+            if (pairs.containsKey(ch)) {
+                if (stack.isEmpty() || stack.peek() != pairs.get(ch)) {
+                    return false;
+                }
+                stack.pop();
+            } else {
+                stack.push(ch);
+            }
+        }
+        return stack.isEmpty();
+    }
+}
+```
 
 
 
