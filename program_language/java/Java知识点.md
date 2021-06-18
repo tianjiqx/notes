@@ -2,6 +2,18 @@
 
 ## 1. 反射与代理
 
+反射：运行过程中，对于任意类，可以获取该类的所有属性和方法。任意对象，调用它的任意方法和属性（包括私有）。
+
+优点：
+
+- 动态加载类
+
+缺点：
+
+- 性能瓶颈
+
+  
+
 （argodbbar client 与master通信，rpc框架）
 
 其他参考：笔记[UML与设计模式-笔记.md](https://github.com/tianjiqx/notes/blob/master/software_project/UML/UML%E4%B8%8E%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-%E7%AC%94%E8%AE%B0.md) 介绍了远程代理
@@ -161,6 +173,22 @@ Thread.currentThread().setContextClassLoader(classLoader)可修改线程的Class
 
 
 应用：spark 支持兼容版本hive，Presto 支持不同数据源， 联邦计算项目
+
+
+
+## 6. Java性能诊断技巧
+
+jstack:线程分析，找项目相关类方法
+
+jmap：定期打印，查看异常变量，对象
+
+jstat: 查看GC频率
+
+arthas: trace,watch命令，分析性能，变量，查找抛出异常的位置
+
+GC日志打印，停顿时间
+
+
 
 
 
