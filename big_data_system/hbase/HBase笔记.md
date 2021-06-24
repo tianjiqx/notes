@@ -61,15 +61,35 @@ HBase中的数据是**按照列簇存储**的，即将数据按照列簇分别�
 
 #### 3.1 hbase:meta 表
 
+也实际存储在RS上，定位发现通过zookeeper上的信息(/hbase-root/meta-region-server)。
+
 
 
 ## ４.HBase读写流程
 
-### 
+### 4.1 hbase写入
+
+![](hbase笔记图片/Snipaste_2021-06-24_15-36-19.png)
+
+- 1）客户端处理阶段：客户端将用户的写入请求进行预处理，并根据集群元数据定位写入数据所在的RegionServer，将请求发送给对应的RegionServer。
+  - 先put本地缓冲区(2M)，异步批量提交，风险客户端崩溃丢失提交的数据
+  - 根据rowkey在hbase:meta查找regionServer，rowkey按RS分组批量提交
+- 2）Region写入阶段：RegionServer接收到写入请求之后将数据解析出来，首先写入WAL，再写入对应Region列簇的MemStore。(返回写成功)
+- 3）MemStore Flush阶段：当Region中MemStore容量超过一定阈值，系统会异步执行f lush操作，将内存中的数据写入文件，形成HFile。（异步）
 
 
 
-### 4.1 hbase写
+more细节，参考Hbase原理与实践第6章。
+
+更新操作并没有更新原有数据，而是使用时间戳属性实现了多版本；
+
+删除操作也并没有真正删除原有数据，只是插入了一条标记为"deleted"标签的数据，而真正的数据删除发生在系统异步执行Major Compact
+
+
+
+##### BulkLoad
+
+先使用MapReduce将待写入集群数据转换为HFile文件，再直接将这些HFile文件加载到在线集群中。
 
 
 
@@ -98,6 +118,18 @@ Flush：Memstore刷HFile到hdfs上的过程。
 
 
 ### 4.3 hbase读
+
+通用读写逻辑：
+
+Client首先会从ZooKeeper中获取元数据hbase:meta表所在的RegionServer，
+
+然后根据待读写rowkey发送请求到元数据所在RegionServer，获取数据所在的目标RegionServer和Region（并将这部分元数据信息缓存到本地），
+
+最后将请求进行封装发送到目标RegionServer进行处理。
+
+
+
+TODO: scanner 机制，filter
 
 
 
