@@ -173,6 +173,8 @@ HBase 中的行按行按**字典顺序排序**。对于顺序扫描有利。
 
 更多[table设计](https://communities.intel.com/community/itpeernetwork/datastack/blog/2013/11/10/discussion-on-designing-hbase-tables)，[slated表（分桶）](https://phoenix.apache.org/salted.html)，[HBASE-11682 Explain hotspotting](https://issues.apache.org/jira/browse/HBASE-11682)
 
+
+
 ### 6.2 列族数量
 
 官方推荐使用尽量少，一般1个。
@@ -184,6 +186,127 @@ HBase 中的行按行按**字典顺序排序**。对于顺序扫描有利。
 一个列族突然插入大量数据，需要进行flush和压缩，其他未修改的列族也必须进行，产生没有必要的IO。
 
 并且一个列族数量很多，另一个列族数据量很小时，小数据量的列族被分散到大量的region中，导致该列族的大规模扫描性能降低。
+
+
+
+### 6.3 region 迁移
+
+分片迁移，集群负载均衡、故障恢复等功能都是建立在分片迁移的基础之上的。
+
+轻量级，HBase的数据实际存储在HDFS上，不需要独立进行管理，因而Region迁移只要将读写服务迁移即可。（当然可能会带来数据本地率的改变，上升或下降）
+
+#### 6.3.1 迁移流程
+
+region状态定义。
+
+迁移相关状态：
+
+offline
+
+opening，open，failed_open
+
+closing，closed，failed_close。
+
+![](hbase笔记图片/Snipaste_2021-06-24_14-23-45.png)
+
+- unassign阶段
+
+![](hbase笔记图片/Snipaste_2021-06-24_14-27-19.png)
+
+- Region从源RegionServer下线
+  - 1）Master生成事件M_ZK_REGION_CLOSING并更新到ZooKeeper组件，同时将本地内存中该Region的状态修改为PENDING_CLOSE。
+  - 2）Master通过RPC发送close命令给拥有该Region的RegionServer，令其关闭该Region。
+  - 3）RegionServer接收到Master发送过来的命令后，生成一个RS_ZK_REGION_CLOSING事件，更新到ZooKeeper。
+  - 4）Master监听到ZooKeeper节点变动后，更新内存中Region的状态为CLOSING。
+  - 5）RegionServer执行Region关闭操作。如果该Region正在执行flush或者Compaction，等待操作完成；否则将该Region下的所有MemStore强制flush，然后关闭Region相关的服务。
+  - 6）关闭完成后生成事件RS_ZK_REGION_CLOSED，更新到ZooKeeper。Master监听到ZooKeeper节点变动后，更新该Region的状态为CLOSED。
+
+- assign阶段
+
+  ![](hbase笔记图片/Snipaste_2021-06-24_14-34-26.png)
+
+  - 1）Master生成事件M_ZK_REGION_OFFLINE并更新到ZooKeeper组件，同时将本地内存中该Region的状态修改为PENDING_OPEN。
+  - 2）Master通过RPC发送open命令给拥有该Region的RegionServer，令其打开该Region。
+  - 3）RegionServer接收到Master发送过来的命令后，生成一个RS_ZK_REGION_OPENING事件，更新到ZooKeeper。
+  - 4）Master监听到ZooKeeper节点变动后，更新内存中Region的状态为OPENING。
+  - 5）RegionServer执行Region打开操作，初始化相应的服务。
+  - 6）打开完成之后生成事件RS_ZK_REGION_OPENED，更新到ZooKeeper，Master监听到ZooKeeper节点变动后，更新该Region的状态为OPEN。
+
+各节点作用职责：
+
+- master发起region状态改变，并维护管理的region的状态(4)
+- zookeeper存储操作过程中的事件，用于宕机恢复。(3)
+- regionServer接受master指令执行，打开或关闭region（2）
+
+#### 6.3.2 Region In Transition
+
+Region状态的存储:meta表，Master内存，ZooKeeper的region-in-transition节点
+
+- meta(zookeeper)：持久化存有Region与RegionServer的对应关系
+- master：存储整个集群所有的Region状态信息，变更由zookeeper通知，一定的滞后
+  - HBaseMaster WebUI上看到的Region状态都来自于Master内存信息
+- zookeeper：临时性的状态转移信息
+
+三个位置的状态一致时，才是正常工作状态，不一致状态，被叫Region In Transition(RIT)
+
+> 例子：RegionServer已经将Region成功打开，但是在远程更新hbase:meta元数据时出现异常（网络异常、RegionServer宕机、hbase:meta异常等），此时Master上维护的Region状态为OPENING，ZooKeeper节点上Region的状态为RS_ZK_REGION_OPENING，hbase:meta存储的信息是Region所在rs为null。但是Region已经在新的RegionServer上打开了，此时在Web UI上就会看到Region处于RIT状态。
+
+如果在迁移状态，出现短暂的RIT状态，无需人工干预，是正常现象。
+
+
+
+
+
+### 6.4 Region合并
+
+场景：清除空闲Region，减少集群运维成本。或者region切分的过多，数据量小，数量多，改进扫描性能。
+
+空闲Region：在某些业务中本来接收写入的Region在之后的很长时间都不再接收任何写入，而且Region上的数据因为TTL过期被删除。这种场景下的Region实际上没有任何存在的意义。
+
+过程：
+
+- 1）客户端发送merge请求给Master。
+- 2）Master将待合并的所有Region都move到同一个RegionServer上。
+- 3）Master发送merge请求给该RegionServer。
+- 4）RegionServer启动一个本地事务执行merge操作。
+- 5）merge操作将待合并的两个Region下线，并将两个Region的文件进行合并。
+- 6）将这两个Region从hbase:meta中删除，并将新生成的Region添加到hbase:meta中。
+- 7）将新生成的Region上线。
+
+命令：
+
+`hbase>merge_region 'encoded_regionname'  'encoded_regionname'` 异步操作。
+
+
+
+### 6.5 Region分裂
+
+#### 6.5.1 region分裂触发策略
+
+![](hbase笔记图片/Snipaste_2021-06-24_15-14-27.png)
+
+- ConstantSizeRegionSplitPolicy：region阈值超过触发
+  - 缺点，大表友好，小表不友好。小表常常只有一个region。产生热点。阈值调小又会导致region数量过多。
+- IncreasingToUpperBoundRegionSplitPolicy：阈值可变，与regionserver上个数有关。(#regions) *(#regions) * (#regions)* flush size * 2，存在最大阈值，MaxRegionFileSize。自适应大小表。小表分散，扫描性能有降低。（todo refine）
+- SteppingSplitPolicy：分裂阈值大小和待分裂Region所属表在当前RegionServer上的Region个数有关系，如果Region个数等于1，分裂阈值为flush size * 2，否则为MaxRegionFileSize。小表region个数相对减少，不产生过小region。（todo refine）
+
+#### 6.5.2 分裂点
+
+- 用户手动分裂是，指定
+- 自动：整个Region中最大Store中的最大文件中最中心的一个Block的首个rowkey。
+  - 只有一个block时，无分裂点。
+
+#### 6.5.3 分裂过程
+
+分裂事务：prepare、execute和rollback
+
+- prepare：内存中初始化两个子Region，具体生成两个HRegionInfo对象，包含tableName、regionName、startkey、endkey等。同时会生成一个transactionjournal，这个对象用来记录分裂的进展
+
+- execute:
+
+  ![](hbase笔记图片/Snipaste_2021-06-24_15-28-48.png)
+
+- rollback: 执行阶段发生异常时执行。
 
 
 
