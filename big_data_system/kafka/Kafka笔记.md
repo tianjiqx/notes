@@ -358,7 +358,7 @@ TODO：more
 
 
 
-## 5. 高可用
+## 5. 高可用设计
 
 ### 5.1 成员管理
 
@@ -508,13 +508,92 @@ leader A HW2，follower B HW1，同时挂掉，然后 B重启成为leader，接�
 
 ## 6. 高性能设计
 
-高性能：
+### 6.1 顺序读写磁盘批量消息追加日志文件。
 
-顺序读写
+顺序消费日志中的消息。
 
-零拷贝
+### 6.2 使用PageCache
 
-pagecache
+![](kafka笔记图片/图片1.png)
+
+- page cache & buffer cache
+  - page cache用于缓存文件的页数据，buffer cache用于缓存块设备（如磁盘）的块数据
+  - Linux2.4后合并（free -m）
+
+- block size大小为1KB
+- page size大小为4KB
+
+![](kafka笔记图片/图片2.png)
+
+- Pwrite
+  - FileChannel.write()
+
+- 写message
+  - 消息从java堆转入page cache(即物理内存)。
+  - 由异步线程刷盘，消息从page cache刷入磁盘。（linux刷盘未成功前，不应该提交消息）
+
+- 读message
+  - 消息直接从page cache转入socket发送出去。
+  - 当从page cache没有找到相应数据时，此时会产生磁盘IO，从磁盘Load消息到page cache，然后直接从socket发出去
+
+- PageCahe优势
+  - 减少java对象包装开销
+  - 减轻jvm GC
+  - Kafka崩溃，不影响pagecahe，不丢缓存
+
+生成和消费速度合适时，消息的接受与发送，全在pagecache中，达到内存交换的速度。
+
+
+
+### 6.3 零拷贝
+
+![](kafka笔记图片/Snipaste_2021-06-28_14-23-36.png)
+
+buffer = File.read 
+
+Socket.send(buffer)  => FileChannel.transferTo()/transferFrom() 
+
+原始方式的4次拷贝(同时伴随着4次上下文切换，用户态与内核态)：
+
+- 系统调用将文件数据读入到内核态 Buffer（DMA 拷贝）
+  - 用户态到内核态
+- 应用程序将内核态Buffer数据读入到用户态Buffer（CPU 拷贝）
+  - 内核态到用户态
+- 用户程序通过Socket发送数据时将用户态Buffer数据拷贝到内核态 Buffer（CPU拷贝）
+  - 用户态到内核态
+- 通过DMA拷贝将数据拷贝到 NIC Buffer
+  - 下一个周期处理，内核态到用户态
+
+![](kafka笔记图片/65356fa75307e91faffc6ce6ff23cea9.png)
+
+
+
+零拷贝（无CPU拷贝，2次上下文切换）：
+
+- 数据通过DMA拷贝到内核态Buffer （DMA 拷贝）
+- 通过DMA拷贝将数据拷贝到 NIC Buffer
+
+整个读文件-网络发送由一个 sendfile 调用完成。
+
+
+
+REF: [Kafka 设计解析（六）：Kafka 高性能关键技术解析](https://www.infoq.cn/article/kafka-analysis-part-6)
+
+
+
+### 6.4 减少网络开销
+
+#### 6.4.1 消息批处理
+
+消息的批量发送
+
+#### 6.4.2 数据压缩
+
+消息单独压缩，消息批量压缩。消息压缩存储。
+
+#### 6.4.3 序列化
+
+自定义消息kv的SerDe，使用快速，更紧凑格式。
 
 
 
