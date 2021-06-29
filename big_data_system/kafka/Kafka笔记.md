@@ -800,7 +800,11 @@ REF: https://cwiki.apache.org/confluence/display/KAFKA/Ecosystem
 
 集群同步工具MirrorMaker
 
-生产者-broker-[消费者-生产者]-另kafka集群
+```mermaid
+graph LR
+classDef default fill: #A3E4D7, stroke: #333, stroke-width: 2px;
+A[生产者] --> B[(broker)] --> C[消费者-生产者] --> D[(Other kafka集群)]
+```
 
 uReplicator
 
