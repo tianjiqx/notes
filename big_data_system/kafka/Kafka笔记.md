@@ -599,25 +599,391 @@ REF: [Kafka 设计解析（六）：Kafka 高性能关键技术解析](https://w
 
 ## 7.运维
 
-监控指标
+### 7.1 监控指标
+
+#### 7.1.1 broker 度量指标
+
+**非同步分区数量**
+
+作为leader的broker有多少个分区出于非同步状态。
+
+broker崩溃、资源不足，硬件问题(disk，network)。
+
+集群问题
+
+- 负载不均衡
+  - 定位：
+    - 分区数量
+    - leader分区数量
+    - topic流入字节速率
+    - topic流入消息字节速率
+- 资源过度消耗（容量瓶颈）
+  - 定位
+    - CPU使用
+    - 网络输入吞吐量
+    - 网络输出吞吐量
+    - 磁盘平均等待时间
+    - 磁盘使用百分比
+
+
+
+主机问题。单个broker。
+
+- 硬件问题
+  - dmesg查看内核缓存区日志
+  - 磁盘故障
+  - SMART工具监控和测试磁盘
+  - 网络配置，路由问题
+- 进程冲突
+- 本地配置不一致
+
+
+
+**活跃控制器数量**
+
+集群应该只有一个为1，其余为0
+
+**请求处理器空闲率**
+
+- 网络处理器线程池
+  - 网络IO
+- 请求处理器线程池
+  - disk IO
+  - 一般数量与处理器核数一致
+  - 数值越低，负载越高
+
+**主题流入/出字节**
+
+**主题流入/出消息**
+
+**分区数量**
+
+**leader数量**
+
+各broker应该均衡。
+
+**离线分区**
+
+**请求度量指标**
+
+各类请求的指标，如整个事件，队列事件，每秒请求数等。
+
+
+
+### 7.2 主题和分区的度量指标
+
+**主题、分区实例的度量指标**
+
+集群整体的情况。
+
+
+
+### 7.3 JVM指标
+
+**GC**
+
+Full GC、Yong GC 次数，时间
+
+**FD当前数量和最大值**
+
+每一个logsegment和网络连接都会打开一个FD文件描述符
+
+网络连接未正常关闭，导致FD消耗光。
+
+
+
+### 7.4 操作系统指标
+
+CPU 的使用 、 内存的使用、磁盘的使用、磁盘 IO 和网络的使用。
+
+内存，长期占用的较小，更多是缓存，一般不担心。
+
+主要关心的是磁盘。监控磁盘的每秒种读写速度、读写平均队列大小、平均等待时间和磁盘的使用百分比 。  
+
+网络IO，由于副本复制关系，流入流量很容易比输出流量高出一个数量级 。
+
+
+
+### 7.5 日志
+
+控制器日志kafka.controller，INFO级别，主题创建，修改，broker状态变更，副本选取，分区移动信息。
+
+ClientQuotaManager日志，INFO级别，与生产和消费配额活动相关的信息  。
+
+kafka.log.LogCleaner,kafka.log.Cleaner,kafka.log.LogCleanerManager, 可以默认开始DEBUG，日志的compaction线程运行状态。
+
+调试时：
+
+kafka.request.logger,DEBUG/TRACE，发送给broker的每个请求详细信息。
+
+
+
+### 7.6 客户端监控
+
+#### 7.6.1 生产者
+
+**生产者整体度量指标** 
+
+record-error-rate: 一般为0，非零，说明生产者正在丢弃无法发送的消息。告警指标。
+
+request-latency-avg: 生产者请求发送到broker的平均时间。告警指标。
+
+outgoing-byte-rate:每秒消息字节数
+
+record-send-rate:每秒消息数量
+
+request-rate:每秒请求数。
+
+records-per-request-avg:单个请求包含消息的平均数。
+
+record-queue-time-avg：消息发送给broker前，在生产者端平均等待毫秒数。
+
+触发生产者发送请求。
+
+- 一批消息满
+- 发送间隔超时
+
+**Per-broker和Per-topic度量指标**
+
+与每个broker连接，主题的度量指标。
+
+用于调试问题。
+
+request-latency-avg
+
+
+
+#### 7.6.1 消费者
+
+**Fetch Manager度量指标**
+
+fetch-latency-avg：消费者向broker发送请求需要的平均时间。告警指标。
+
+bytes-consumed-rate:客户端每秒读取字节数
+
+records-consumed-rate:客户端每秒读取消息数
+
+**Per-broker和Per-topic度量指标**
+
+request-latency-avg
+
+**Coordinator度量指标**
+
+消费者群组，协调者。
+
+sync-time-avg:同步活动平均毫秒数。
+
+sync-rate:没秒钟群组同步次数。
+
+commit-latency-avg:提交偏移量平均时间
+
+assigned-partitions: 分配给消费者客户端的分区数量。识别负载不均衡。
+
+
+
+### 7.7 管理工具
+
+- **[Kafka Manager](https://github.com/yahoo/kafka-manager)** - A tool for managing Apache Kafka.
+- [kafkat](https://github.com/airbnb/kafkat) - Simplified command-line administration for Kafka brokers.
+- [Kafka Web Console](https://github.com/claudemamo/kafka-web-console) - Displays information about your Kafka cluster including which nodes are up and what topics they host data for.
+- [**Kafka Offset Monitor**](http://quantifind.github.io/KafkaOffsetMonitor/) - Displays the state of all consumers and how far behind the head of the stream they are.
+- [Capillary](https://github.com/keenlabs/capillary) – Displays the state and deltas of Kafka-based [Apache Storm](https://storm.incubator.apache.org/) topologies. Supports Kafka >= 0.8. It also provides an API for fetching this information for monitoring purposes.
+- [Doctor Kafka](https://github.com/pinterest/doctorkafka) - Service for cluster auto healing and workload balancing.
+- [Cruise Control](https://github.com/linkedin/cruise-control) - Fully automate the dynamic workload rebalance and self-healing of a Kafka cluster.
+- [Burrow](https://github.com/linkedin/Burrow) - Monitoring companion that provides consumer lag checking as a service without the need for specifying thresholds.
+- [Chaperone](https://github.com/uber/chaperone) - An audit system that monitors the completeness and latency of data stream.
+- [Sematext](https://sematext.com/) integration for [Kafka monitoring](https://sematext.com/docs/integration/kafka/) that collects and charts 200+ Kafka metrics
+
+REF: https://cwiki.apache.org/confluence/display/KAFKA/Ecosystem
+
+
+
+集群同步工具MirrorMaker
+
+生产者-broker-[消费者-生产者]-另kafka集群
+
+uReplicator
+
+
+
+### 7.8 性能调优
 
 选择合适的分区数
 
 TODO
 
+
+
 ## 8. 流处理
 
-连接器
+kafka为每一个流出处理框架提供了**可靠的数据来源**（像数据库一样持久化数据），并且提供了强大的**流式处理类库**（低级的Processor API，高级流式DSL），作为客户端类库的一部分。允许应用程序读取、处理和生成事件，不必依赖外部处理框架。
 
-TODO
+kafka自己处理processor节点在Kafka集群上的部署和管理，高可用等问题。（相对于其他框架Storm，sparkStreaming，flink，需要集群管理框架如yarn，数据本地性会更好？）
+
+### 8.1 流式处理
+
+**数据流/事件流/流数据**：无边界数据集的抽象表示。随着事件推移，数据集中的新纪录不断增加。
+
+- 有序的
+  - 事件发生有先后顺序（时间戳）
+- 不可变的数据记录
+  - 事件一旦发生，不可改变。交易取消，实际是发生交易事件，再增加取消交易事件。
+- 可重播
+  - 业务需要重新分析（审计）历史事件流。
+
+
+
+**流式处理**是指实时地处理一个或多个事件流。 编程范式。
+
+- 请求与响应范式
+  - 延迟最小。毫秒级。OLTP。阻塞等待结果。
+- 批处理范式
+  - 高延迟，高吞吐。OLAP。
+- 流式处理
+  - 介于两者之间。不要求亚毫秒，也无接受几天。
+  - 业务报告需要持续更新。
+  - 持续性，非阻塞。
+- 流的处理大小
+  - 一条一条的处理
+    - Storm，Kafka
+  - 一次一批
+    - SparkStreaming
+
+#### 8.1.1 概念
+
+**时间**
+
+- 事件时间
+  - 指所追踪事件的发生时间和记录的创建时间 
+- 日志追加时间
+  - 指事件保存到 broker 的时间
+  - 事件发生时间未记录，采样日志追加时间
+- 处理时间
+  - 指应用程序在收到事件之后要对其进行处理的时间
+
+
+
+**状态**
+
+事件与事件之间的信息。（每小时各类型事件个数，需要合并的事件。）
+
+- 本地状态或内部状态
+  - 只能被单个应用程序实例访问 ，一般使用内嵌在应用程序里的数据库进行维护和管理
+  - 优点：速度
+  - 缺点：受内存大小限制
+- 外部状态
+  - 使用外部的数据存储来维护，如NoSQL系统Cassadra
+  - 优点：无大小限制，可被多个应用程序访问
+  - 缺点：增加延迟。复杂性。
+
+
+
+**流与表的二元性**
+
+流包含了变更。
+
+- 表转化为流
+  - 将insert，update，delete事件写到流中。数据库捕捉变更CDC（change data capture）。kafka连接器将这些变更发送到kafka，产生流。
+
+- 流转化为表
+  - “应用”流中的所有变更，“物化”。先在 内存里 、 内部状态存储或外部数据库里创建一个表，然后从头到尾遍历流里的所有事件，逐个地改变状态。  
+
+
+
+**时间窗口**
+
+大部分针对流的操作都是基于时间窗口。移动平均数、 一周内销量最好的产品、系统的 99 百分位等。
+
+两个流的合并。合并相同时间片段的事件。
+
+- 窗口大小
+- 窗口移动频率，“移动间隔”
+- 可更新时间
+  - 晚到事件的处理
+
+
+
+### 8.2 流式处理的设计模式
+
+- 单事件处理
+  - map、ilter模式
+- 使用本地状态
+  - 基于时间窗口的聚合，维护流的状态，本地
+    - 状态的内存使用，持久化，分区再均衡的处理
+- 多阶段处理和重分区
+  - 全局状态，多阶段处理
+- 外部查找——流表连接
+  - 点击事件与用户信息表的关联
+  - 将数据库信息缓存到流处理应用程序中
+    - 缓存一致性管理
+    - 数据表转换为流
+- 流流连接
+  - 基于时间窗口的连接  ，两个流里具有相同键和发生在相同时间窗口内的事件匹配；用户搜索事件流，用户搜索结果点击事件流
+- 乱序事件
+- 重新处理
+
+场景例子：
+
+字数统计，股票市场统计
+
+
+
+### 8.3 连接器
+
+为了解决不同系统之间的数据同步（**数据导入/导出**）， Kafka连接器用一个标准框架来解决这些问题。
+
+解决的故障容错、分区扩展、偏移量管理、发送语义（正好一次，至少一次，至多一次）、管理和监控等问题。
+
+![](kafka笔记图片/v2-ba669dcf6dead07200f6ba2bf95515b5_1440w.jpg)
+
+TODO：架构模型，实现，单机模式，分布式模式
+
+
+
+### 8.4 流处理框架
+
+#### 8.4.1 低级 Processor API
+
+- 构建流处理拓扑：添加源处理节点。业务处理节点，目标处理节点
+  - DAG图
+  - 自定义处理器
+  - 状态存储
+- 创建KafkaStreams流处理实例
+- 启动实例
+  - 运行模式：单机模式，分布式模式
+
+#### 8.4.2 高级流式DSL
+
+- 内置了常用的流处理算子操作 ， 比如映射 、过滤、选择键、分组、分支和遍历等
+- 支持有状态算子操作，count，REduce，Aggregate，Windows。
+- 区分记录流record stream，变更流changelog stream
+  - 对应Kstream，KTable
+
+
+
+**Kafka流处理线程模型**
+
+- 流实例KafkaStrreams：一个节点一个实例
+  - 流线程StreamThread：一个流实例可以配置多个流线程
+    - 流任务StreamTask：一个流线程可以处理多个流任务，主题的分区数为任务数。
+
+
+
+## 9. 高级特性
+
+TODO：
+
+事务，幂等性
+
+
 
 
 
 ## REF
 
-- [ ] Kafka权威指南 （设计动机，如何推导出设计的）
-- [ ] Kafka stream实战-(英) （kafka如何走向流处理）
-- [ ] Kafka 技术内幕-郑奇煌 （源码分析，完整架构细节实现）
-- [ ] Kafka源码解析与实战-王亮 (源码分析比例最重，分析源码时再看，与内幕相互补充)
-- [ ] Apache Kafka 实战-胡夕 (kafka1.0.0，带有一定使用上的介绍) 
+-  Kafka权威指南 （设计动机，如何推导出设计的）
+-  Kafka stream实战-(英) （kafka如何走向流处理）
+-  Kafka 技术内幕-郑奇煌 （源码分析，完整架构细节实现）
+-  Kafka源码解析与实战-王亮 (源码分析比例最重，分析源码时再看，与内幕相互补充)
+-  Apache Kafka 实战-胡夕 (kafka1.0.0，带有一定使用上的介绍) 
 
