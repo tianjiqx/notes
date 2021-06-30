@@ -53,3 +53,9 @@
 
 - 使用nmon,sar,dstat分析磁盘、网络IO情况，是否达到瓶颈
 
+
+  ## linux 工具blog 链接
+  - [木子的搬砖工具](https://blog.k8s.li/My-brick-lifting-tools.html)
+  
+  
+  
