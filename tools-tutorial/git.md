@@ -63,19 +63,19 @@
 
  - 拉取tag分支
 
-  git fetch upstream  
+   git fetch upstream  
 
-  列出所有tag
+   列出所有tag
 
-  git tag
+   git tag
 
-  切换到tag
+   切换到tag
 
-  git checkout <tag-name>
+   git checkout <tag-name>
 
-  创建对应分支
-  
-  git checkout -b <tag-name>
+   创建对应分支
+
+   git checkout -b <tag-name>
 
 - 打patch，应用path
 
