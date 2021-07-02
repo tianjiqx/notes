@@ -61,4 +61,64 @@
   git status
 
 
+ - 拉取tag分支
+
+  git fetch upstream  
+
+  列出所有tag
+
+  git tag
+
+  切换到tag
+
+  git checkout <tag-name>
+
+  创建对应分支
   
+  git checkout -b <tag-name>
+
+- 打patch，应用path
+
+  生成最近的1次commit的patch
+
+  git format-patch HEAD^
+
+  生成最近的2次commit的patch
+
+  git tch HEAD^^　　　　　　
+
+  生成两个commit间的修改的patch（包含两个commit. <r1>和<r2>都是具体的commit号)
+
+  git format-patch <r1>..<r2>          
+
+  生成单个commit的patch
+
+  git format-patch -1 <r1>                                                 
+  
+  生成某commit以来的修改patch（不包含该commit）
+
+  git format-patch <r1>                                                  
+
+  将名字为0001-limit-log-function.patch的patch打上
+
+  git am 0001-limit-log-function.patch                             
+
+  将路径~/patch-set/*.patch 按照先后顺序打上
+
+  git am ~/patch-set/*.patch　　　　　　　　　　　
+
+  当git am失败时，可以将已经在am过程中打上的patch废弃掉(比如有三个patch，打到第三个patch时有冲突，那么这条命令会把打上的前两个patch丢弃掉，返回没有打patch的状态)
+
+  git am --abort                                                                   
+  
+  发生冲突,也可以强行打这个patch，发生冲突的部分会保存为.rej文件（例如发生冲突的文件是a.txt，那么运行完这个命令后，发生conflict的部分会保存为a.txt.rej），未发生冲突的部分会成功打上patch, 根据.rej文件，通过编辑该patch文件的方式解决冲突。
+
+  git apply --reject <patch_name>
+
+  解决冲突后,删除.rej文件，添加修改后的进去
+
+  git add <filename>
+
+  标记解决/ 继续 完成应用
+
+  git am --resolved / git am --continue
