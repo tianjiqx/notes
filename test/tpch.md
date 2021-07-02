@@ -7,5 +7,6 @@
 
 ### 参考
 - [TPC-H官方文档2.17.3](http://www.tpc.org/tpc_documents_current_versions/current_specifications.asp)
+- [TPCH 深入剖析 - part1 Hidden Messages and Lessons Learned from an Influential Benchmark](https://zhuanlan.zhihu.com/p/369455226)
 
 
