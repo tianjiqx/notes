@@ -8,7 +8,7 @@
 
 - vim 配置：
 
-  参考个人workspace项目的[.vimrc](https://github.com/tianjiqx/workspace/blob/master/.vimrc)文件。 额外含有一点19年分析tidb的go配置。对于C++ 的插件最重要的是Ctags生成标签文件，实现自动补全、识别函数，变量，函数跳转。 更多使用快捷键，参考[Vim-cpp使用-笔记](https://github.com/tianjiqx/notes/blob/master/tools-tutorial/Vim-cpp%E4%BD%BF%E7%94%A8-%E7%AC%94%E8%AE%B0.md)
+  参考个人workspace项目的[.vimrc](https://github.com/tianjiqx/workspace/blob/master/.vimrc)文件。 额外含有一点18年分析tidb的go配置。对于C++ 的插件最重要的是Ctags生成标签文件，实现自动补全、识别函数，变量，函数跳转。 更多使用快捷键，参考[Vim-cpp使用-笔记](https://github.com/tianjiqx/notes/blob/master/tools-tutorial/Vim-cpp%E4%BD%BF%E7%94%A8-%E7%AC%94%E8%AE%B0.md)
 
 - OB源码版本2021.6.30 （根据ob_cluster_version.h `#define CLUSTER_CURRENT_VERSION CLUSTER_VERSION_3100` 可知当前应是3.1.0版本，根据tpc-c,tpc-h榜单上显示的版本2.2和3.2，确实基本是最新的代码了，而且应该是相对稳定的版本）
 
@@ -30,30 +30,30 @@
 
 ## 2. SQL执行流程
 
-OB的整体架构，作为数据库，了解系统，最基础应该还是从了解SQL的执行过程，来初步认识系统。
+OB的整体架构可以直接看官网的文档很详细，作为数据库，了解系统，最基础应该还是从了解SQL的执行过程，来初步认识系统。
 
 找到查询的处理类`ObMPQuery`，通过linux的ag工具grep到在这个文件`src/observer/mysql/obmp_query.cpp`
 
 - **入口函数**：`int ObMPQuery::process()`
 
-- 切分多语句sql，`parser.split_multiple_stmt(sql_, queries, parse_stat))`
-- 批量优化`ObMPQuery::try_batched_multi_stmt_optimization`
-  - 尝试合并多条update语句成一条
-  - `ObMPQuery::process_single_stmt` 同时处理多条语句，接收`ObMultiStmtItem`对象参数，内包含queries信息，query的索引号，是否作为多条语句的一部分处理
-- 批量优化未开启或只有一条语句，未做优化，迭代queries，执行`ObMPQuery::process_single_stmt`处理单条语句
+  - 切分多语句sql，`parser.split_multiple_stmt(sql_, queries, parse_stat))`
+  - 批量优化`ObMPQuery::try_batched_multi_stmt_optimization`
+    - 尝试合并多条update语句成一条
+    - `ObMPQuery::process_single_stmt` 同时处理多条语句，接收`ObMultiStmtItem`对象参数，内包含queries信息，query的索引号，是否作为多条语句的一部分处理
+  - 批量优化未开启或只有一条语句，未做优化，迭代queries，执行`ObMPQuery::process_single_stmt`处理单条语句
 
 - **单语句处理**：`int ObMPQuery::process_single_stmt(const ObMultiStmtItem& multi_stmt_item, ObSQLSessionInfo& session,
       bool has_more_result, bool force_sync_resp, bool& async_resp_used, bool& need_disconnect)`
-- 初始化参数，检查更新schema，时区信息，清理状态，重试略过
-- 核心`ObMPQuery::do_process`方法
-  - sql长度检查，最长64K
-  - 持有关键对象的指针` ObMySQLResultSet*,ObPhysicalPlan*,ObQueryExecCtx*` 用于执行前初始化，执行后处理（设置影响行数，报错信息等等）
-    - ObResultSet包含物理执行计划和一些元信息
-  - 进入ObSql处理逻辑，生成物理计划，保存在result中`gctx_.sql_engine_->stmt_query(sql, ctx_, *result)))`
-  - 返回结果` int ObMPQuery::response_result(ObQueryExecCtx& query_ctx, bool force_sync_resp, bool& async_resp_used)` 通过query_ctx获取result，执行物理计划，迭代输出结果。
-    - 实际由ObAsyncPlanDriver和ObSyncPlanDriver `response_result()`完成 
-      - `open(),response_query_result(), close()`
-        - 获取数据，调用`inline int ObMySQLResultSet::next_row(const ObNewRow*& obmr)`
+  - 初始化参数，检查更新schema，时区信息，清理状态，重试略过
+  - 核心`ObMPQuery::do_process`方法
+    - sql长度检查，最长64K
+    - 持有关键对象的指针` ObMySQLResultSet*,ObPhysicalPlan*,ObQueryExecCtx*` 用于执行前初始化，执行后处理（设置影响行数，报错信息等等）
+      - ObResultSet包含物理执行计划和一些元信息
+    - 进入ObSql处理逻辑，生成物理计划，保存在result中`gctx_.sql_engine_->stmt_query(sql, ctx_, *result)))`
+    - 返回结果` int ObMPQuery::response_result(ObQueryExecCtx& query_ctx, bool force_sync_resp, bool& async_resp_used)` 通过query_ctx获取result，执行物理计划，迭代输出结果。
+      - 实际由ObAsyncPlanDriver和ObSyncPlanDriver `response_result()`完成 
+        - `open(),response_query_result(), close()`
+          - 获取数据，调用`inline int ObMySQLResultSet::next_row(const ObNewRow*& obmr)`
 
 ObSql类(`src/sql/ob_sql.cpp`)，将sql语句从字符串转换为物理执行计划。
 
@@ -185,7 +185,7 @@ plan_traverse_loop(ALLOC_LINK,
 - OB对于二阶段分布式计划优化的再优化思路，在第一阶段，考虑算子的分布式实现，维护物理属性，保留一些代价最小，有interesting order，intersting分区信息的计划，来缓解最优计划错过的可能。（这一点的思路，可能参考了pg传统优化器，保留次优计划的思想）
 - 可以看出OB优化器的实现思路，还是在传统优化器基础上，考虑分布式执行环境而增加优化器计划的处理。多阶段优化的思路，很现实，能work，优化器优化时间性能可以保证。
   - 但是从系统的角度，不如cascade框架的优化器（如orca）现代。个人品味现在也更欣赏orca，memsql 优化器这样根据分布式系统环境重新设计的查询优化器来的优雅，扩展性更好，符合分布式系统设计的味道（高可用，可扩展，高性能）（OB1.0后将原来四角色合并成单角色的ObServer，具有所有角色的能力，是巨大的重构，这勇气和努力值得赞赏）。
-  - 从工程角度，查询优化器本身与系统绑定（历史遗留问题），细节藏着魔鬼（如原表经过不同列条件的选择率过滤后，NDV值估计，以及多次估计后的结果），能够根据系统的执行框架，完成各种优化功能，就已经实属不易。OB优化器的实现逻辑清晰，考虑到边角内容很多，代码质量很高，是值得学习的。
+  - 从工程角度，查询优化器本身与系统绑定（历史遗留，设计问题），细节藏着魔鬼（如原表经过不同列条件的选择率过滤后，NDV值估计，以及多次估计后的结果），能够根据系统的执行框架，完成各种优化功能，就已经实属不易。并且传统的和现代的优化器，优化时间，优化效果究竟如何，只有实际检验业务才能知道，可能是各有优劣场景。OB优化器的实现逻辑清晰，考虑到边角内容很多，代码质量很高，是值得学习的。
 
 
 
@@ -194,8 +194,8 @@ plan_traverse_loop(ALLOC_LINK,
 ## REF
 
 - [开源数据库OceanBase代码导读(1)](https://zhuanlan.zhihu.com/p/379437192) 真"导"读，给入口，并非源码分析
-- [开源数据库OceanBase](https://www.zhihu.com/column/c_1386628099518402560) 专栏包含代码导读内容
-- [开源OB官网-文档](https://open.oceanbase.com/docs) 架构、模块
+- [开源数据库OceanBase- 知乎专栏](https://www.zhihu.com/column/c_1386628099518402560) 专栏包含代码导读内容
+- [开源OB官网-文档](https://open.oceanbase.com/docs) 架构、模块设计
 - [OceanBase TechTalk #4 杭州站 查询优化主题](https://tech.antfin.com/community/activities/553/review) 查询优化器实践、并行执行引擎，其他talk有事务等相关主题
 - [OceanBase源码阅读工具-Eclipse篇](https://zhuanlan.zhihu.com/p/380610508)
 

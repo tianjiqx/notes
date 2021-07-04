@@ -40,3 +40,5 @@
 
 TODO：更现代化的vim8 配置，[如何在 Linux 下利用 Vim 搭建 C/C++ 开发环境? - 韦易笑的回答 - 知乎](https://www.zhihu.com/question/47691414/answer/373700711)
 
+[Vim 8 下 C/C++ 开发环境搭建](http://www.skywind.me/blog/archives/2084)
+
