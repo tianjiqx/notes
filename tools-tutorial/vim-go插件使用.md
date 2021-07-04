@@ -5,7 +5,16 @@
 注意：
 
 - 我将vim80 改成了vim82，虽然之前不存在/usr/local/share/vim 目录。
-- 第5步没有成功，我的vim 没有在/usr/bin/vim 而是/usr/local/bin/vim， 并且也没有/usr/bin/vi。但是看起来不影响。vim可以正常使用了。
+- 第5步没有成功，我的vim 没有在/usr/bin/vim 而是/usr/local/bin/vim， 并且也没有/usr/bin/vi。 需要更新实际路径为/usr/local/bin/vim， 并且增加/usr/bin/vim配置（for git调用编辑器）。 
+  ```shell
+  sudo update-alternatives --install /usr/bin/editor editor /usr/local/bin/vim 1
+  sudo update-alternatives --set editor /usr/local/bin/vim
+  sudo update-alternatives --install /usr/bin/vi vi /usr/local/bin/vim 1
+  sudo update-alternatives --set vi /usr/local/bin/vim
+  
+  sudo update-alternatives --install /usr/bin/vim vim /usr/local/bin/vim 1
+  sudo update-alternatives --set vim /usr/local/bin/vim
+  ```
 
 升级到vim8之后，没做任何.vimrc 改变，就已经可以正常用vim 浏览tidb的源码了，并且vim-go也生效了。
 
