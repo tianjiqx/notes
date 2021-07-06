@@ -122,3 +122,11 @@
   标记解决/ 继续 完成应用
 
   git am --resolved / git am --continue
+
+
+- 限制克隆大小
+
+  只保留最新一次提交记录，其余历史提交信息抛弃  
+
+  git clone --depth 1 
+
