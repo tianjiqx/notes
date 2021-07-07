@@ -57,7 +57,7 @@ session.Excute()方法已经被deprecated,取代的是session.ExecuteStmt()。�
 
       - 否则，`func DoOptimize(ctx context.Context, sctx sessionctx.Context, flag uint64, logic LogicalPlan) (PhysicalPlan, float64, error) ` planner/core/optimizer.go ，做逻辑优化，物理优化
 
-        - `func logicalOptimize(ctx context.Context, flag uint64, logic LogicalPlan) (LogicalPlan, error) ` planner/core/optimizer.go， 逻辑优化，应用优化规则，**注意join reorder在逻辑计划生成时已经完成**
+        - `func logicalOptimize(ctx context.Context, flag uint64, logic LogicalPlan) (LogicalPlan, error) ` planner/core/optimizer.go， 逻辑优化，应用优化规则，**注意join reorder在最终的逻辑计划生成时已经完成**
 
           > 	&gcSubstituter{},
           > 	&columnPruner{},
@@ -102,7 +102,15 @@ join reorder：
 
       >  "InnerJoin(InnerJoin(a, b), LeftJoin(c, d))" ,results in a join group {a, b, LeftJoin(c, d)}.
 
-    - `func (s *joinReorderDPSolver) solve(joinGroup []LogicalPlan, eqConds []expression.Expression) (LogicalPlan, error)` planner/core/rule_join_reorder.go，DP方式重排序 （BFS）
+    - `func (s *joinReorderDPSolver) solve(joinGroup []LogicalPlan, eqConds []expression.Expression) (LogicalPlan, error)` planner/core/rule_join_reorder.go，DP方式重排序 （BFS），不做笛卡尔积的连接
+
+
+
+>  TiDB实践System R 优化器框架的发现的缺点：
+>
+> 1.扩展性不好。每次添加优化规则都需要考虑新的规则和老的规则之间的关系，需要对优化器非常了解的同学才能准确判断出新的优化规则应该处在什么位置比较好。另外每个优化规则都需要完整的遍历整个逻辑执行计划，添加优化规则的心智负担和知识门槛非常高。(tidb 应用优化规则，需要完整遍历计划树，因此规则设计需要考虑所有的节点，嵌套子查询等复杂处理。)
+>
+> 2.搜索空间有限。部分逻辑优化的应用，需要考虑分布式执行的代价。任何决策，都可能错过最佳计划。需要人工干预。
 
 
 
@@ -110,7 +118,7 @@ join reorder：
 
 **动机：**
 
-- 传统多阶段优化，逻辑优化的聚合下推、聚合上拉、子查询展开等并不是总是有益的
+- 传统多阶段优化（System R风格），逻辑优化的聚合下推、聚合上拉、子查询展开等并不是总是有益的
 - 可扩展性差，即使都是有益的场景规则，很难添加新规则，需要仔细考虑优化规则的应用顺序，并且需要丰富的优化经验，发现各种优化规则
 - 代价模型绑定，物理存储引擎的扩展，进行物理优化的扩展性差。
 
@@ -118,18 +126,80 @@ join reorder：
 
 **Cascades 模型的观点：**
 
-- 自顶向下的探索所有可能计算代价+memo 记录子表达式避免重复
-- 
+- 自顶向下的探索所有可能计算代价+memo 记录子表达式避免重复探索
+- 逻辑计划经过模式匹配，应用逻辑转换规则，探索等价的逻辑表达式，逻辑表达式，再应用物理转换规则，生成物理表达式，变得可以计算代价，评估一个计划的代价。
+- 代价最小的计划的计算是一个自底向上的过程。
 
 
 
 TiDB cascades 优化器：
 
+> 1. 首先将抽象语法树（AST）转换为初始的逻辑执行计划，也就是由 LogicalPlan 所表示的算子树。
+> 2. Cascades Planner 将这棵初始的 LogicalPlan 树等价地拆分到 `Group` 和 `GroupExpr` (Expression 在代码中对应的具体数据结构) 中，这样我们便得到了 Cascades Planner 优化器的初始输入。
+> 3. Cascades Planner 将搜索的过程分为了两个阶段，第一阶段是 Exploration ，该阶段不停地遍历整个 Group ，应用所有可行的 Transformation Rule，产生新的 Group 和 GroupExpr ，不停迭代直到没有新的 GroupExpr 诞生为止。
+> 4. 在第二个阶段 Implementation 中，Cascades Planner 通过对 GroupExpr 应用对应的 Implementation Rule，为每一个 Group 搜索满足要求的最佳（Cost 最低）物理执行计划。
+> 5. 第二阶段结束后，Cascades Planner 将生成一个最终的物理执行计划，优化过程到此结束，物理执行计划交给 TiDB 执行引擎模块继续处理。
 
+代码实现处理流程：
+
+- `func (opt *Optimizer) FindBestPlan(sctx sessionctx.Context, logical plannercore.LogicalPlan) (p plannercore.PhysicalPlan, cost float64, err error) `planner/cascades/optimize.go  级联优化器开始
+  - `func (opt *Optimizer) onPhasePreprocessing(sctx sessionctx.Context, plan plannercore.LogicalPlan) (plannercore.LogicalPlan, error)` planner/cascades/optimize.go  预处理，完全有益的规则，列裁剪
+  - `func Convert2Group(node plannercore.LogicalPlan) *Group`  planner/memo/group.go 逻辑计划初始化Root Group信息。
+    - `func Convert2GroupExpr(node plannercore.LogicalPlan) *GroupExpr ` planner/memo/group.go 逻辑计划转组表达式。
+      - `func Convert2Group(node plannercore.LogicalPlan) *Group`  planner/memo/group.go 递归调用，孩子节点生成group。
+    - `func NewGroupWithSchema(e *GroupExpr, s *expression.Schema) *Group ` planner/memo/group.go，创建Group
+  - `func (opt *Optimizer) onPhaseExploration(sctx sessionctx.Context, g *memo.Group) error ` planner/cascades/optimize.go，从root Group 开始探索等价的 组表达式
+    - `func (opt *Optimizer) exploreGroup(g *memo.Group, round int, ruleBatch TransformationRuleBatch) error` planner/cascades/optimize.go，探索group。
+      - `func (opt *Optimizer) exploreGroup(g *memo.Group, round int, ruleBatch TransformationRuleBatch) error` planner/cascades/optimize.go 对Group里的每个组表达式，先递归探索children的Group。
+      - `func (opt *Optimizer) findMoreEquiv(g *memo.Group, elem *list.Element, round int, ruleBatch TransformationRuleBatch) (eraseCur bool, err error) `planner/cascades/optimize.go，应用TransformationRuleBatch的规则，探索组表达式的所有等价逻辑表达式，并插入到Group中。
+  - `func (opt *Optimizer) onPhaseImplementation(sctx sessionctx.Context, g *memo.Group) (plannercore.PhysicalPlan, float64, error) ` planner/cascades/optimize.go，将Group的逻辑组表达式实现为物理组表达式。
+    - `func (opt *Optimizer) implGroup(g *memo.Group, reqPhysProp *property.PhysicalProperty, costLimit float64) (memo.Implementation, error)` planner/cascades/optimize.go，将Group的逻辑组表达式实现为物理组表达式，并计算出代价最低的物理组表达式，并插入到group。
+      - `func (opt *Optimizer) implGroupExpr(cur *memo.GroupExpr, reqPhysProp *property.PhysicalProperty) (impls []memo.Implementation, err error)`planner/cascades/optimize.go，逻辑组表达式实现为物理组表达式
+        - 递归调用`implGroup` ，对孩子节点计算最低实现代价。
+        - `CalcCost(outCount float64, children ...Implementation) `计算Implementation的代价
+      - `func GetEnforcerRules(g *memo.Group, prop *property.PhysicalProperty) (enforcers []Enforcer) ` planner/cascades/enforcer_ruless.go , 生成属性强制规则（排序要求）
+      - `func (e *OrderEnforcer) GetEnforceCost(g *memo.Group) float64 ` planner/cascades/enforcer_ruless.go 应用物理属性强制，计算需要满足排序属性的代价。
+      - 调用`implGroup` 对本group，增加返回需要满足属性强制规则（顺序）的实现
+      - `func (e *OrderEnforcer) OnEnforce(reqProp *property.PhysicalProperty, child memo.Implementation) (impl memo.Implementation) ` planner/cascades/enforcer_ruless.go，增加满足属性的具体物理算子
+      - `func (g *Group) InsertImpl(prop *property.PhysicalProperty, impl Implementation) ` planner/memo/group.go ，插入满足物理属性的最低代价的实现。
+  - `func (p *basePhysicalPlan) ResolveIndices() (err error)` planner/core/resolve_indices.go，解析索引信息? 没明白，似乎和执行有关，不是对物理计划本身再做调整。
 
 
 
 [TiDB planner/cascades projects 开发计划](https://github.com/pingcap/tidb/projects/16) 最近更新还是在2021.02.09，还有15个TODO，看起来暂时推迟开发了。 并且根据[测试]() 发现 cascades的优化器并没有work，很令人奇怪。
+
+
+
+TODO：orca，calcite 是如何实现cascades的细节（源码分析）
+
+ORCA：
+
+优化流程：
+
+- Exploration
+  - 探索Group内的所有等效的逻辑组表达式GroupExpression
+  - opt处理孩子，完成孩子Exp的递归。
+- Stats Derivation
+  - 统计信息推导，在等效的GroupExpression中，选择误差传播最小的。
+- Implementation
+  - 逻辑组表达式GroupExpression生成物理执行计划
+- Optimization
+  - 属性强制，添加数据分布，排序要求，挑选代价最小的计划。
+  - Optimization阶段完成属性强制(request)和cost计算，自顶向下从root group 开始应用属性。然后挑选满足opt.request的代价最小的物理组表达式
+  - G0中物理组表达式的生成的对G1的opt.request,每个物理组表达式对孩子Group的req可能不同
+  - 对一个group进行opt前需要exp和imp这个组，以及完成孩子group的opt
+
+
+
+ORCA还用多线程并行加速优化的思想，改进优化时间。
+
+或许可以考虑未来的优化器优化执行过程，是一个独立的线程池模块。多SQL语句总是有相近的连接和访问请求。
+
+优化的过程可以使用缓存的最佳子计划来快速生成计划。
+
+事实上，逻辑表达式的探索优化，实际在固定表，固定选择率（过滤条件），这样的情况，相同逻辑表达式最后生成的计划应该一致的。
+
+对于计划缓存，虽然有类似的效果，但是实际去除参数后，如果在数据倾斜的情况下，缓存的计划可能并不是一个最优的计划。 而在大数据环境下，数据倾斜实际上是一个很常见的环境。
 
 
 
@@ -172,6 +242,10 @@ TiDB 统计信息支持全量、采样收集，时间列的增量收集。
 - [提案：join 重排序设计](https://github.com/pingcap/tidb/blob/master/docs/design/2018-10-20-join-reorder-dp-v1.md) 推荐
 - [TiDB 统计信息简介 ](https://docs.pingcap.com/zh/tidb/stable/statistics#%E7%BB%9F%E8%AE%A1%E4%BF%A1%E6%81%AF%E7%AE%80%E4%BB%8B)
 - [TiDB in Action](https://book.tidb.io/)
+- [Cascades Optimizer](https://zhuanlan.zhihu.com/p/73545345) 知乎[hellocode](https://www.zhihu.com/people/hellocode-ming) 的总结，推荐
+- [揭秘 TiDB 新优化器：Cascades Planner 原理解析](https://zhuanlan.zhihu.com/p/94079481)
+- [十分钟成为 Contributor 系列 | 为 Cascades Planner 添加优化规则](https://zhuanlan.zhihu.com/p/93811520)
+- [CMU SCS 15-721 (Spring 2019) : Optimizer Implementation (Part II)](https://15721.courses.cs.cmu.edu/spring2019/slides/23-optimizer2.pdf) Andy Pavlo对优化器实现的总结，有关于cascades框架的执行过程演示，推荐
 
 
 
