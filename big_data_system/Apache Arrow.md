@@ -432,7 +432,7 @@ Rust实现从arrow项目独立出来了，分别是[arrow-rs](https://github.com
 
   - DataFrame
     - 提供给用SQL不能，或者不能很好适合的分析负载处理系统
-  - SQL支持（有tpch测试）
+  - SQL支持（完整支持tpch测试）
     - select语句
     - ddl （创建csv，parquet的外表），暂无insert，update，只能外表方式导入数据
     - 窗口函数functions
@@ -558,13 +558,9 @@ rust目录，源码结构：
 
 **执行过程：**
 
-
+![](apache-arrow笔记图片/Snipaste_2021-07-11_17-14-40.png)
 
 与rust目录平行的，还有一个UI模块。
-
-
-
-
 
 
 
