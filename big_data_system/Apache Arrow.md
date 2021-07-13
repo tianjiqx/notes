@@ -75,6 +75,18 @@ Arrow 项目包含的库使能够以多种语言处理 Arrow 柱状格式的数�
 
 
 
+### 1.6 优缺点
+
+Apache arrow 能够将原始磁盘的数据（parquet，csv，json格式）转换为可以高效（向量化）处理的内存格式，之后被不同的大数据计算引擎（spark，impala，drill）所使用，或者将arrow格式转换为具体的存储引擎的数据存储格式，写入到不同存储引擎，但是无SerDe开销。
+
+但是，这种想法，这并非万能的银弹。
+
+- 首先，目前支持的格式只是parquet，csv，json等格式，数据模型有限
+- 另外，不同的系统，采用不同的数据模型，是各有其特点的，适配对应的计算引擎的计算优化，例如ES倒排索引，Hbase kv存储，图模型。可以看到arrow 天然的列存格式，适配的也只是列存格式的计算模式如avg，filter，但是对于join类型，对于需要shuffle的操作，列存的内存格式的散列相对于行存具有巨大的劣势。
+- 所以，对于大宽表的单表分析而言，apache arrow具有极大的优势，但是设计复杂join情况下就未必了。
+
+
+
 ## 2. 组件介绍
 
 ### 2.1 列存的内存格式Columnar Format规范
@@ -432,7 +444,7 @@ Rust实现从arrow项目独立出来了，分别是[arrow-rs](https://github.com
 
   - DataFrame
     - 提供给用SQL不能，或者不能很好适合的分析负载处理系统
-  - SQL支持（完整支持tpch测试）
+  - SQL支持（有完整tpch测试）
     - select语句
     - ddl （创建csv，parquet的外表），暂无insert，update，只能外表方式导入数据
     - 窗口函数functions
