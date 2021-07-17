@@ -4,7 +4,22 @@
 
 ![](clickhouse-笔记图片/Snipaste_2021-07-16_17-39-05.png)
 
+![](clickhouse-笔记图片/Snipaste_2021-07-16_23-46-09.png)
 
+
+
+分布式表Distributed table
+
+- 视图，逻辑概念，本身不存数据
+- 对分布式表的操作，会查询所有的分片shards
+- Distributed引擎做转发
+
+缺点：
+
+- 机制简单，只是满足查询，写，类似中间件的工作，新增节点，历史数据不会迁移，造成数据分布不均衡
+- 汇总数据依赖单点，涉及大量数据交换时，可靠性不高
+  - 本身是亚秒级场景，非大数据场景，无容错考虑，直接重启任务
+    - （自动任务类型、时间判断？是否有必要容错模式）
 
 
 
@@ -55,10 +70,16 @@ MergeTree 和 LSM 结构类似，可以解决随机写磁盘的性能问题，�
   - 可以创建一个小型稀疏索引，更快的查找数据
   - 支持分区
 
+![](clickhouse-笔记图片/Snipaste_2021-07-17_12-59-45.png)
+
+
+
 **合并树家族**（2*7）：
 
 - ReplicatedMergeTree
   - 通过支持数据复制，保证高可用
+    - 异步的master-master主主复制
+    - ![](clickhouse-笔记图片/Snipaste_2021-07-16_23-52-07.png)
   - 可以和其他类型的MergeTree结合
 - ReplacingMergeTree 替换合并树
   - 数据合并时，才会对排序键（注意是order by指定的列，而不是主键）进行去重
@@ -167,9 +188,58 @@ Skipping索引：
     - 语法中增加preWhere过滤条件
     - 会先于Where条件进行数据过滤，减少每个Mark Range对应Granule中具体要扫描的行数
 
-
-
 ### 3.2 Log
+
+
+
+
+
+### 3.3 数据访问块大小
+
+一篇关于磁盘io性能的研究，数据访问特点，[io_uring、AIO 和现代存储设备之旅](https://clickhouse.tech/blog/en/2021/reading-from-external-memory/)
+
+- **随机读取的最佳块大小是 HDD 256 KB，NVMe 和 SATA SSD 4 KB，英特尔傲腾 8 KB**
+  - HDD
+    - 小于256KB，寻道时间远大于数据传输时间，单次访问延迟一致，平均12ms
+    - 不调大块大小，为了更好的提高缓存利用率。免cache冷数据
+  - SATA SSD
+    - 读取大小为 4 KB 的块平均需要 140 微秒，并且随着块大小的增加，时间增长呈线性。
+    - 从 SSD 读取 4 KB 块的 HDD 相比，速度快 80 倍
+    - 对于 256 KB 块，SSD 比 HDD 快十倍
+    - 当块大小足够大（4MB）时，SSD 仅比 HDD 快两倍
+  -  NVMe SSD
+    - 延迟优于SATA SSD
+    -  4 KB 的块大小，平均时间仅改善了一点，但 99 个百分位数要低两倍
+    - 读1MB不到1ms，而STAT SSD 需要3ms
+  - 英特尔傲腾Optane
+    - 最小延迟为 12 微秒，比 NVMe SSD 低 10 倍（100us）。平均延迟比 HDD 低 1000
+      - 小块(4kb)读取延迟有相当大的波动：即使平均时间非常低且接近最小延迟，但最大延迟甚至 99 个百分点都明显更差（接近100us）
+
+![](clickhouse-笔记图片/Snipaste_2021-07-16_23-23-30.png)
+
+
+
+
+
+## 4. 最佳实践
+
+- MessageBird 使用 pg+ clickhouse处理实时数据分析
+
+  - clickhouse做存储，加单表的过滤查询
+    - 虽然个人还是觉得异步复制的CH，高可用性还存疑?(日志同步机制)
+  - pg做复杂的SQL分析
+
+- clickhouse on kubernetes
+
+  ![](clickhouse-笔记图片/Snipaste_2021-07-17_12-06-39.png)
+
+- SQLGraph：Graph process Engine + ClickHouse
+
+  ![](clickhouse-笔记图片/Snipaste_2021-07-17_12-27-16.png)
+
+  ![](clickhouse-笔记图片/Snipaste_2021-07-17_12-30-45.png)
+
+- x
 
 
 
@@ -182,7 +252,8 @@ Skipping索引：
 - [适用于大数据的开源OLAP系统的比较：ClickHouse，Druid和Pinot](https://www.cnblogs.com/029zz010buct/p/12674287.html)
 - [各个OLAP 引擎详细对比介绍](https://zhuanlan.zhihu.com/p/141145481)
 - [官方一些presentations](https://github.com/ClickHouse/clickhouse-presentations)
-  - 
+  - [2018.1 北京 12th meetup](https://clickhouse.tech/blog/en/2018/clickhouse-community-meetup-in-beijing-on-january-27-2018/)
+  - [2018.10 北京 meetup](https://clickhouse.tech/blog/en/2018/clickhouse-community-meetup-in-beijing-on-october-28-2018/)
 - [ClickHouse 源码阅读 —— SQL的前世今生](https://developer.aliyun.com/article/765184)
 - [ClickHouse 核心引擎 MergeTree 解读](https://www.infoq.cn/article/33p0kgzmhj2rffvycr44)
 - [ClickHouse存储结构及索引详解](http://www.clickhouse.com.cn/topic/5ffec51eba8f16b55dd0ffe4) 文件结构，作用介绍
