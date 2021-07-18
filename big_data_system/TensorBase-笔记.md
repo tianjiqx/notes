@@ -82,6 +82,7 @@ TensorBase用开源的文化和方式，重新构建一个Rust编写的实时数
 # debug 版本，(fast compilation but slow run),
 # cargo run --bin server -- -c crates/server/tests/confs/base.conf
 cargo run --bin server -- -c qxbase.conf
+#（rust 编译确实太慢了，尝试支持multi statement，修改后，不清楚原理，有时依赖的公共包，依然需要重新编译）
 
 # release 版本
 cargo run --release --bin server -- -c crates/server/tests/confs/base.conf
@@ -94,7 +95,7 @@ clickhouse-client --port 9528
 
 测试sql：
 
-```
+```sql
 create table employees (id UInt64, salary UInt64) ENGINE = BaseStorage
 insert into employees values (0, 1000), (1, 1500)
 select count(id) from employees
@@ -102,6 +103,109 @@ select avg(salary) from employees
 
 
 show tables
+
+
+-- join 测试 ,注意，当前部分关键字（列类型）大小写敏感，和clickhouse行为一致
+
+create table employeeNames (id UInt64, name String) ENGINE = BaseStorage
+insert into employeeNames values (0, 'Tom'), (1, 'Jack')
+insert into employeeNames values (2, 'Jame')
+
+
+-- bug: client崩溃，Server也崩溃，Exception on client:
+-- Code: 32. DB::Exception: Attempt to read after eof: while receiving packet from -- localhost:9528
+-- select count(1) from employeesName
+
+
+
+select count(id) from employeeNames
+
+select * from  employeeNames
+
+-- 必须加inner
+--  employees.id  nvalid identifier '#employees.id' for schema employees.employees.id,
+
+
+-- Code: 7. DB::Exception: Received from localhost:9528. WrappingEngineError(WrappingDFError(Plan("Ambiguous reference to field named 'id'"))). Error during planning: Ambiguous reference to field named 'id'.
+
+-- select id,name,salary from employees inner join employeeNames on employees.id = employeeNames.id
+
+
+-- Code: 7. DB::Exception: Received from localhost:9528. WrappingEngineError(WrappingDFError(Plan("Invalid identifier '#a.id' for schema a.salary, b.name"))). Error during planning: Invalid identifier '#a.id' for schema a.salary, b.name.
+
+-- select a.id,name,salary from employees a inner join employeeNames b on a.id = b.id
+
+-- Code: 7. DB::Exception: Received from localhost:9528. WrappingEngineError(WrappingDFError(Plan("Invalid identifier '#a.id' for schema a.salary, b.name"))). Error during planning: Invalid identifier '#a.id' for schema a.salary, b.name.
+
+-- select name,salary from employees as a inner join employeeNames as b on a.id = b.id
+
+
+
+-- Code: 7. DB::Exception: Received from localhost:9528. WrappingEngineError(WrappingDFError(Plan("Invalid identifier '#employees.id' for schema employees.salary, employees.employees.id, employeeNames.employeeNames.id, employeeNames.name"))). Error during planning: Invalid identifier '#employees.id' for schema employees.salary, employees.employees.id, employeeNames.employeeNames.id, employeeNames.name.
+
+-- select name,salary from employees inner join employeeNames on employees.id = employeeNames.id
+
+-- Code: 7. DB::Exception: Received from localhost:9528. WrappingEngineError(WrappingDFError(Plan("Ambiguous reference to field named 'id'"))). Error during planning: Ambiguous reference to field named 'id'.
+
+-- select name,salary from employees inner join employeeNames on id = id
+
+
+
+
+drop table employeeNames
+
+
+create table employeeNames ( employeeId UInt64, name String) ENGINE = BaseStorage
+insert into employeeNames values (0, 'Tom'), (1, 'Jack')
+insert into employeeNames values (2, 'Jame')
+
+insert into employeeNames values (3, null)
+
+
+select count(employeeId) from employeeNames
+
+select count(*) from employeeNames
+
+-- 会将 name为null的统计，right？
+select count(name) from employeeNames
+
+-- 直接写null 插入的结果为''
+select * from  employeeNames
+select * from  employeeNames where name=''
+
+
+insert into employeeNames(employeeId) values (4)
+
+-- bug: 插入 NULL值后 查询卡死
+select * from  employeeNames
+select name from employeeNames
+
+
+-- 成功
+select employeeId from employeeNames 
+
+
+select name,salary from employees inner join employeeNames on id = employeeId
+
+
+select * from employees inner join employeeNames on id = employeeId
+┌─id─┬─salary─┬─employeeId─┬─name─┐
+│  1 │   1500 │          1 │ Jack │
+└────┴────────┴────────────┴──────┘
+┌─id─┬─salary─┬─employeeId─┬─name─┐
+│  0 │   1000 │          0 │ Tom  │
+└────┴────────┴────────────┴──────┘
+2 rows in set. Elapsed: 0.015 sec. 
+-- 展示没有融合数据在一起，是因为独立计算展示的吗？
+
+
+select id,name,salary from employees inner join -- xxx ;
+employeeNames on id = employeeId;
+
+select id,name,salary from employees inner join employeeNames on id = employeeId
+
+
+
 ```
 
 
@@ -116,7 +220,7 @@ IDEA2021.1 + rust 插件
 
 
 
-代码版本：
+代码版本2021.07.15：
 
 commit id ：`c39cc0adc2ce46474f6addbc7f4bf2e16788df7d`
 
@@ -156,7 +260,7 @@ sudo ./gdbgui_0.13.2.2
 #4. 打开gdbui的web ui地址：http://127.0.0.1:5000/
 # a.设置attach to process  pid为TensorBase的进程
 # b.点击运行
-# c. 打开文件crates/runtime/src/read.rs，设置点击行断点
+# c. 打开文件crates/runtime/src/read.rs，设置点击行断点， 使用clickhouse client执行查询SQL
 #   该文件是处理查询逻辑
 ```
 
@@ -170,19 +274,56 @@ sudo ./gdbgui_0.13.2.2
 
 - `crates/server/src/server.rs` 
   - 启动http服务器
+  
 - `crates/server/src/lib.rs` 
-  - `runtime::ch::messages::response_to;` 打印结果
-    - `response_query`
+
+  - `runtime::ch::messages::response_to;` 消息处理，读取read_buf，写查询结果到write_buf
+  - response_to处理完毕，检查write_buf不为空时，将数据（例如查询结果）flush到目标流
+
+- `runtime/src/ch/messages.rs` client消息处理逻辑
+
+  - `response_to`  
+
+    - `ClientCodes::Query`  查询类型消息，进入`response_query`处理逻辑
+
+      - 核心进入`crates/runtime/src/mgmt.rs` 的`run_commands` 方法执行查询
+
+        - `run_commands`  当前只处理一条语句，返回一个`BaseCommandKind`
+
+          虽然语法解析器本身`BqlParser::parse(Rule::cmd_list, cmds)`支持解析出多条语句。
+
 - `crates/runtime/src/mgmt.rs`
+
   - 读取配置文件，创建`BaseMgmtSys`服务
-  - `BaseMgmtSys`实现了各种命令的处理
+  - `BaseMgmtSys`实现了各种命令的在`run_commands` 方法处理
     - 创建、显示、删除数据库、表，desc 表，truncate 表
     - insert into 语句
+      - `command_insert_into` insert 语句处理
+        - `InsertIntoContext.parse`() 将`Pair<Rule>`中信息填进InsertIntoContext
+        - `command_insert_into_gen_block`  ，插入数据封装进`Block`
+          - 暂时不支持部分列，个人测试ok，可能columns解析问题，不过读取异常
+          - 根据建表的列顺序插入值
+          - 会行转列格式，封装进Column   `runtime/ch/blocks.rs`
+            - name 列名
+            - BaseChunk 存储列数据
+              - 类型
+              - 大小
+              - null值的数组Vec<u8>  ，bitmap
+              - 偏移数组Vec<u32>
+              - lc_dict_data 字典？ Vec<u8>
+        - `command_insert_into_select` select...insert into 语法处理
+          - BaseCommandKind::Query 执行子查询
+            - 注意会跳转到`runtime/src/ch/messages.rs` 的`response_query()` 方法处理
+              - `crates/runtime/src/ch/blocks.rs` 的Block类的encode_to方法，将数据填充进`BytesMut` 类型的缓冲区（实际是BaseSrvConn的write_buf）中
+                - `Column.encode()`  逐列编码
+            - `StageKind::DataEODPInsertQuery` 
+            - `StageKind::DataPacket`  insert into 处理数据包
+          - BaseCommandKind::InsertFormatSelectValue 将子查询结果插入数据库
     - query（select）语句
       - 先`parse_table_place` 解析表的位置，目前只支持local表
         - `READ`: `SyncOnceCell<T> ` 封装的读取方法，会跳转到`crates/runtime/src/read.rs`的`query`函数
           - `SyncOnceCell<T> `  rust lazy 初始化
-    - 统一的入口是`run_commands` 方法
+
 - `crates/runtime/src/read.rs`
   - `query`函数，执行`crates/engine/src/lib.rs`的`run`函数
     - `parse_tables`  `crates/lang/src/parse.rs` 解析表
@@ -191,5 +332,4 @@ sudo ./gdbgui_0.13.2.2
         - `crates/datafusion/src/execution.context.rs`  `create_logical_plan` 创建逻辑计划
         - `crates/datafusion/src/execution.context.rs` 的`optimze`方法 做逻辑优化
         - `crates/datafusion/src/execution.context.rs`  `create_physical_plan` 创建物理计划
-
 
