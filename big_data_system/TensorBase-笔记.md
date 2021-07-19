@@ -270,9 +270,11 @@ sudo ./gdbgui_0.13.2.2
 
 ### 4.1 SQL执行流程
 
-
-
 - `crates/server/src/server.rs` 
+  
+  - 读取配置信息
+  - 初始化读`    READ.get_or_init(|| query);` 和写`WRITE.get_or_init(|| write_block);` 数据的方法
+    - SyncOnceCell::new() 保证是全局唯一函数对象？
   - 启动http服务器
   
 - `crates/server/src/lib.rs` 
@@ -318,11 +320,15 @@ sudo ./gdbgui_0.13.2.2
                 - `Column.encode()`  逐列编码
             - `StageKind::DataEODPInsertQuery` 
             - `StageKind::DataPacket`  insert into 处理数据包
+              - `process_data_blk`
+              - WRITE 对象写数据
+                - `write_block()` `crates/runtime/src/write.rs`
           - BaseCommandKind::InsertFormatSelectValue 将子查询结果插入数据库
     - query（select）语句
       - 先`parse_table_place` 解析表的位置，目前只支持local表
         - `READ`: `SyncOnceCell<T> ` 封装的读取方法，会跳转到`crates/runtime/src/read.rs`的`query`函数
-          - `SyncOnceCell<T> `  rust lazy 初始化
+          - `SyncOnceCell<T> `  rust lazy 初始化 同步原语。表是只能写一次
+          - 类似的有WRITE
 
 - `crates/runtime/src/read.rs`
   - `query`函数，执行`crates/engine/src/lib.rs`的`run`函数
@@ -332,4 +338,82 @@ sudo ./gdbgui_0.13.2.2
         - `crates/datafusion/src/execution.context.rs`  `create_logical_plan` 创建逻辑计划
         - `crates/datafusion/src/execution.context.rs` 的`optimze`方法 做逻辑优化
         - `crates/datafusion/src/execution.context.rs`  `create_physical_plan` 创建物理计划
+
+
+
+### 4.2 模块解构
+
+#### 4.2.1 元信息 `crates/meta`
+
+- `MetaStore` 元信息存储对象 `crates/meta/src/store/sys.rs`
+  - 磁盘物理路径`.../tb_schema/m0`
+  - 使用到的库sled（雪橇）
+    - 嵌入式数据库，类似BTreeMap功能，支持插入kv，点查询，前缀范围查询，当前四棵树（0，1，ts，cs），使用到lsm-tree？
+    - 优势是无锁树，领拷贝读取
+    - 0存储名字与id的映射，1存储名字(id与名字的映射，数据库，表，列名)， ts表示表信息，cs表列信息
+      - 表信息： 建表脚本cr，引擎en，分区表达式pa，分区列pc，setting信息（大概类似属性，以se开头），存储时加上tid作为前缀拼成key( Vec<u8>类型)，value以字节方式存储
+- `PartStore` `crates/meta/src/store/parts.rs`
+  - Partition Tree分区树，存储和管理分区数据的元信息
+  - Column Partition列分区信息`CoPaInfo`，简写Copa，列存，数据按列管理
+    - 内存地址addr
+    - 内存地址addr_om ?
+    - 大小size: usize
+    - 字节大小len_in_bytes
+  - 磁盘路径`.../tb_schema/p0`
+  - 当前也是四棵树（ps，pt，pr，l），加上 存储数据路径字符串数组（测试配置只有一个数据目录，如果有多个数据目录，会根据ptk散列，获取数据路径）
+    - 分区大小ps， tid,ptk  -  size， tid,ptk都是u64,part_size是usize
+    - 分区pt， cid,ptk -  siz_in_bytes: usize， Copa大小信息
+    - prid？ pr, 似乎也是分区大小，汇总？ tid,ptk - part_size
+    - 表锁l， tid - :IVec
+  - 核心方法
+    - `get_prid_int_ptk` 根据tid,ptk,
+- `BaseMgmtSys`  系统信息提供对象
+  - `crates/runtime/src/mgmt.rs`
+  - 静态变量，`BMS`， lazy加载
+  - 读取配置文件初始化
+  - 持有`MetaStore`  和`PartStore`，分区表达式函数指针的映射？(tid -  :SyncPointer<u8>)，时区信息
+    - 这块涉及到分区表达式的计算，用到ligthjit模块
+
+
+
+#### 4.2.2 写数据
+
+ `crates/runtime/src/write.rs`
+
+- 入口`write_block`
+  - `MetaStore.get_table_info_partition_cols()` 根据表id（tid_pc）获取分区键信息ptks
+  - `gen_parts_by_ptk_names` 创建一个分区的HashMap<u64, Vec<(u32, u32)>
+    - 先根据列名获取分区键索引ptk_idx 
+      - （这里看起来只支持单列的分区，这里分区键是等同是主键？如果数据分区不是按内部自己增的rowid，而是按照真实数据主键列，那么对于事实表的分区划分，是否可能会导致数据分布不均？）
+    - `BaseMgmtSys.get_ptk_exps_fn_ptr` 获取分区表达式函数指针
+    - 根据列类型，转换原始Vec[u8]类型的数据为实际类型的字节数组`cdata_ptk`，如Vec[u16]，Vec[u32] 通过`gen_part_idxs`生成分区数据索引HashMap<u64, Vec<(u32, u32)>>
+      - key： ptk， `ptk_expr_fn(cdata_ptk[j]), j是行idx`， 根据下面value的填充，会多行共用，在根据后面写parts前，检查不能超过1000，应该是分区标识分区id， `ptk_expr_fn` 应该是一个分区函数，接收行号，转为分区id。这只是内存中，一次写Block的分区划分，Block大小，看注释，假定不能不超过4G。
+      - value： 元组数组，第一次初始化（数组为空），push (行号:u32，行号:u32)，第二次修改，改为(第一次行号:u32，第二次行号:u32)，插入前检查是否连续。看起来是一段连续的范围。实际看起来只会产生一个元组，闭区间。
+    - 循环迭代parts，调用`write_part`  写分区数据（一个分区，实际一个文件，单线程（单线程更好？），实际可以并行，不过可能是更新元信息，当前不好导致不好并发，或许封装CAS操作，更新分区大小）
+      - `PartStore.get_part_dir(ptk)` 获取分区数据目录(xxx/tb_data)
+        - 配置多块数据目录时，可以将数据按分区散列到不同的目录
+      - `ensure_table_path_existed` 确保分区路径存在，创建目录
+      - `PartStore.get_prid_int_ptk(tid, ptk, pt_len)` ， pt_len为分区数
+        - `PartStore.tree_part_size.fetch_and_update()` 会从分区元信息中获取旧的分区size，加上pt_len
+          - u32(4 294 967 296)， 会导致有插入次数限制？每次插入，假设有1000个分区，这里分区函数怎么设置。如果有高频插入，即使每次只有1个分区，也只能插入42亿次？
+            - 后续检查数据文件路径，多次插入，始终分区ptk为0
+      - 逐列，插入数据
+        - `get_part_path(tid, cid, ptk, dp)` 获取分区路径 
+          - 表单独一级目录
+          - 列id_分区ptk 作为一个文件名 例子：`tmp/tb_data/6000006/6000007_0,tmp/tb_data/6000006/6000008_0`
+        - `open_file_as_fd` 根据路径名打开文件描述符
+        - `gather_into_buf` 拷贝数据到缓冲区，合并Vec<(u32, u32)>的数据
+          - 循环`copy_nonoverlapping`,虽然是个循环，但以目前看只有一个元组
+        - `PartStore.insert_copa_int_ptk`  更新分区文件大小
+      - `PartStore.set_copa_size_int_ptk` 更新分区数量大小（目前看起来，应该一直只是+1）
+
+
+
+#### 4.2.3 读数据
+
+ `crates/runtime/src/read.rs`
+
+
+
+
 
