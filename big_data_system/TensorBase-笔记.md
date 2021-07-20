@@ -2,7 +2,7 @@
 
 ## 1. 背景
 
-TensorBase用开源的文化和方式，重新构建一个Rust编写的实时数据仓库，用于海量数据的存储和分析。
+[TensorBase](https://github.com/tensorbase/tensorbase)用开源的文化和方式，重新构建一个Rust编写的实时数据仓库，用于海量数据的存储和分析。
 
 
 
@@ -23,7 +23,7 @@ TensorBase用开源的文化和方式，重新构建一个Rust编写的实时数
 缺点：
 
 - 还是起步的demo原型概念验证的阶段
-  - 目前只是对于单表的聚合操作，相比clickhouse有明显的优势3X（并且数据完全加载进内存了，如果涉及磁盘读取，CH由于数据压缩，反而具有更好的性能）。
+  - 目前只是对于单表的聚合操作，相比clickhouse有明显的优势3X（并且数据完全加载进内存了，如果涉及磁盘读取，CH由于数据压缩，反而具有更好的性能，TB当前是原始数据）。
   - 之前在时间相关的函数处理上，会弱与CH，另外涉及列存个数的数据的shuffle，带有Join的SQL的性能是值得怀疑的。
     - TODO（CH，DataFusion的join原理）
 
@@ -331,8 +331,9 @@ sudo ./gdbgui_0.13.2.2
           - 类似的有WRITE
 
 - `crates/runtime/src/read.rs`
+  
   - `query`函数，执行`crates/engine/src/lib.rs`的`run`函数
-    - `parse_tables`  `crates/lang/src/parse.rs` 解析表
+    - `parse_tables`  `crates/lang/src/parse.rs` 解析表TablesContext
     - `datafusions::run` 调用datafusion执行
       - `crates/datafusion/src/execution.context.rs` 的`sql`方法，执行SQL然后创建数据帧
         - `crates/datafusion/src/execution.context.rs`  `create_logical_plan` 创建逻辑计划
@@ -361,12 +362,23 @@ sudo ./gdbgui_0.13.2.2
     - 字节大小len_in_bytes
   - 磁盘路径`.../tb_schema/p0`
   - 当前也是四棵树（ps，pt，pr，l），加上 存储数据路径字符串数组（测试配置只有一个数据目录，如果有多个数据目录，会根据ptk散列，获取数据路径）
-    - 分区大小ps， tid,ptk  -  size， tid,ptk都是u64,part_size是usize
-    - 分区pt， cid,ptk -  siz_in_bytes: usize， Copa大小信息
-    - prid？ pr, 似乎也是分区大小，汇总？ tid,ptk - part_size
-    - 表锁l， tid - :IVec
+    - `tree_part_size`分区大小ps， tid,ptk  -  size， tid,ptk都是u64,part_size是usize
+    - `tree_parts`分区pt， cid,ptk -  siz_in_bytes: usize， Copa大小信息
+    - `tree_prids`prid？ pr, 也是一份分区总行数， tid,ptk - part_size     usize 大小
+    - `tree_locks`表锁l， tid - :IVec
   - 核心方法
-    - `get_prid_int_ptk` 根据tid,ptk,
+    - `get_prid_int_ptk` 根据tid,ptk,reserved_len，CAS更新分区行数(tree_part_size)
+      - 可能为了后面可以并行插入单个分区?
+    - `set_copa_size_int_ptk` 根据tid,ptk,part_size 更新行数。（insert覆盖，tree_prids）
+      - 一个分区，插入全部完成后，更新的行数
+        - （实际插入数据时是先更新行数，之后才落盘，有一点危险)
+      - 如果后面支持事务，倒是可以回滚插入的行数
+      - 检查到`engine/src/datafusions.rs` 会用`fill_copainfos_int_by_ptk_range` 用到了`tree_prids` 读取的行，或许这个表/树是为了不影响读写不用加锁？
+    - `insert_copa_int_ptk` 插入cid,ptk - siz_in_bytes 更新分区列文件长度 （tree_parts）
+    - `get_copa_siz_in_bytes_int_ptk` 参数cid,ptk，获取分区列文件长度（tree_parts）
+    - `get_part_dir` 获取分区的路径（用户配置的数据目录路径）
+      - 直接散列，感觉配置后，导致无法再修改
+    - `fill_copainfos_int_by_ptk_range`
 - `BaseMgmtSys`  系统信息提供对象
   - `crates/runtime/src/mgmt.rs`
   - 静态变量，`BMS`， lazy加载
@@ -381,7 +393,8 @@ sudo ./gdbgui_0.13.2.2
  `crates/runtime/src/write.rs`
 
 - 入口`write_block`
-  - `MetaStore.get_table_info_partition_cols()` 根据表id（tid_pc）获取分区键信息ptks
+  - `MetaStore.get_table_info_partition_cols()` 根据表id（tid_pc）获取分区键信息ptks（HashMap<u64, Vec<(u32, u32)>>类型）
+    - 注意，建表时，未指定分区列时，直接创建`0, vec![(0, (blk.nrows - 1) as u32)]` 也就是只有一个分区ptk=0
   - `gen_parts_by_ptk_names` 创建一个分区的HashMap<u64, Vec<(u32, u32)>
     - 先根据列名获取分区键索引ptk_idx 
       - （这里看起来只支持单列的分区，这里分区键是等同是主键？如果数据分区不是按内部自己增的rowid，而是按照真实数据主键列，那么对于事实表的分区划分，是否可能会导致数据分布不均？）
@@ -389,29 +402,87 @@ sudo ./gdbgui_0.13.2.2
     - 根据列类型，转换原始Vec[u8]类型的数据为实际类型的字节数组`cdata_ptk`，如Vec[u16]，Vec[u32] 通过`gen_part_idxs`生成分区数据索引HashMap<u64, Vec<(u32, u32)>>
       - key： ptk， `ptk_expr_fn(cdata_ptk[j]), j是行idx`， 根据下面value的填充，会多行共用，在根据后面写parts前，检查不能超过1000，应该是分区标识分区id， `ptk_expr_fn` 应该是一个分区函数，接收行号，转为分区id。这只是内存中，一次写Block的分区划分，Block大小，看注释，假定不能不超过4G。
       - value： 元组数组，第一次初始化（数组为空），push (行号:u32，行号:u32)，第二次修改，改为(第一次行号:u32，第二次行号:u32)，插入前检查是否连续。看起来是一段连续的范围。实际看起来只会产生一个元组，闭区间。
-    - 循环迭代parts，调用`write_part`  写分区数据（一个分区，实际一个文件，单线程（单线程更好？），实际可以并行，不过可能是更新元信息，当前不好导致不好并发，或许封装CAS操作，更新分区大小）
-      - `PartStore.get_part_dir(ptk)` 获取分区数据目录(xxx/tb_data)
-        - 配置多块数据目录时，可以将数据按分区散列到不同的目录
-      - `ensure_table_path_existed` 确保分区路径存在，创建目录
-      - `PartStore.get_prid_int_ptk(tid, ptk, pt_len)` ， pt_len为分区数
-        - `PartStore.tree_part_size.fetch_and_update()` 会从分区元信息中获取旧的分区size，加上pt_len
-          - u32(4 294 967 296)， 会导致有插入次数限制？每次插入，假设有1000个分区，这里分区函数怎么设置。如果有高频插入，即使每次只有1个分区，也只能插入42亿次？
-            - 后续检查数据文件路径，多次插入，始终分区ptk为0
-      - 逐列，插入数据
-        - `get_part_path(tid, cid, ptk, dp)` 获取分区路径 
-          - 表单独一级目录
-          - 列id_分区ptk 作为一个文件名 例子：`tmp/tb_data/6000006/6000007_0,tmp/tb_data/6000006/6000008_0`
-        - `open_file_as_fd` 根据路径名打开文件描述符
-        - `gather_into_buf` 拷贝数据到缓冲区，合并Vec<(u32, u32)>的数据
-          - 循环`copy_nonoverlapping`,虽然是个循环，但以目前看只有一个元组
-        - `PartStore.insert_copa_int_ptk`  更新分区文件大小
-      - `PartStore.set_copa_size_int_ptk` 更新分区数量大小（目前看起来，应该一直只是+1）
+  - 循环迭代parts，调用`write_part/write_part_locked(有大字段类型，String)`  写分区数据（一个分区，实际一个文件，单线程（单线程更好？），实际可以并行，不过可能是更新元信息，当前不好导致不好并发，或许封装CAS操作，更新分区大小）
+    - `PartStore.get_part_dir(ptk)` 获取分区数据目录(xxx/tb_data)
+      - 配置多块数据目录时，可以将数据按分区散列到不同的目录
+    - `ensure_table_path_existed` 确保分区路径存在，创建目录
+    - `PartStore.acquire_lock(tid)?`  加表锁
+      - 很简单，死循环尝试加锁
+      - 注意，`tree_locks` 表锁树，每次重启时会clear，用于处理遗留的锁
+    - `PartStore.get_prid_int_ptk(tid, ptk, pt_len)` ， pt_len为此次插入的分区行数(Vec<(u32, u32)>范围求和)
+      - `PartStore.tree_part_size.fetch_and_update()` 会从分区元信息中获取旧的分区行数，加上pt_len
+        - u32(4 294 967 296)， 会导致有插入次数限制？每次插入，假设有1000个分区，这里分区函数怎么设置。如果有高频插入，即使每次只有1个分区，也只能插入42亿次？
+          - 后续检查数据文件路径，多次插入，始终分区ptk为0
+        - 
+    - 逐列，插入数据
+      - `get_part_path(tid, cid, ptk, dp)` 获取分区路径 
+        - 表单独一级目录
+        - 列id_分区ptk 作为一个文件名 例子：`tmp/tb_data/6000006/6000007_0,tmp/tb_data/6000006/6000008_0`
+      - `open_file_as_fd` 根据路径名打开文件描述符
+      - `gather_into_buf` 拷贝数据到缓冲区，合并Vec<(u32, u32)>的数据
+        - 循环`copy_nonoverlapping`,虽然是个循环，但以目前看只有一个元组
+      - `dump_buf()`  刷数据到文件（fd，文件偏移量，长度，buf），落盘
+        - `libc::fallocate()`
+        - `libc::pwrite()`
+        - `libc::close()`
+        - 对于字符串列，会额外增加一个_om的列文件，dump_buf两次
+        - 文件偏移offset_in_bytes=prid * ctyp_siz;
+          - prid 总行数，ctyp_siz为定长大小的列类型（数据没有压缩）
+        - 
+      - `PartStore.release_lock(tid)` 释放表锁
+        - 实际就是覆盖写0
+      - `PartStore.insert_copa_int_ptk`  更新分区列文件大小
+    - `PartStore.set_copa_size_int_ptk` 更新分区数量大小（目前看起来，应该一直只是+1）
+
+**总结**：
+
+TB写数据的文件组织设计，目前非压缩，最大的级别单位是Block，Block下面分成Part，分区可以根据配置，写到不同的目录（不同磁盘ok，节点？如下图的tb_data），分区下面是表级目录（id，如2000000），表级目录下面是一个个该分区的列文件（2000001_0，构成tid，列id，下划线，分区键（或者id）ptk，如果在同一个目录下，不同分区的分区列文件应该形如`2000001_1`）。om文件目前是String列的数据。
+
+
+
+![](tensorbase笔记图片/Snipaste_2021-07-20_16-53-08.png)
+
+插入数据的时候，未设置分区键，将只有一个分区，一直追加分区列文件。
+
+- `tree_part_size` 记录了每个分区列文件的行数，用于计算分区列文件的大小
+  - `get_prid_int_ptk` 在落盘前获取并CAS更新表分区行数`tree_part_size` 
+  - 之后逐列追加分区列文件数据
+  - 根据行数prid和列类型大小，计算出分区列文件的起始偏移
+    - 这里的偏移地址，为什么不用`tree_parts` 中的地址呢？这才是真实落盘的大小，如果写文件突然被kill，下次获取prid将不正确，暂时没有看到有修正此prid机制
+      - 或许可以考虑，`tree_prids` 中表分区的行数，修正`tree_part_size`中的行数。手动运维判断？
+  - `insert_copa_int_ptk` 在所有的分区列文件数据完成落盘后，更新`tree_prids` 中表分区的行数
+- `tree_parts` 存储每个分区列文件的当前大小
+  - 分区列文件数据落盘后更新
+    - insert方式，如果并发写一个分区列文件，可能导致大小不正确，不过有加锁机制，保证获取到的位置是正确的，并且单线程写分区列文件
+  - 所以这里其实可以忽略插入失败情况，应该是先插入数据后更新行数？
+    - `insert_copa_int_ptk` 是在每个分区列文件落盘后更新文件大小
+
+在TB的架构设计说明：
+
+> 在存储层，TensorBase非经典的列式存储。这其中最重要的，我们给出了一个反重力设计：No LSM。我们不再使用在目前开源数据库及大数据平台流行的LSM Tree（Log Structured Merge Tree）数据结构。而是使用一种我们自己称之为Partition Tree的数据结构，数据直接写入分区文件，在保持append only写入性能的同时，避免了LSM结构的后续compact开销。得益于现代Linux内核的支持和巧妙的写入设计，我们在用户态（User-space）核心读写链路上不使用任何锁（Lock-free），最大程度的发挥了高并发网络服务层所提供的能力，可以提供超高速数据写入服务。
+
+当前不支持update，delete操作，也没有唯一主键。适用于一次性写，然后分析。
+
+后续，可能考虑存储引擎，类似CH，折叠树。在计算引擎层，做数据的合并。
+
+TB当前的存储引擎不维持主键顺序，也没有什么排序键，单个分区文件也不会保证有序，看起来还是非常的原生态。没有任何索引，应该对点查询不够友好。面向中小数据规模的，全内存分析。
 
 
 
 #### 4.2.3 读数据
 
  `crates/runtime/src/read.rs`
+
+- `query()` 入口
+  - 调用`crates/engine/src/lib.rs`的`run`函数
+    - `parse_tables`  `crates/lang/src/parse.rs` 解析表TablesContext
+    - `datafusions::run` 调用datafusion执行
+      - `crates/datafusion/src/execution.context.rs` 的`sql`方法，执行SQL然后创建数据帧
+        - `crates/datafusion/src/execution.context.rs`  `create_logical_plan` 创建逻辑计划
+        - `crates/datafusion/src/execution.context.rs` 的`optimze`方法 做逻辑优化
+        - `crates/datafusion/src/execution.context.rs`  `create_physical_plan` 创建物理计划
+  - 将查询的结果放进Vec<Block> 中返回。
+    - `Block::try_from()`  `crates/runtime/src/ch/blocks.rs` 转换arrow格式的`RecordBatch` 为`Block`
 
 
 
