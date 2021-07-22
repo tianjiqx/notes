@@ -2,7 +2,7 @@
 
 [TOC]
 
-## 常用UML符号
+## 1.常用UML符号
 
 
 
@@ -30,7 +30,7 @@ has a
 
 巧记：**UML中符号，箭头都是目标，宾语。**
 
-## 鸭子的设计：策略模式
+## 2.鸭子的设计：策略模式
 
 （head first设计模式第一章）
 
@@ -166,7 +166,7 @@ RPC, 客户端创建动态代理类，封装调用方法，参数，requestid等
 
 
 
-## 气象监测：观察者模式
+## 3.气象监测：观察者模式
 
 背景：
 
@@ -229,11 +229,86 @@ GUI编程，事件监听器。
 
 
 
+## 4. 创建型模式
 
 
 
 
-## 行为模式
+
+### 4.1 建造者模式Builder
+
+将一份复杂对象的构建与其表示相分离，使得同样的构建过程可以创建不同的表示。
+
+>  另外的解释，使用多个简单对象，一步步构建一个复杂的对象的模式。
+>
+> Rust由于没有构造函数，大量使应用此种模式。 《Rust编程之道》
+
+```rust
+struct Circle {
+    x:f64,
+    y:f64,
+    radius:f64
+}
+
+struct CircleBuilder {
+    x:f64,
+    y:f64,
+    radius:f64
+}
+
+impl Circle {
+    fn area (&slef) -> f64 {
+        std::f64::consts::PI * (self.radius * self.radius)
+    }
+    fn new() -> CircleBuilder {
+        CircleBuilder {
+            x:0.0,
+            y:0.0,
+            radius:1.0
+        }
+    }
+}
+
+impl CircleBuilder {
+    fn x(&mut self, coordinate:f64) -> &mut CircleBuilder {
+        self.x = coordinate;
+        self
+    }
+    fn y(&mut self, coordinate:f64) -> &mut CircleBuilder {
+        self.y = coordinate;
+        self
+    }
+    fn radius(&mut self, radius:f64) -> &mut CircleBuilder {
+        self.radius = radius;
+        self
+    }
+    fn build(&self) -> Circle {
+        Circle {
+            x:self.x,
+            y:self.y,
+            radius:self.radius
+        }
+    }
+}
+
+let c = Circle::new().x(1.0).y(2.0).radiuse(2.0).build();
+```
+
+
+
+其他开源代码中的应用：
+
+- Java StringBuilder   append方法追加字符串，最后build返回最后的String
+
+
+
+### 4.2 工厂模式
+
+
+
+
+
+## 5.行为模式
 
 属于行为模式的模式：
 
@@ -266,6 +341,152 @@ GUI编程，事件监听器。
 ### 对发送者和接收者解耦
 
 观察者模式：主题和观察者的松耦合。
+
+kafka
+
+
+
+### 访问者模式Visitor
+
+访问者模式，用于将数据结构和作用于数据结构上的操作解耦。可以减少编写重复代码。类似宏？。
+
+这种解耦的一个作用是能够在不修改结构的情况下向现有对象结构添加新操作。
+
+![](uml笔记图片/Visitor-Design-Pattern-Diagram.png)
+
+```java
+interface ItemElement
+{
+	public int accept(ShoppingCartVisitor visitor);
+}
+class Book implements ItemElement
+{
+	private int price;
+	private String isbnNumber;
+	public Book(int cost, String isbn)
+	{
+		this.price=cost;
+		this.isbnNumber=isbn;
+	}
+	public int getPrice()
+	{
+		return price;
+	}
+	public String getIsbnNumber()
+	{
+		return isbnNumber;
+	}
+	@Override
+	public int accept(ShoppingCartVisitor visitor)
+	{
+		return visitor.visit(this);
+	}
+
+}
+class Fruit implements ItemElement
+{
+	private int pricePerKg;
+	private int weight;
+	private String name;
+	public Fruit(int priceKg, int wt, String nm)
+	{
+		this.pricePerKg=priceKg;
+		this.weight=wt;
+		this.name = nm;
+	}
+	public int getPricePerKg()
+	{
+		return pricePerKg;
+	}
+	public int getWeight()
+	{
+		return weight;
+	}
+	public String getName()
+	{
+		return this.name;
+	}
+	@Override
+	public int accept(ShoppingCartVisitor visitor)
+	{
+		return visitor.visit(this);
+	}
+}
+interface ShoppingCartVisitor
+{
+
+	int visit(Book book);
+	int visit(Fruit fruit);
+}
+class ShoppingCartVisitorImpl implements ShoppingCartVisitor
+{
+	@Override
+	public int visit(Book book)
+	{
+		int cost=0;
+		//apply 5$ discount if book price is greater than 50
+		if(book.getPrice() > 50){
+			cost = book.getPrice()-5;
+		} else
+			cost = book.getPrice();
+
+		System.out.println("Book ISBN::"+book.getIsbnNumber() + " cost ="+cost);
+		return cost;
+	}
+
+	@Override
+	public int visit(Fruit fruit){
+		int cost = fruit.getPricePerKg()*fruit.getWeight();
+		System.out.println(fruit.getName() + " cost = "+cost);
+		return cost;
+	}
+}
+class ShoppingCartClient
+{
+	public static void main(String[] args)
+	{
+		ItemElement[] items = new ItemElement[]{new Book(20, "1234"),
+							new Book(100, "5678"), new Fruit(10, 2, "Banana"),
+							new Fruit(5, 5, "Apple")};
+		int total = calculatePrice(items);
+		System.out.println("Total Cost = "+total);
+	}
+	private static int calculatePrice(ItemElement[] items)
+	{
+		ShoppingCartVisitor visitor = new ShoppingCartVisitorImpl();
+		int sum=0;
+		for(ItemElement item : items){
+			sum = sum + item.accept(visitor);
+		}
+		return sum;
+	}
+}
+```
+
+
+
+典型应用：
+
+- AST 树语法解析，通常使用访问者模式来遍历处理。 增加一种AST节点时，只需要visitor的接口，增加接受新的ast节点的函数，和visitor的实现，具体增加处理逻辑。
+- 查询优化的逻辑优化阶段，应该也算是一种访问者模式，逻辑优化规则，自顶向下的遍历整个树，匹配到符合的算子或者模式时，应用规则。
+
+
+
+
+
+#### REF
+
+- [visitor-design-pattern](https://www.geeksforgeeks.org/visitor-design-pattern/)
+
+
+
+TODO：建造者模式apache arrow
+
+适配器模式 clickhouse
+
+
+
+
 
 
 
