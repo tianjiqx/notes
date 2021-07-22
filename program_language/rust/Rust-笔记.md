@@ -135,7 +135,7 @@ rust明显优势：
 
 rust明显缺点:
 
-- 编译速度很慢
+- **编译速度很慢**，**增量编译功能不强**
 
 
 
@@ -360,7 +360,11 @@ format!("0x{:X}", foo) -> "0xDEADBEEF"
 format!("0o{:o}", foo) -> "0o33653337357"
 ```
 
-
+- `fmt::Debug` ： 使用 `{:?}` 标记。 格式化文本以供调试使用。  
+  - `#[derive(Debug)]  ` 属性允许，自动推导出自定义类型fmt::Debug实现
+  - `{:#?}` 可以美化输出（层次化打印）
+- `fmt::Display` ： 使用 {} 标记。 以更优雅和友好的风格来格式化文本。  
+  - 自定义类型需要手动实现
 
 ### 2.2 基础语法
 
@@ -974,7 +978,86 @@ fn main() {
     // 这个调用将会展开成 `println!("Hello!");`,事实上println!也是一个宏，可以再展开。
     say_hello!()
 }
+
+#[macro_export]
+macro_rules! with_timer_print {
+    ($timer_name:ident, $($s:stmt);+ $(;)?) => {
+        let $timer_name = ::std::time::Instant::now();
+        $($s)*
+        println!("{:?}", $timer_name.elapsed());
+    };
+}
 ```
+
+语法：
+
+- 指示符
+  - 宏的参数使用一个美元符号 $ 作为前缀， 并使用一个指示符（designator）来 注明类型  
+    - `ident` 指示符用于变量名或函数名
+    - `expr` 指示符表示表达式
+    - `pat` (**模式** *pattern*)
+    - `stmt` (**语句** *statement*)
+      - 代码块
+    - `ty` (**类型** *type*)
+- 重载
+  - 宏可以重载，从而接受不同的参数组合。类似于匹配（match）代码块
+- 重复
+  - 宏事务参数列表 `+` 来表示一个参数可能出现一次或多次
+  -  `*` 来表示该 参数可能出现零次或多次
+
+```rust
+macro_rules! create_function {
+    // 此宏接受一个 `ident` 指示符表示的参数，并创建一个名为 `$func_name` 的函数。
+    // `ident` 指示符用于变量名或函数名
+    ($func_name:ident) => (
+        fn $func_name() {
+            // `stringify!` 宏把 `ident` 转换成字符串。
+            println!("You called {:?}()",
+                     stringify!($func_name))
+        }
+    )
+}
+// 借助上述宏来创建名为 `foo` 和 `bar` 的函数。
+create_function!(foo);
+
+/// 2.重载
+// 根据你调用它的方式，`test!` 将以不同的方式来比较 `$left` 和 `$right`。
+macro_rules! test {
+    // 参数不需要使用逗号隔开。
+    // 参数可以任意组合！
+    ($left:expr; and $right:expr) => (
+        println!("{:?} and {:?} is {:?}",
+                 stringify!($left),
+                 stringify!($right),
+                 $left && $right)
+    );
+    // ^ 每个分支都必须以分号结束。
+    ($left:expr; or $right:expr) => (
+        println!("{:?} or {:?} is {:?}",
+                 stringify!($left),
+                 stringify!($right),
+                 $left || $right)
+    );
+}
+
+test!(1i32 + 1 == 2i32; and 2i32 * 2 == 4i32);
+test!(true; or false);
+
+
+// 3. 重复
+// `min!` 将求出任意数量的参数的最小值。
+macro_rules! find_min {
+    // 基本情形：
+    ($x:expr) => ($x);
+    // `$x` 后面跟着至少一个 `$y,`
+    ($x:expr, $($y:expr),+) => (
+        // 对 `$x` 后面的 `$y` 们调用 `find_min!` 
+        std::cmp::min($x, find_min!($($y),+))
+    )
+}
+```
+
+
 
 #### 2.3.5 模块和包系统
 
@@ -1102,6 +1185,10 @@ hello.push_str("orld!");
 
 // 弹出
 hello.pop();  //Some(Char)
+
+
+// &str 连接
+let con_str = ["xx1","xxx2"].join(" "); // "xx1 xx2"  String 类型
 ```
 
 
@@ -1216,6 +1303,12 @@ fn next_birthday(current_age: Option<u8>) -> Option<String> {
 
 `and_then()` 使用被 `Option` 包裹的值来调用其输入函数并返回结果。 如果 `Option` 是 `None`，那么它返回 `None`。
 
+还有另一个类似于 `unwrap` 的方法它还允许我们选择 `panic!` 的错误信息：`expect`，增加错误信息。
+
+```rust
+let f = File::open("hello.txt").expect("Failed to open hello.txt");
+```
+
 
 
 #### 2.4.4 结果Result
@@ -1228,6 +1321,44 @@ fn next_birthday(current_age: Option<u8>) -> Option<String> {
 - `Err<E>`：找到 `E` 元素，`E` 即表示错误的类型。
 
 同样可以用`?` 取出变量，但是不产生panic。
+
+这里在TensorBase的源码分析中，发现作为Result经常作为函数的返回值类型。
+
+同时，取代Java项目中经常出现throw Exception，直接return Err包装的错误信息。
+
+这让的错误返回形式，比go，C++ 返回nil和 ret值，确实更优雅（Result可以同时表示正确结果或者错误信息）。
+
+```rust
+let f = File::open("hello.txt").unwrap_or_else(|error| {
+    if error.kind() == ErrorKind::NotFound {
+        File::create("hello.txt").unwrap_or_else(|error| {
+            panic!("Problem creating the file: {:?}", error);
+        })
+    } else {
+        panic!("Problem opening the file: {:?}", error);
+    }
+});
+```
+
+
+
+
+
+#### 2.4.5 控制流程语句
+
+###### fo in
+
+`for in` 结构可以遍历 Iterator。
+
+创建迭代器的一个最简单的方法是使用区间标记`a..b` 生成[a,b)区间，步长为1。
+
+`a..=b` 区间为[a,[:qa]]
+
+```rust
+for i in 0..100 {
+    //xxxx
+}
+```
 
 
 
@@ -1356,8 +1487,8 @@ println!("{:?}", x);
 变量的从创建开始到被销毁的时间区间。生命周期的主要目标是避免悬垂引用。
 
 - 隐式，大部分时候生命周期是隐含并可以推断的。
-
 - 显式如`'a` a只是一个简写表示，用于在无法自动推导生命周期时，人为指定，那个变量的生命周期。以保证运行时的引用时有效的。
+  - 比如结构体中使用到引用变量，需要显示标记其引用的生命周期
 
 Rust的惯例，用`'a`,`'b`,`'c`这样的写法。
 
@@ -1409,6 +1540,30 @@ let stormgbs = Person {
 - 产生一个拥有 `&'static str` 类型的 `string` 字面量。
 
 
+
+生命周期省略规则：
+
+- 作为引用的每个函数或方法的输入参数都有自己的生命周期参数
+
+  - `fn foo<'a, 'b>(x: &'a i32, y: &'b i32)`
+
+- 只有一个输入生命周期参数，则该生命周期将分配给所有输出生命周期参数
+
+  - `fn foo<'a>(x: &'a i32) -> &'a i32`
+
+- 如果有多个输入生命周期参数，但其中一个是`&self`或`&mut self`(即方法)，则生命周期`self` 被分配给所有输出生命周期参数。
+
+  - ```rust
+    impl<'a> ImportantExcerpt<'a> {
+    	// &str 实际为 &'a str
+        fn announce_and_return_part(&self, announcement: &str) -> &str {
+            println!("Attention please: {}", announcement);
+            self.part
+        }
+    }
+    ```
+
+    
 
 **堆栈区别**
 
@@ -1470,19 +1625,233 @@ match bag.food {
 
 ### 2.6 高性能库
 
-#### 2.6.1 Send 和 Sync
+#### 2.6.1 并发，并行，多线程编程
+
+**使用 spawn 创建新线程**
+
+`thread::spawn` 函数
+
+```rust
+use std::thread;
+use std::time::Duration;
+// 注意：当主线程结束时，新线程也会结束，而不管其是否执行完毕
+let handle =  thread::spawn(|| {
+        for i in 1..10 {
+            println!("hi number {} from the spawned thread!", i);
+            thread::sleep(Duration::from_millis(1));
+        }
+    });
+
+// 使用join等待所有线程结束，阻塞在这里，join的位置是有影响的！
+handle.join().unwrap();
+```
+
+**move 闭包**
+
+`thread::spawn` 支持从环境的线程（例如主线程）获取变量的借用，但是需要保证，变量的生命周期时安全。所以引入`move` 关键字强制闭包获取其使用的环境值的所有权。
+
+```rust
+let v = vec![1, 2, 3];
+let handle = thread::spawn(move || {
+println!("Here's a vector: {:?}", v);
+});
+
+// 此时无法再主线程中使用v
+//  drop(v); // oh no!
+handle.join().unwrap();
+```
+
+##### 线程间消息传递
+
+“通过共享消息来共享内存”
+
+**通道Channel**
+
+- 发送者transmitter
+- 接受者receiver
+- 当发送者或接收者任一被丢弃时，通道被**关闭**（*closed*）
+
+```rust
+use std::sync::mpsc;
+//创建一个通道，并将其两端赋值给 tx 和 rx
+let (tx, rx) = mpsc::channel();
+// mpsc 是多个生产者，单个消费者（multiple producer, single consumer）的缩写
+
+//将tx移动到一个新建的线程中并发送 “hi”
+thread::spawn(move || {
+        let val = String::from("hi");
+        tx.send(val).unwrap();
+    	// send 函数获取其参数的所有权并移动这个值归接收者所有
+    	// 接受者可能会修改或删除该值，所以无法使用该值
+    	// println!("val is {}", val);
+    });
+//在主线程中接收并打印内容 “hi”
+let received = rx.recv().unwrap();
+println!("Got: {}", received);
+```
+
+`recv` 阻塞主线程执行直到从通道中接收一个值
+
+`try_recv` 非阻塞，立即返回`Result<T, E>`（有结果ok，无结果Err），可以在主线程做其他事情，循环调用`try_recv`在消息到达后处理结果。
+
+```rust
+use std::thread;
+use std::sync::mpsc;
+use std::time::Duration;
+
+fn main() {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let vals = vec![
+            String::from("hi"),
+            String::from("from"),
+            String::from("the"),
+            String::from("thread"),
+        ];
+		// 发送多个值
+        for val in vals {
+            tx.send(val).unwrap();
+            thread::sleep(Duration::from_secs(1));
+        }
+    });
+	// 将rx当作一个迭代器，打印输出
+    // 当通道被关闭时，迭代器也将结束
+    for received in rx {
+        println!("Got: {}", received);
+    }
+}
+```
+
+使用克隆创建多生产者
+
+```rust
+let (tx, rx) = mpsc::channel();
+// 增加生产者
+let tx1 = tx.clone();
+
+let tx1 = tx.clone();
+thread::spawn(move || {
+    let vals = vec![
+        String::from("hi"),
+        String::from("from"),
+        String::from("the"),
+        String::from("thread"),
+    ];
+
+    for val in vals {
+        tx1.send(val).unwrap();
+        thread::sleep(Duration::from_secs(1));
+    }
+});
+thread::spawn(move || {
+    let vals = vec![
+        String::from("more"),
+        String::from("messages"),
+        String::from("for"),
+        String::from("you"),
+    ];
+
+    for val in vals {
+        tx.send(val).unwrap();
+        thread::sleep(Duration::from_secs(1));
+    }
+});
+
+for received in rx {
+    println!("Got: {}", received);
+}
+```
+
+##### 共享状态（变量）
+
+**互斥器**（*mutex*），任意时刻，其只允许一个线程访问某些数据
+
+- 在使用数据之前尝试获取锁
+- 处理完被互斥器所保护的数据之后，释放锁
+
+```rust
+use std::sync::Mutex;
+use std::thread;
+
+// 创建互斥变量
+// 智能指针 Arc<T>来创建引用计数的值，以便拥有多所有者
+// 原子引用计数确保可以安全的在多个线程间共享
+let counter = Arc::new(Mutex::new(0));
+let mut handles = vec![];
+
+for _ in 0..10 {
+    // 将所有权移入线程之前克隆Arc<T>
+    // 克隆时增加计数，离开作用域，被丢弃时，减少计数。
+    let counter = Arc::clone(&counter);
+	let handle = thread::spawn(move || {
+	// lock，阻塞方式尝试获取锁
+    // 如果另一个线程拥有锁，并且那个线程panic了，则lock调用会失败，
+    // 遇到这种情况使用unwrap发出panic
+    // lock返回一个MutexGuard的智能指针,
+    // 提供了一个Drop实现当MutexGuard离开作用域时自动释放锁
+    // 锁的释放是自动发生的。
+	let mut num = counter.lock().unwrap();
+	*num += 1;
+	});
+	handles.push(handle);
+}
+// 等待所有线程执行结束
+for handle in handles {
+	handle.join().unwrap();
+}
+
+println!("Result: {}", *counter.lock().unwrap());
+```
 
 
 
-#### 2.6.2 并发，并行，多线程编程
+#### 2.6.2 Send 和 Sync
+
+Rust感知的并发概念Sync和Send trait。
+
+##### Send允许线程间转移所有权
+
+`Send` 标记 trait 表明类型的所有权可以在线程间传递。
+
+- 几乎所有的 Rust 类型都是`Send` 的，例外的是如 `Rc<T>` 多所有者。
+
+- 几乎所有基本类型都是 `Send` 的，除了裸指针（raw pointer）。
+
+- 任何完全由 `Send` 的类型组成的类型也会自动被标记为 `Send`。
 
 
 
-#### 2.6.3 Unsafe、原始指针
+##### Sync允许多线程访问
+
+`Sync` 标记 trait 表明一个实现了 `Sync` 的类型可以安全的在多个线程中拥有其值的引用。
+
+即，对于任意类型 `T`，如果 `&T`（`T` 的引用）是 `Send` 的话 `T` 就是 `Sync` 的。
+
+- 基本类型是 `Sync` 的，完全由 `Sync` 的类型组成的类型也是 `Sync` 的。
+
+智能指针 `Rc<T>` 也不是 `Sync` 的。
 
 
 
-智能指针
+
+
+
+
+#### 2.6.3 Unsafe、原始指针、智能指针
+
+静态分析，是保守派，怀疑可能出问题。
+
+unsafe Rust， 提供机制，告诉编译器，我确信没有问题，允许不安全操作。
+
+通过 `unsafe` 关键字来切换到不安全 Rust，开启一个新的存放不安全代码的块
+
+- 解引用裸指针
+- 调用不安全的函数或方法
+- 访问或修改可变静态变量
+- 实现不安全 trait
+- 访问 `union` 的字段
+
+`unsafe` 并不会关闭借用检查器或禁用任何其他 Rust 安全检查，只是提供了这五个不会被编译器检查内存安全的功能。
 
 
 
