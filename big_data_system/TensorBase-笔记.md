@@ -376,13 +376,15 @@ sudo ./gdbgui_0.13.2.2
   - Partition Tree分区树，存储和管理分区数据的元信息
   - Column Partition列分区信息`CoPaInfo`，简写Copa，列存，数据按列管理
     - 内存地址addr
-    - 内存地址addr_om ?
-    - 大小size: usize
+      - TB使用`libc::mmap` 函数将分区列文件，映射到内存地址，用于后续的读数据
+        - `crates/base/src/mmap.rs` 的`mm_file_ro`函数
+    - 内存地址addr_om  字符串列内存地址？
+    - 大小size: usize 行数
     - 字节大小len_in_bytes
   - 磁盘路径`.../tb_schema/p0`
-  - 当前也是四棵树（ps，pt，pr，l），加上 存储数据路径字符串数组（测试配置只有一个数据目录，如果有多个数据目录，会根据ptk散列，获取数据路径）
+  - `PartStore`当前也是四棵树（ps，pt，pr，l），加上 存储数据路径字符串数组（测试配置只有一个数据目录，如果有多个数据目录，会根据ptk散列，获取数据路径）
     - `tree_part_size`分区大小ps， tid,ptk  -  size， tid,ptk都是u64,part_size是usize
-    - `tree_parts`分区pt， cid,ptk -  siz_in_bytes: usize， Copa大小信息
+    - `tree_parts`分区pt， cid,ptk -  siz_in_bytes: usize， Copa大小信息，即分区列的行数
     - `tree_prids`prid？ pr, 也是一份分区总行数， tid,ptk - part_size     usize 大小
     - `tree_locks`表锁l， tid - :IVec
   - 核心方法
@@ -397,7 +399,7 @@ sudo ./gdbgui_0.13.2.2
     - `get_copa_siz_in_bytes_int_ptk` 参数cid,ptk，获取分区列文件长度（tree_parts）
     - `get_part_dir` 获取分区的路径（用户配置的数据目录路径）
       - 直接散列，感觉配置后，导致无法再修改
-    - `fill_copainfos_int_by_ptk_range`
+    - `fill_copainfos_int_by_ptk_range` 填充`CoPaInfo` 信息，将文件地址，映射到内存，用于后续数据的读取
 - `BaseMgmtSys`  系统信息提供对象
   - `crates/runtime/src/mgmt.rs`
   - 静态变量，`BMS`， lazy加载
@@ -489,6 +491,8 @@ TB写数据的文件组织设计，目前非压缩，最大的级别单位是Blo
 
 TB当前的这一个存储引擎`BaseStorage`不维持主键顺序，也没有什么排序键，单个分区文件也不会保证有序，看起来还是非常的原生态。没有任何索引，应该对点查询不够友好（本身OLAP，点查询到不是重点），但是缺少文件的统计信息，索引文件，没办法做任何的过滤，减少读取的磁盘数据，需要在内存中做过滤。更适合面向中小数据规模的全内存分析。（RAMCloud）
 
+并且实际上，`BaseStorage` 在磁盘上的格式，也是加载进内存后的格式（内存中的表示`CoPaInfo`）。
+
 TB利用的Apache Arrow格式，实际上支持字典编码，压缩数据。
 
 不过，考虑未来可以增加其他更复杂引擎，适应其他负载。（存储引擎层都还未成为独立的模块），
@@ -543,6 +547,224 @@ TB利用的Apache Arrow格式，实际上支持字典编码，压缩数据。
 TensorBase的读数据的流程，实际上自身先解析一次sql，获取表信息，需要投影的列，然后将参与的表全部加载进内存，作为datafusion的数据源。datafusion会再次解析sql，完成诸如 filter，join等逻辑，数据源来自于之前setup进内存的表。
 
 对于这种提供数据源的方式，需要将数据完全加载进内存才行，后续其实可以提供，类似datafusion自己带的csv，parquet文件格式的读取。
+
+
+
+### 4.3 DataFusion
+
+TensorBase的SQL 查询语句的执行引擎，绝大部分工作的承担者是Apache Arrow DataFusion。
+
+架构、原理相关，可以参考[Apache arrow笔记](https://github.com/tianjiqx/notes/blob/master/big_data_system/Apache%20Arrow.md)
+
+#### 4.3.1 ExecutionContext
+
+`crates/datafusion/src/execution/context.rs`
+
+执行上下文，用来注册数据源和执行查询。
+
+- 注册数据源
+  - `register_table` 方法，TB使用该方法将TB自己引擎的表，注册成内存表类型的数据源，供DataFusion后续处理。
+    - 数据源类型，由`TableProvider` trait提供，`MemTable` 实现了该trait
+      - `crates/datafusion/src/datasource/memory.rs` 
+      - MemTable中包含
+        - SchemaRef
+        - Vec<Vec<RecordBatch>>，外层Vec表示partition的集合，内存Vec表示一个分区有多个RecordBatch构成，一个RecordBatch表示一定行数的列存格式记录的集合。
+        - 表统计信息
+          - 表的行数，字节数，列的统计信息（null值，min，max，ndv）
+  - `register_csv` 注册CSV数据源（表名，文件路径）
+  - `register_parquet` 注册Parquet数据源（表名，文件路径）
+    - `crates/datafusion/src/physical_plan/parquet.rs` 文件定义了 `ParquetExec`  查询本地目录下所有的parquet格式文件，这里暂时不支持如hadoop等存储引擎上的文件。（也无副本可以用）
+      - 已经有一个rust访问hdfs集群的包https://github.com/hyunsik/hdfs-rs.git 不过已经是2015 年，很久未更新。另一个近期的是https://github.com/frqc/rust-hdfs  2020 年
+      - hadoop官方另外了一种访问方式是webHDFS
+  - `register_udaf` 和`register_udf` 注册聚集UDF和标量UDF
+  - `register_catalog` 注册catlog信息，包含一系列schema。
+    - `CatalogProvider`
+      - `SchemaProvider`
+  - 注册变量等
+
+- 执行`sql()`，创建一个DataFrame，df.colletion() 触发物理计划生成和执行。
+  - 包含创建逻辑计划，逻辑优化，物理计划。
+    - `crates/datafusion/src/sql`  
+      - `parser.rc`词法，语法解析成Statement
+      - `planner.rs` 逻辑计划生成
+    - `crates/datafusion/src/logical_plan` 
+    - `crates/datafusion/src/optimizer`
+    - `crates/datafusion/src/physical_plan`  
+    - `crates/datafusion/src/physical_optimizer`  
+
+#### 4.3.2 向量化执行
+
+在datafusion中，充分使用向量化的方式，批处理记录。
+
+- 表达式的向量化处理
+  - `crates/datafusion/src/physical_plan/expressions`
+  - `CountAccumulator`  count表达式的累加器
+    - `update_batch()` 方法接受数组，计算并增加非null值的个数
+    - `merge_batch()` 方法接受数组，计算并增加行数（包括null）
+    - `evaluate` 方法返回当前总行数
+  - `MaxAccumulator` max表达式累加器
+    - `update_batch()` 方法接受数组，计算这批数据的最大值`max_batch`，然后与当前累加器中最大值比较替换
+    - `merge_batch()` 方法接受数组，调用update_batch方法
+    - `evaluate` 方法当前最大值
+  - `impl PhysicalExpr for Column` 
+    - `evaluate` 方法 返回一列的一批数据`ColumnarValue` 
+      - Array 列值的数组
+      - Scalar 单个标量值， `into_array` 方法将单个标量转成一个具有相同值的数组
+        - 即类似filter  c1=10 的时候，会将Literal类型10的标量值，先转成10的数组，c1读取该列的数据，然后进行BinaryExpr的计算。
+
+- 算子的向量化处理
+  - GroupBy、Distinct
+    - `crates/datafusion/src/physical_plan/hash_aggregate.rs`
+    - `HashAggregateExec` DataFusion的group by实现方式，使用hash进行分组
+    - GroupedHashAggregateStream 将一个数据流转换为一个以hash分组，并聚合结果的流
+      - 输入和输出的next都是RecordBatch对象
+    - 对给定的一批记录RecordBatch进行处理`group_aggregate_batch`
+      - `evaluate` 获取待group列的数据
+      - `evaluate_many` 获取聚合列的数据
+      - 初始化分组key，聚合累加器
+      - 迭代每一行，检查key是否存在，不存在插入map，存在追加map项值的数组中
+        - `GroupByScalar` 单个key的分组表示
+      - 迭代没一个key，调用CountAccumulator 计算聚合的结果
+    - 迭代完所有RecordBatch后，根据聚合累加器中的结果生成输出RecordBatch`create_batch_from_map`
+  - Join
+    - `crates/datafusion/src/physical_plan/hash_aggregate.rs`
+    - `HashJoinExec` datafusion的join，实现方式也是hash join算法
+      - 合并left 的输入成一个流
+      - 迭代流的每一个RecordBatch，更新hash表
+      - 完成后，由hash表生成一个新的RecordBatch
+        - 看起来，需要满足left表能够完全装进内存
+      - 构建HashJoinStream
+        - `poll_next` 迭代处理right流的RecordBatch
+
+### 4.4 Ballista
+
+Ballista是DataFusion的分布式扩展，类Spark的执行引擎，已经合并进datafusion，概要的介绍，也可以参考[Apache arrow笔记](https://github.com/tianjiqx/notes/blob/master/big_data_system/Apache%20Arrow.md)。
+
+主要的组件：
+
+- 调度器Scheduler
+- 执行器Executor
+- 客户端Client
+
+（PS1：目前似乎没有看到TB使用Ballista，而是直接使用Datafusion，应该还是单机模式，毕竟注册的数据源还内存表）
+
+（PS2：根据早前2019info翻译了一篇文章有人用rust重写了spark，现在叫[vega](https://github.com/rajasekarv/vega) 现在作者似乎断断续续的还在开发） 
+
+#### 4.4.1 调度器Scheduler
+
+调度器实现了rRPC接口，提供以下方法
+
+- ExecuteQuery 
+  - 提交逻辑执行计划，或SQL，用于执行
+- GetExecutorsMetadata 
+  - 返回注册到调度器上的执行器信息
+- GetFileMetadata
+  - 返回整个集群中可用的文件元信息
+- GetJobStatus
+  - 返回已经提交的查询的状态
+- RegisterExecutor
+  - 注册执行器到调度器
+
+调度器可以以单点standalone方式运行，也可以使用etcd存储状态以集群模式运行。
+
+
+
+**源码:**
+
+- main函数
+  - `crates/ballista/rust/scheduler/src/main.rs`
+  - 读取配置文件（etcd/sled）
+  - 启动调度器服务SchedulerServer
+- SchedulerServer
+  - `crates/ballista/rust/scheduler/src/lib.rs`
+  - SchedulerGrpc 接口的方法
+    - `execute_query` 处理提交逻辑执行计划、SQL
+      - 解析逻辑计划，或者SQL
+      - 创建并保存job信息
+      - 独立线程，使用DataFusion创建物理计划，优化
+      - 更新job状态
+      - 使用`DistributedPlanner.plan_query_stages`  做分布式计划 query stage的生成
+      - 保存query stages 到任务队列
+      - 返回job id给客户端
+    - `get_file_metadata` 处理获取文件元信息
+    - `get_job_status` 处理获取任务状态请求
+    - `poll_work`  处理执行器Executor请求（task执行完，请求更新任务状态，是否可以接受新的task，如果可以，返回一个新的task给执行器）
+  - SchedulerState  调度器存储的状态，如任务状态信息，executor元信息等
+    - `crates/ballista/rust/scheduler/src/state/mod.rs`
+  - DistributedPlanner 将物理计划，划分为多个stages，stage的输出结果需要落盘
+    - `crates/ballista/rust/scheduler/src/planner.rs`
+    - `plan_query_stages`
+
+
+
+#### 4.4.2 执行器Executor
+
+执行器实现了Apache Arrow Filinght gRPC接口，负责
+
+- 执行查询stage，以apache arrow IPC格式持久化结果到磁盘
+- 将查询阶段结果作为 Flights 提供，以便其他执行程序和客户端可以检索它们
+
+
+
+**源码:**
+
+- mian函数
+  - `crates/ballista/rust/executor/src/main.rs`
+  - 读取配置文件
+  - 创建Executor，BallistaFlightService，FlightServiceServer对象
+    - FlightServiceServer封装BallistaFlightService，BallistaFlightService封装executor
+  - 启动FlightServiceServer服务
+  - 调度器gprc client连接到调度器，独立线程周期性的注册自己的元信息（心跳）
+- Executor
+  - `execute_partition` 执行一个query stage的一个分区处理，以apache arrow IPC格式持久化结果到磁盘，返回一个RecordBatch
+    - `QueryStageExec::try_new` 创建执行者
+    - `QueryStageExec.execute` 执行，返回结果流（RecordBatchStream，可以包含多个RecordBatch）
+      - `crates/ballista/rust/core/src/execution_plans/query_stage.rs`
+      - 调用物理执行计划的`execute`方法
+      - 执行结果的处理
+        - 不需要shuffle输出
+          - `utils::write_stream_to_disk` 将结果写到磁盘
+            - 一个stages可以包含多个执行算子（类似如spark一个窄依赖，划分的stage）
+          - 封装流结果为单RecordBatch的MemoryStream
+        - 需要
+          - 迭代处理每个RecordBatch的没一行，散列，生成索引信息，最后每个writer（等于输出分区个数），根据索引信息，以RecordBatch为粒度，写磁盘。
+          - 封装流分区的元信息（如路径）为单RecordBatch的MemoryStream
+    - `utils::collect_stream` 将结果流转换为RecordBatch（实际就简单从流提取一个RecordBatch）
+- FlightServiceServer
+  - 提供query stage的结果数据查询检索服务
+  - 标准方法`do_get`,`do_put`等
+
+
+
+#### 4.4.3 客户端Client
+
+Rust 客户端提供了一个 DataFrame API，它是 DataFusion DataFrame 的瘦包装器，并为客户端提供了构建执行查询计划的方法。
+
+客户端通过提交`ExecuteLogicalPlan`到调度器来执行查询计划，然后调用 `GetJobStatus`以检查是否完成。
+
+完成后，客户端会收到包含查询结果的 Flights 位置列表，然后将连接到适当的执行器进程以检索这些结果。
+
+
+
+**源码:**
+
+- `BallistaContext`
+  - `crates/ballista/rust/client/src/context.rs`
+  - 远程Ballista调度程序实例执行查询的上下文
+    - 唯一成员`state: Arc<Mutex<BallistaContextState>>`
+      - `BallistaContextState` 包含调度器的主机ip，端口，已经注册的表
+    - 提供如`read_parquet`方法，创建表扫描的DataFrame。
+      - `create_datafusion_context` 调用datafusion的方法创建datafusion的`ExecutionContext`
+      - 使用datafusion的`ExecutionContext.read_parquet`  方法创建DataFrame
+    - `register_parquet` 将读取到的DF，注册到`BallistaContext`，以便后续使用
+  - `sql` 接受sql，返回DF（逻辑计划）
+  - `collect` 执行sql，连接调度器后
+    - `execute_query` 生成job
+    - 循环检查job状态
+      - Executor会死循环向Scheduler拉去任务`poll_work`，执行完毕后更新任务状态
+    - 发现job 完成后，收集所有分区的结果，返回RecordBatchStream
+
+
 
 
 
