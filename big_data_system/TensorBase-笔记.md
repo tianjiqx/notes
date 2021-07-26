@@ -58,7 +58,7 @@
 
 - 分布式集群。 
 
-  - 基于DataFusion的Ballista，类ClickHouse的简易（半人工）分布式集群方案。已经完成。
+  - 基于DataFusion的Ballista，类ClickHouse的简易（半人工）分布式集群方案。
 
 - 存储层增强
 
@@ -91,6 +91,9 @@ cargo run --release --bin server -- -c crates/server/tests/confs/base.conf
 # 连接
 clickhouse-client --port 9528
 
+# 推荐支持使用multi statement的参数
+clickhouse-client --port 9528 -n
+
 ```
 
 测试sql：
@@ -102,7 +105,7 @@ select count(id) from employees
 select avg(salary) from employees
 
 
-show tables
+show tables employees
 
 
 -- join 测试 ,注意，当前部分关键字（列类型）大小写敏感，和clickhouse行为一致
@@ -149,11 +152,7 @@ select * from  employeeNames
 
 -- select name,salary from employees inner join employeeNames on id = id
 
-
-
-
 drop table employeeNames
-
 
 create table employeeNames ( employeeId UInt64, name String) ENGINE = BaseStorage
 insert into employeeNames values (0, 'Tom'), (1, 'Jack')
@@ -174,6 +173,7 @@ select * from  employeeNames
 select * from  employeeNames where name=''
 
 
+-- 该语法目前本应不支持
 insert into employeeNames(employeeId) values (4)
 
 -- bug: 插入 NULL值后 查询卡死
@@ -222,9 +222,17 @@ select avg(salary) from employees_partby_id
 -- 其他
 -- unit test中给出了一个分区表达式是 PARTITION BY mod(uuid, 100000)，预先分配10w个分区，根据uuid随机分配到任意分区。
 
+
+
+-- 多语句执行
+drop table if exists employees;
+create table employees (id UInt64, salary UInt64) ENGINE = BaseStorage;
+insert into employees values (0, 1000), (1, 1500);
+select count(id) from employees;
+select avg(salary) from employees;
+
+-- git commit --amend --no-edit --signoff
 ```
-
-
 
 
 
@@ -309,6 +317,8 @@ sudo ./gdbgui_0.13.2.2
         - `run_commands`  当前只处理一条语句，返回一个`BaseCommandKind`
 
           虽然语法解析器本身`BqlParser::parse(Rule::cmd_list, cmds)`支持解析出多条语句。
+          
+        - clickhouse client 通过-n参数可以支持多条sql语句执行，并且会自动切分query，最后输入到`run_commands`  的sql还是只有一条。（其他连接器，如jdbc？可能需要手动切分）
 
 - `crates/runtime/src/mgmt.rs`
 
@@ -369,7 +379,7 @@ sudo ./gdbgui_0.13.2.2
   - 磁盘物理路径`.../tb_schema/m0`
   - 使用到的库sled（雪橇）
     - 嵌入式数据库，类似BTreeMap功能，支持插入kv，点查询，前缀范围查询，当前四棵树（0，1，ts，cs），使用到lsm-tree？
-    - 优势是无锁树，领拷贝读取
+    - 优势是无锁树，零拷贝读取
     - 0存储名字与id的映射，1存储名字(id与名字的映射，数据库，表，列名)， ts表示表信息，cs表列信息
       - 表信息： 建表脚本cr，引擎en，分区表达式pa，分区列pc，setting信息（大概类似属性，以se开头），存储时加上tid作为前缀拼成key( Vec<u8>类型)，value以字节方式存储
 - `PartStore` `crates/meta/src/store/parts.rs`
@@ -765,6 +775,77 @@ Rust 客户端提供了一个 DataFrame API，它是 DataFusion DataFrame 的瘦
     - 发现job 完成后，收集所有分区的结果，返回RecordBatchStream
 
 
+
+#### 4.4.5 分布式执行计划
+
+Ballista的分布式执行计划实现，非常类似于SparkSQL的执行机制。
+
+有jobid，stageid的DAG图划分，以及通过ShuffleWriterExec和ShuffleReaderExec算子完成，数据的重分布。
+
+- DistributedPlanner
+
+  - `crates/ballista/rust/scheduler/src/planner.rs`
+  - `plan_query_stages`分布式计划的生成
+    - `plan_query_stages_internal` 将原单机的执行计划，转为分布式的执行计划，返回执行计划和stages的数组，一个stage是一个ShuffleWriterExec。
+      - 是一个递归的算法
+      - 从根节点开始，遍历孩子节点，将孩子节点应用`plan_query_stages_internal`生成新的执行计划孩子和孩子对应的stages，将孩子的stages追加到本节点需要返回的stages中
+      - 各个逻辑算子的处理
+        - `DfTableAdapter`  表示一个数据源
+          - 返回（生成物理计划，孩子节点的stages）
+        - `CoalescePartitionsExec` 折叠所有分区成一个单分区
+          - 创建一个stage（ShuffleWriterExec），并添加到需要返回的stages中
+            - ShuffleWriterExec的孩子计划是CoalescePartitionsExec的孩子计划，单分区（即分区类型None）
+        - `RepartitionExec` 数据重分区/重分布
+          - 创建一个stage（ShuffleWriterExec），并添加到需要返回的stages中
+            - ShuffleWriterExec的孩子计划是RepartitionExec的孩子计划，分区方法是RepartitionExec的分区方法
+        - `WindowAggExec` 窗口函数
+          - 未实现，保存
+        - 其他
+          - 返回（替换了孩子节点的执行计划，孩子节点的stages）
+    - `create_shuffle_writer`
+      - 创建一个`ShuffleWriterExec` 算子，输出单个分区，作为最终的query stage，输出查询结果。
+  - `remove_unresolved_shuffles` 事实上在`plan_query_stages` 生成的计划并不完整，缺乏真正shuffle结果的路径信息（因为还未调度，无法知道真正的执行节点），在创建ShuffleWriterExec时，使用UnresolvedShuffleExec进行了包装。
+    - 调度器，在调度计划时，会在`assign_next_schedulable_task` 方法中处理，使用ShuffleReaderExec替换，设置上一个stage，shuffle完后的真正的路径信息。
+- ShuffleWriterExec
+  - `crates/ballista/rust/core/src/execution_plans/shuffle_writer.rs`
+  - 查询计划的一个部分section，该部分具有一致的分区，作为一个单元执行，每个分区并行执行。 每个分区的输出被重新分区并以 Arrow IPC 格式流式传输到磁盘。 查询的后续阶段将使用 ShuffleReaderExec 来读取这些结果。还有一个用于延迟计算的UnresolvedShuffleExec的包装器类。
+  - 单孩子节点（上层的执行计划）
+  - 执行`execute`，处理单个分区
+    - 调用孩子的执行计划，处理该分区，返回一个SendableRecordBatchStream
+    - shuffle输出类型
+      - 单一分区，不分区（None）
+        - 直接将孩子的输出流写到磁盘（work_dir/job_id/stage_id/partition）`utils::write_stream_to_disk`
+          - 异步的方法
+        - 返回MemoryStream，包含一个RecordBatch，RecordBatch中保存有分区文件路径信息，统计信息。
+      - hash分区 （**列存格式的数据散列**）
+        - 根据hash后的分区数量，创建对应数量的ShuffleWriter（实际使用时，没有再创建一次）
+        - 遍历读取孩子的输出流的每个RecordBatch
+          - 根据hash的表达式（可能复数个列），计算结果`Vec<ArrayRef>`类型，`ArrayRef` 长度为batch的长度
+          - `datafusion::physical_plan::hash_join::create_hashes`  函数，联合多列的hash表达式计算结果，对每行生成一个hash值（如果只有一列，那么就是之前计算的hash值）。
+          - 对每个hash值，根据分区个数，散列，计算所属的索引数组位置
+            - `*hash % num_output_partitions as u64`
+          - 遍历索引数组
+            - 根据索引，逐列提取需要输出到某个分区的值（指针，引用计数，非内存数据拷贝，fine）
+              - （这里可能可以优化，如果索引集合为空可以直接continue）
+            - 封装colmns数据为RecordBatch
+            - 通过ShuffleWriter，写RecordBatch到目标路径
+            - （可能看到性能跟hash结果的分区数量以及一行包含的列的个数有关，一个RecordBatch包含的行数应该远大于分区数量才比较好，如果相等，理论上性能应该是接近行存的散列）
+              - 散列后的分区数量，一般应该接近executor的个数，而RecordBatch一般应该设置超过1000行，这样一看，列存格式的shuffle，理论上性能应该不成问题（之前以为会有内存拷贝，需要重新组织列存格式）
+              - 对于小数据集，会更加适合广播hash join。
+- ShuffleReaderExec
+  - `crates/ballista/rust/core/src/execution_plans/shuffle_reader.rs`
+  - 读取已经被executor执行的ShuffleWriterExec物化到磁盘的分区
+  - 无孩子节点
+  - 分区`partition: Vec<Vec<PartitionLocation>>`
+    - `partition[i]` 表示单个分区是`Vec<PartitionLocation>`类型，`PartitionLocation`的数组，即reader上的一个分区，会收集各个executor上的属于该分区的数据。
+      - `PartitionLocation` 表示一个执行器上的一个分区。
+        - `PartitionId` 分区id
+        - `ExecutorMeta` 执行器的元信息（id，host，port）
+        - `PartitionStats` 分区的统计信息（行数，batch数，字节数）
+  - 执行（读取单个分区数据）
+    - 遍历``partition[i]` 中的分区数据位置
+      - 通过`BallistaClient.fetch_partition` 方法想每个executor拉取数据
+    - 合并成一个输出流`RecordBatchStream`
 
 
 
