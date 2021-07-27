@@ -393,19 +393,18 @@ sudo ./gdbgui_0.13.2.2
     - 字节大小len_in_bytes
   - 磁盘路径`.../tb_schema/p0`
   - `PartStore`当前也是四棵树（ps，pt，pr，l），加上 存储数据路径字符串数组（测试配置只有一个数据目录，如果有多个数据目录，会根据ptk散列，获取数据路径）
-    - `tree_part_size`分区大小ps， tid,ptk  -  size， tid,ptk都是u64,part_size是usize
-    - `tree_parts`分区pt， cid,ptk -  siz_in_bytes: usize， Copa大小信息，即分区列的行数
-    - `tree_prids`prid？ pr, 也是一份分区总行数， tid,ptk - part_size     usize 大小
+    - `tree_part_size`分区（行数）大小ps， tid,ptk  -  size， tid,ptk都是u64,part_size是usize （为writer）
+    - `tree_parts`分区pt， cid,ptk -  siz_in_bytes: usize， Copa大小信息，即分区列的字节大小（专为reader，保证读写不需要加锁，能够读到的数据，是已经写好的）
+    - `tree_prids`prid pr, 也是一份分区总行数， tid,ptk - part_size     usize 大小  （为reader）
     - `tree_locks`表锁l， tid - :IVec
   - 核心方法
     - `get_prid_int_ptk` 根据tid,ptk,reserved_len，CAS更新分区行数(tree_part_size)
-      - 可能为了后面可以并行插入单个分区?
+      - 因此并行插入单个分区（文件），占位
     - `set_copa_size_int_ptk` 根据tid,ptk,part_size 更新行数。（insert覆盖，tree_prids）
-      - 一个分区，插入全部完成后，更新的行数
-        - （实际插入数据时是先更新行数，之后才落盘，有一点危险)
+      - 一个分区，插入全部完成后，再更新的行数，为reader读取
       - 如果后面支持事务，倒是可以回滚插入的行数
       - 检查到`engine/src/datafusions.rs` 会用`fill_copainfos_int_by_ptk_range` 用到了`tree_prids` 读取的行，或许这个表/树是为了不影响读写不用加锁？
-    - `insert_copa_int_ptk` 插入cid,ptk - siz_in_bytes 更新分区列文件长度 （tree_parts）
+    - `insert_copa_int_ptk` 插入cid,ptk - siz_in_bytes 更新分区列文件长度（字节） （tree_parts）
     - `get_copa_siz_in_bytes_int_ptk` 参数cid,ptk，获取分区列文件长度（tree_parts）
     - `get_part_dir` 获取分区的路径（用户配置的数据目录路径）
       - 直接散列，感觉配置后，导致无法再修改
@@ -426,7 +425,6 @@ sudo ./gdbgui_0.13.2.2
 - 入口`write_block`
   - `MetaStore.get_table_info_partition_cols()` 根据表id（tid_pc）获取分区键信息ptks（HashMap<u64, Vec<(u32, u32)>>类型）
     - 注意，建表时，未指定分区列时，直接创建`0, vec![(0, (blk.nrows - 1) as u32)]` 也就是只有一个分区ptk=0
-    - 
   - `gen_parts_by_ptk_names` 创建一个分区的HashMap<u64, Vec<(u32, u32)>
     - 先根据分区列列名获取分区列索引ptk_idx 
       - （这里看起来只支持单列的分区，这里分区键是等同是主键？如果数据分区不是按内部自己增的rowid，而是按照真实数据主键列，那么对于事实表的分区划分，是否可能会导致数据分布不均？）
@@ -437,18 +435,15 @@ sudo ./gdbgui_0.13.2.2
       - value： 元组数组Vec<(u32, u32)（插入该分区的行的范围的数组）
         - 第一次初始化（数组为空），push 元组(行号:u32，行号:u32)，
         - 第二次插入，条件匹配，如果是连续的（前一行也是插入到这个分区），修改元组(第一次行号:u32，第二次行号:u32)，插入前检查是否连续。闭区间。否者插入一个新的单行范围的元组，之后插入该分区的数据，使用最后一个元组重复次过程。
-  - 循环迭代parts，调用`write_part/write_part_locked(有大字段类型，String)`  写分区数据（一个分区，实际一个文件，单线程（单线程更好？），实际可以并行，不过可能是更新元信息，当前不好导致不好并发，或许封装CAS操作，更新分区大小）
+  - 循环迭代parts，调用`write_part/write_part_locked(有大字段类型，String)`  写分区数据（一个分区，实际一个文件，单线程，实际可以并行）
     - `PartStore.get_part_dir(ptk)` 获取分区数据目录(xxx/tb_data)
       - 配置多块数据目录时，可以将数据按分区散列到不同的目录
     - `ensure_table_path_existed` 确保分区路径存在，创建目录
     - `PartStore.acquire_lock(tid)?`  加表锁
       - 很简单，死循环尝试加锁
       - 注意，`tree_locks` 表锁树，每次重启时会clear，用于处理遗留的锁
-    - `PartStore.get_prid_int_ptk(tid, ptk, pt_len)` ， pt_len为此次插入的分区行数(Vec<(u32, u32)>范围求和)
+    - `PartStore.get_prid_int_ptk(tid, ptk, pt_len)` ， pt_len为此次插入的分区行数(Vec<(u32, u32)>范围求和) 获取已写的分区行数，并更新（先占位，后续才实际写）
       - `PartStore.tree_part_size.fetch_and_update()` 会从分区元信息中获取旧的分区行数，加上pt_len
-        - u32(4 294 967 296)， 会导致有插入次数限制？每次插入，假设有1000个分区，这里分区函数怎么设置。如果有高频插入，即使每次只有1个分区，也只能插入42亿次？
-          - 后续检查数据文件路径，多次插入，始终分区ptk为0
-        - 
     - 逐列，插入数据
       - `get_part_path(tid, cid, ptk, dp)` 获取分区路径 
         - 表单独一级目录
@@ -465,8 +460,8 @@ sudo ./gdbgui_0.13.2.2
           - prid 表示总行数，ctyp_siz为定长大小的列类型（数据没有压缩）
       - `PartStore.release_lock(tid)` 释放表锁
         - 实际就是覆盖写0
-      - `PartStore.insert_copa_int_ptk`  更新分区列文件大小
-    - `PartStore.set_copa_size_int_ptk` 更新分区数量大小（目前看起来，应该一直只是+1）
+      - `PartStore.insert_copa_int_ptk`  更新分区列文件字节大小（tree_parts）
+    - `PartStore.set_copa_size_int_ptk` 更新分区行数（tree_prids）
 
 **总结**：
 
