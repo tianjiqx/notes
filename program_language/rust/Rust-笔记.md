@@ -665,6 +665,10 @@ match event {
 
 - 方法（method）是依附于对象的函数。
 - 通过关键字 `self` 来访问对象中的数据和其他方法
+  - `Self` 大写的S表示当前实现此tarit的类型
+    - 在`Clone`的tarit中，返回Self类型的对象，其他方法有时需要返回`& Self`。
+  - 方法参数中 `self`  等价于`self: Self`，`&self`参数等价于`self: &Self`,`&mut self`参数等价于`self: &mut Self`
+    - `&mut self` 转成 `& Self`  使用 `&*self` 返回自身对象的引用
 - 在impl代码块中定义
 
 ```rust
@@ -1833,25 +1837,155 @@ Rust感知的并发概念Sync和Send trait。
 
 
 
-
-
-
-
 #### 2.6.3 Unsafe、原始指针、智能指针
 
-静态分析，是保守派，怀疑可能出问题。
+##### Unsafe
+
+rust静态分析，是保守派，怀疑可能出问题。
 
 unsafe Rust， 提供机制，告诉编译器，我确信没有问题，允许不安全操作。
 
 通过 `unsafe` 关键字来切换到不安全 Rust，开启一个新的存放不安全代码的块
 
-- 解引用裸指针
+- 解引用裸指针（raw pointer）
 - 调用不安全的函数或方法
 - 访问或修改可变静态变量
 - 实现不安全 trait
 - 访问 `union` 的字段
 
 `unsafe` 并不会关闭借用检查器或禁用任何其他 Rust 安全检查，只是提供了这五个不会被编译器检查内存安全的功能。
+
+##### 智能指针
+
+**智能指针**（*smart pointers*）是一类数据结构，他们的表现类似指针，但是拥有额外的元数据和功能。
+
+一个常用的类型是 **引用计数** （*reference counting*）智能指针类型，其允许数据有多个所有者，当没有任何所有者时负责清理数据（在 Rust 中，每当值离开作用域时，编译器会自动插入这些调用Drop的方法的代码完成资源释放，其他如C++需要手动调用析构函数）。
+
+Rust普通引用和智能指针的区别：引用一般只是借用数据，而智能指针是拥有指向的数据（可以修改）。
+
+ `String` 和 `Vec<T>` 本质上就是智能指针。
+
+智能指针通常使用结构体实现，其实现了 `Deref` 和 `Drop` trait，用于引用和清理数据。
+
+标准库中常用的智能指针：
+
+- `Box<T>`，用于在堆上分配值
+- `Rc<T>`，一个引用计数类型，其数据可以有多个所有者
+  - `Arc<T>` 可线程间安全传递
+- `Ref<T>` 和 `RefMut<T>`，通过 `RefCell<T>` 访问。（ `RefCell<T>` 是一个在运行时而不是在编译时执行借用规则的类型）。
+
+**Box<T>**
+
+ box 允许将一个值放在堆上而不是栈上。留在栈上的则是指向堆数据的指针。数据被储存在堆上而不是栈上，box 没有性能损失。
+
+场景：
+
+- 当有一个在编译时未知大小的类型，而又想要在需要确切大小的上下文中使用这个类型值的时候
+  - 创建递归类型，值的一部分是相同类型的另一个值。
+- 当有大量数据，并希望在确保数据不被拷贝的情况下转移所有权的时候
+- 当希望拥有一个值并只关心它的类型是否实现了特定 trait，而不是其具体类型的时候
+
+```rust
+// 定义变量 b，其值是一个指向被分配在堆上的值5的Box
+let b = Box::new(5);
+println!("b = {}", b);
+
+
+// 创建递归类型 cons list
+enum List {
+    Cons(i32, List),
+    Nil,
+}
+
+// 错误： 确定计算List类型时，递归循环，无法计算类型大小
+//let list = Cons(1, Cons(2, Cons(3, Nil)));
+
+// 修改：
+enum List {
+    Cons(i32, Box<List>), //  Box<T> 指针大小确定
+    Nil,
+}
+
+let list = Cons(1,
+    Box::new(Cons(2,
+        Box::new(Cons(3,
+            Box::new(Nil))))));
+
+
+// 解引用
+let x = 5;
+let y = &x;  // y是x的引用类型
+
+assert_eq!(5, x);
+assert_eq!(5, *y);  // 与integer类型比较，需要解引用，将&{integer} 通过解引用符号* 转成与integer
+
+
+// Box重载了解引用符号，可以像引用一样使用 Box<T>
+let x = 5;
+let y = Box::new(x);
+
+assert_eq!(5, x);
+assert_eq!(5, *y);
+```
+
+**Rc<T> 引用计数智能指针**
+
+多所有权，允许共享值。应用场景，免数据拷贝。但是不能修改包裹的对象。
+
+```Rust
+// 共享的list 部分
+let a = Rc::new(Cons(5, Rc::new(Cons(10, Rc::new(Nil)))));
+
+let b = Cons(3, Rc::clone(&a)); // clone 只是增加引用计数
+let c = Cons(4, Rc::clone(&a));
+```
+
+**Arc<T>**
+
+原子引用计数，`Rc`的多线程版本。
+
+- 可以跨线程传递，跨线程共享对象
+- 对包括的类型对象，无可变性要求
+
+
+
+**RefCell<T>**
+
+`RefCell<T>` 代表其数据的唯一的所有权。用于在运行时，检查借用规则（任意时刻只有一个可变引用或者无数不可变引用，引用必须有效）。单线程场景。
+
+区别：
+
+- `Rc<T>` 允许相同数据有多个所有者；`Box<T>` 和 `RefCell<T>` 有单一所有者。
+- `Box<T>` 允许在编译时执行不可变或可变借用检查；`Rc<T>`仅允许在编译时执行不可变借用检查；`RefCell<T>` 允许在运行时执行不可变或可变借用检查。
+- 因为 `RefCell<T>` 允许在运行时执行可变借用检查，所以可以在即便 `RefCell<T>` 自身是不可变的情况下修改其内部的值。
+
+```rust
+let x = 5;
+// x 是不可变的，无法可变的借用
+//let y = &mut x;
+
+pub trait Messenger {
+    // send 方法 不可变
+    fn send(&self, msg: &str);
+}
+use std::cell::RefCell;
+struct MockMessenger {
+    // 内部可变的指针
+    sent_messages: RefCell<Vec<String>>,
+}
+impl MockMessenger {
+    fn new() -> MockMessenger {
+        MockMessenger { sent_messages: RefCell::new(vec![]) }
+    }
+}
+impl Messenger for MockMessenger {
+    fn send(&self, message: &str) {
+        // self 是不可变的引用，但是对sent_messages进行了修改
+        // borrow_mut 返回可变的指针
+        self.sent_messages.borrow_mut().push(String::from(message));
+    }
+}
+```
 
 
 
