@@ -369,8 +369,6 @@ sudo ./gdbgui_0.13.2.2
         - `crates/datafusion/src/execution.context.rs` 的`optimze`方法 做逻辑优化
         - `crates/datafusion/src/execution.context.rs`  `create_physical_plan` 创建物理计划
 
-
-
 ### 4.2 模块解构
 
 #### 4.2.1 元信息 `crates/meta`
@@ -553,6 +551,12 @@ TensorBase的读数据的流程，实际上自身先解析一次sql，获取表�
 
 对于这种提供数据源的方式，需要将数据完全加载进内存才行，后续其实可以提供，类似datafusion自己带的csv，parquet文件格式的读取。
 
+优势，
+
+- 可以分布式读取数据源，
+- 可以pipeline，不必等待数据完全加载进内存后才能进行后续处理。
+- 重用查询优化，不必自己重写一套分区裁剪等逻辑减少读取的数据。并且后续能够基于真实代价模型，调整执行计划。
+
 
 
 ### 4.3 DataFusion
@@ -576,17 +580,19 @@ TensorBase的SQL 查询语句的执行引擎，绝大部分工作的承担者是
         - Vec<Vec<RecordBatch>>，外层Vec表示partition的集合，内存Vec表示一个分区有多个RecordBatch构成，一个RecordBatch表示一定行数的列存格式记录的集合。
         - 表统计信息
           - 表的行数，字节数，列的统计信息（null值，min，max，ndv）
+    - `TableProvider` 方法
   - `register_csv` 注册CSV数据源（表名，文件路径）
   - `register_parquet` 注册Parquet数据源（表名，文件路径）
     - `crates/datafusion/src/physical_plan/parquet.rs` 文件定义了 `ParquetExec`  查询本地目录下所有的parquet格式文件，这里暂时不支持如hadoop等存储引擎上的文件。（也无副本可以用）
       - 已经有一个rust访问hdfs集群的包https://github.com/hyunsik/hdfs-rs.git 不过已经是2015 年，很久未更新。另一个近期的是https://github.com/frqc/rust-hdfs  2020 年
       - hadoop官方另外了一种访问方式是webHDFS
+      - path是简单的一个字符串类型，在`ParquetExec.try_from_path` 方法中创建读取本地目录路径下的parquet文件的物理执行计划。（若在ballista的分不会是计划情况下，需要executor路径一致？）
   - `register_udaf` 和`register_udf` 注册聚集UDF和标量UDF
   - `register_catalog` 注册catlog信息，包含一系列schema。
     - `CatalogProvider`
       - `SchemaProvider`
   - 注册变量等
-
+  
 - 执行`sql()`，创建一个DataFrame，df.colletion() 触发物理计划生成和执行。
   - 包含创建逻辑计划，逻辑优化，物理计划。
     - `crates/datafusion/src/sql`  
@@ -841,6 +847,24 @@ Ballista的分布式执行计划实现，非常类似于SparkSQL的执行机制�
     - 遍历``partition[i]` 中的分区数据位置
       - 通过`BallistaClient.fetch_partition` 方法想每个executor拉取数据
     - 合并成一个输出流`RecordBatchStream`
+
+
+
+简单的想法：
+
+- ballista 作为计算引擎层，TB实例作为存储引擎节点，算作一种计算与存储分离的架构。与spark外接各种存储引擎的模式类似。更多，spark可以部署在yarn或者k8s（后者看起来更前途光明）上，ballista 也可以类似。
+
+- ballista 获取数据源，以当前datafusion的注册数据源的方式，在client端注册数据源信息，生成逻辑计划，然后提交计划到scheduler进行执行。
+
+  datafusion的注册数据源接口还很简单。可以参考Spark DataSource/DataSource V2 接口注册数据源，下推的filter。
+
+- TB 当前自己的原信息存储在sled中，当前是单机版本。可以提取出来，以etcd？管理的sled集群，提供元信息服务。这样的设计变成hive的metastore角色、tidb的PD cluster。实际还是单点服务，有其他的可扩展、高可用思路吗？（k8s来管理？todo学习k8s架构原理，k8s operator）元信息管理的负载情况 （clickhouse的元信息管理？）
+
+  元信息管理，与ballista  scheduler是同样的master类似的角色，但是不合并在一起的理由：模块解耦，可更换、外接计算引擎（spark，kylin等），接hadoop生态。
+
+  提供元信息接口，meta client，供datafusio使用的另外好处，在4.2.3 节总结提到。
+
+- 关于WAL，对于OLAP系统来讲个人未了解相关实现（hbase WAL算？），如hive，是没有的，而是写进临时目录，来保证原子性。（todo：读有些重新思考数据库的架构论文，对日志是如何考虑的。aurora 这个OLTP对日志的优化，polardb对日志的优化）对大数据，OLAP系统而言，特点是大数据批量插入，非单条写入。从集中是数据库，引入日志，是为了保证单机崩溃，用redo，undo处理脏页的问题，分布式数据库，利用日志和raft等算法，可以进行副本状态机一致性的改变。对TB的base引擎，数据文件特点是是追加的，是否完全可以不需要考虑脏页问题，保证文件offset正确，只需要覆盖即可？不过存在日志的一个额外好处是，对于扩展系统如备份，恢复、同步，可以拷贝日志，保证实时性和事务一致性状态的恢复。如果只有记录数据的物理文件，如果是物理文件为单位备份恢复，实时性无法保证。（考虑数据即日志？）（tidb似乎有从tiflash写tikv的路径，如何做日志同步的）
 
 
 
