@@ -189,7 +189,86 @@ TiDB的MPP，在存储上通过学习行存的TiKV，创建列存副本。
 
 在计算上，一方面沿用之前协处理器思想，用clickhouse适配列存格式的计算。
 
-另一方面，通过ExchangeSender 和ExchangeReceiver  支持数据的shuffle，横向扩展需要处理一些大数据量的算子的计算节点的数量。
+另一方面，通过ExchangeSender 和ExchangeReceiver  支持数据的shuffle，横向扩展需要处理一些大数据量的关键算子的计算节点的数量。
+
+
+
+## 2. 计算存储分离
+
+TiDB观点：
+
+在网络带宽、延迟发展和云环境情况下，存储与计算的耦合存在的问题：
+
+1. 计算与存储强绑定，总有一个资源是浪费的
+2. 对服务器选型（云服务商），纠结计算型，存储型
+3. 云计划场景下，弹性的粒度如果是机器，无法充分利用资源。
+4. 基于高性能网络的块存储EBS，替换主机存储成为主流，存储与计算的耦合架构更加不合理。
+
+
+
+## 3. HTAP的演进
+
+TiDB 最初关心和想要解决的问题是mysql的分库，分表问题。
+
+但是由于支持标准SQL能力，作为数据底层，在数据汇集起来后，演进出AP能力。
+
+- 早期，distSQL和扩展并行度，第一次提升分析能力；
+
+- OLAP查询中间结果，过大时，容易产生OOM，引入Spark缓解，支持大规模数据的批处理能力；
+- 为了解决，中小规模，并发度更高，低延迟的AP查询，以及解决存储（TiKV）共用，影响OLTP业务的问题，引入了TiFlash节点的MMP架构
+  - 物理隔离是最好的资源隔离
+  - 关键算子（Hash join）分布式化等提供基础AP需求的计算力
+
+下一步的探索：
+
+- 向内，产品内嵌功能的迭代，完成HTAP
+- 想外，整合多个技术栈（spark，Flink等），进行数据连同。流+分布式HTAP能力。
+
+
+
+## 4. 存储
+
+### 4.1 行存的KV模型
+
+同一个 Key 的多个版本，版本号较大的会被放在前面，版本号小的会被放在后面。
+
+TiKV名字带有KV，很容易让人误会K和V都是单个值，一行的每一个单元格作为一个V，实际上**V是一行数据**。 真正的列存是TiFlash。
+
+```text
+ Key:   tablePrefix{TableID}_recordPrefixSep{RowID}
+ Value: [col1, col2, col3, col4]
+ // opt: 如果某个表有整数型的主键，TiDB 会使用主键的值当做这一行数据的RowID
+```
+
+索引
+
+TiDB 同时支持主键和二级索引（包括唯一索引和非唯一索引）。与表数据映射方案类似，TiDB 为表中每个索引分配了一个索引 ID，用 `IndexID` 表示。
+
+```text
+Key:   tablePrefix{tableID}_indexPrefixSep{indexID}_indexedColumnsValue
+Value: RowID
+```
+
+普通二级索引(非唯一索引)
+
+```text
+Key:   tablePrefix{TableID}_indexPrefixSep{IndexID}_indexedColumnsValue_{RowID}
+Value: null
+```
+
+### 
+
+### 4.2 Region
+
+默认96MB。
+
+范围 [StartKey，EndKey) 分片。
+
+最小粒度的调度和副本单元。
+
+点查询，开销固定，不随数据量扩张。
+
+（TODO，region非固定行数而是靠大小，region的定位开销，不随数据量增长？region在PD上的管理结构）
 
 
 
@@ -198,4 +277,6 @@ TiDB的MPP，在存储上通过学习行存的TiKV，创建列存副本。
 - [MPP and SMP in TiDB](https://pingcap.com/blog-cn/mpp-smp-tidb) 2016年11月，早期并行计划框架（多map，单reduce）
 - [TiDB 中文文档](https://docs.pingcap.com/zh/tidb/stable/overview)
 - [TiFlash](https://docs.pingcap.com/zh/tidb/stable/tiflash-overview)
+- [pdf: TiDB快速起步01-07课](https://learn.pingcap.com/api/learner/docs/info/download/90003/73e770aa-8e03-443d-af0a-5000bb8b15ae.pdf?fileName=01%E8%AF%BE-07%E8%AF%BE_TiDB_%E5%BF%AB%E9%80%9F%E8%B5%B7%E6%AD%A5_%E5%AD%A6%E7%94%9F%E6%8C%87%E5%8D%97) 原理，演进哲学
+- [pdf:TiDB系统管理08-22](https://learn.pingcap.com/api/learner/docs/info/download/2/3de619f7-2ff5-4b4f-934f-64f32242a2c8.pdf?fileName=08%E8%AF%BE-22%E8%AF%BE_TiDB_%E7%B3%BB%E7%BB%9F%E7%AE%A1%E7%90%86%E5%9F%BA%E7%A1%80_%E5%AE%9E%E9%AA%8C%E6%89%8B%E5%86%8C)  使用运维教程大全
 
