@@ -1317,7 +1317,9 @@ let f = File::open("hello.txt").expect("Failed to open hello.txt");
 
 #### 2.4.4 结果Result
 
-[`Result`](https://doc.rust-lang.org/std/result/enum.Result.html) 是 [`Option`](https://doc.rust-lang.org/std/option/enum.Option.html) 类型的更丰富的版本，描述的是可能 的**错误**而不是可能的**不存在**。
+[`Result`](https://doc.rust-lang.org/std/result/enum.Result.html) 是 [`Option`](https://doc.rust-lang.org/std/option/enum.Option.html) 类型的更丰富的版本，描述的是可能的**错误**而不是可能的**不存在**。
+
+Result用于处理可恢复的错误。
 
 `Result<T，E>` 可以有两个结果的其中一个：
 
@@ -1989,6 +1991,244 @@ impl Messenger for MockMessenger {
 
 
 
+##### Pin\<P> 
+
+```rust
+use std::pin::Pin;
+
+pub struct Pin<P> {
+    pointer: P,
+}
+```
+
+> **Pin**是一个这样的智能指针，他内部包裹了另外一个指针**P**，并且只要**P**指针指向的内容（我们称为**T**）没有实现**Unpin**，则可以保证**T**永远不会被移动（move）。
+>
+> 一般用Pin<P<T>>表示，P是Pointer的缩写，T是Type的缩写
+>
+> **Pin**自身是一个智能指针，**impl**了**Deref**和**DerefMut**
+>
+> **Pin**包裹的内容只能是指针，不能是其他普通类型
+>
+> **Pin**具有“钉住”**T**不能移动的功能，只要**T** 没有实现**Unpin**（默认所有类型都实现了**Unpin**，除了async/await 被编译后的实现Future的结构体）
+
+**PIn的引入，为了防止自引用结构体的move。** 使用Pin，用于编译时检查自引用结构体是否存在move，存在时报错。
+
+推荐直接阅读[Rust的Pin与Unpin](https://folyd.com/blog/rust-pin-unpin/) 这篇文章
+
+```rust
+//Pin使用
+// new, P指向的T是Unpin, Pin的”钉住“效果是不起作用，跟正常的指针一样
+Pin::new()
+// unsafe 方法
+Pin::new_unchecked()
+// Pin<&mut T> 栈上，Pin<Box<T>> 堆上
+
+struct Test {
+    a: String,
+    b: *const String,
+    _marker: PhantomPinned, // 实现!UnPin
+}
+
+let mut test1 = unsafe { Pin::new_unchecked(&mut Test::new("test1")) };
+Test::init(test1.as_mut());
+
+let mut test2 = unsafe { Pin::new_unchecked(&mut Test::new("test2")) };
+Test::init(test2.as_mut());
+
+println!("a: {}, b: {}", Test::a(test1.as_ref()), Test::b(test1.as_ref()));
+
+// 取消注释会编译报错，
+// std::mem::swap(test1.get_mut(), test2.get_mut());
+println!("a: {}, b: {}", Test::a(test2.as_ref()), Test::b(test2.as_ref()));
+```
+
+
+
+#### 2.6.4 Aysnc/await
+
+rust 提供的**异步并发**编程模型，允许在少量 OS 线程上运行大量并发任务，同时通过`async/await`语法保留普通同步编程的大部分外观。（OS线程池，无法满足大量IO密集型的工作负载）
+
+- 使用async 声明 需要异步的函数
+  - async函数由编辑器生成的Future
+    - `Future` 是一个用trait实现的状态机，必须在executor上执行。
+      - 如`futures::executor::block_on()` 阻塞，等待Future执行。
+
+- 使用await异步的获取另一个Future返回的结果
+  - await由编译器生成代码调用future的poll方法。
+  - await不阻塞当前线程，异步等待Future的执行
+  - await也只能在`async` 声明的函数或者blocks中使用
+
+```rust
+use futures::executor::block_on;
+
+async fn learn_song() -> Song { /* ... */ }
+async fn sing_song(song: Song) { /* ... */ }
+async fn dance() { /* ... */ }
+
+// 同步阻塞模式
+let song = block_on(learn_song()); // 先学唱歌，返回Song
+block_on(sing_song(song)); // 然后，唱歌
+block_on(dance()); //最后，跳舞
+
+// 异步
+async fn learn_and_sing() {
+	// 还是需要先学唱歌，但是异步等待学会
+    let song = learn_song().await;
+    // 学会后，执行唱歌这首歌
+    sing_song(song).await;
+    // 由于学会歌和唱歌是异步的，执行learn_and_sing方法不会阻塞主线程，可以继续执行其他逻辑，如跳舞
+    // 又保证了学歌，然后唱歌的同步逻辑
+}
+async fn async_main() {
+    let f1 = learn_and_sing();
+    let f2 = dance();
+    // 这里的join，可以并发等待多个Future的执行
+    // 如果f1 被block了，执行f2，反之亦然
+    // 如果f1和f2都被block了，那么阻塞主线程，等待executor执行f1,f2
+    // 学歌并唱歌，与跳舞可以同时进行
+    futures::join!(f1, f2);
+}
+block_on(async_main());
+```
+
+对比：
+
+**OS线程**：
+
+- 适用于少量任务，因为线程会带来 CPU 和内存开销。线程之间的生成和切换非常昂贵，因为即使是空闲线程也会消耗系统资源。
+- 线程池库，可以降低一些成本，但是依然还是存在。
+- 优势，可以重用现有的同步代码
+
+**Aync**：
+
+- 显著降低CPU和内存开销，特别是对于具有大量IO绑定任务的工作负载，例如服务器和数据库。
+- 可以拥有比OS线程多几个数量级的任务
+- 缺点，由于异步函数生成的状态机以及每个可执行文件都捆绑了一个异步运行时，异步 Rust 会导致更大的二进制 blob？
+
+
+
+##### 实现原理
+
+**Future** 
+
+`Future`trait是Rust异步编程的核心。
+
+A`Future`是可以产生值（可能为空()）的异步计算。
+
+```rust
+// Future模型
+trait SimpleFuture {
+    // 输出类型
+    type Output;
+    // 拉取结果的方法poll
+    // wake方法，用于唤醒Pending的Future，重新调用poll
+    // 使用wake，可以避免executor轮询所有的Future
+    fn poll(&mut self, wake: fn()) -> Poll<Self::Output>;
+}
+// poll方法返回结果类型
+enum Poll<T> {
+    Ready(T), // Future完成，返回结果
+    Pending, // Future还不能完成，排队
+}
+
+//具体实现
+pub struct SocketRead<'a> {
+    socket: &'a Socket,
+}
+impl SimpleFuture for SocketRead<'_> {
+    type Output = Vec<u8>;
+
+    fn poll(&mut self, wake: fn()) -> Poll<Self::Output> {
+        //检查socket状态
+        if self.socket.has_data_to_read() {
+            // socket有数据，读取结果
+            Poll::Ready(self.socket.read_buf())
+        } else {
+            // socket无数据，注册wake
+            // 在socket，有数据时，重新调用poll
+            self.socket.set_readable_callback(wake);
+            Poll::Pending
+        }
+    }
+}
+```
+
+**Waker** 任务唤醒
+
+`Waker`提供了一种`wake()`方法，被用于告诉Excutor应该唤醒关联的任务。
+
+```rust
+// 计时器例子：
+// 创建计时器时启动一个新线程，休眠所需的时间，然后在时间窗口过去后向计时器发出信号。
+use std::{
+    future::Future,
+    pin::Pin,
+    sync::{Arc, Mutex},
+    task::{Context, Poll, Waker},
+    thread,
+    time::Duration,
+};
+pub struct TimerFuture {
+    shared_state: Arc<Mutex<SharedState>>,
+}
+/// 计时器和等待线程的共享状态
+struct SharedState {
+    // 休眠时间是否达到
+    completed: bool,
+	// 任务唤醒器
+    waker: Option<Waker>,
+}
+
+impl Future for TimerFuture {
+    type Output = ();
+    // Pin参考2.6.3 Pin小节
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut shared_state = self.shared_state.lock().unwrap();
+        if shared_state.completed {
+            Poll::Ready(())
+        } else {
+            // 克隆waker，是线程能够唤醒当前任务
+            // TimerFuture可以在 executor 上的任务之间移动，
+            // 这可能导致陈旧的唤醒器指向错误的任务，从而阻止 `TimerFuture` 正确唤醒 (TODO)?
+            // TimerFuture可能被移动其他Waker
+            shared_state.waker = Some(cx.waker().clone());
+            Poll::Pending
+        }
+    }
+}
+impl TimerFuture {
+    pub fn new(duration: Duration) -> Self {
+        let shared_state = Arc::new(Mutex::new(SharedState {
+            completed: false,
+            waker: None,
+        }));
+        // 启动线程
+        let thread_shared_state = shared_state.clone();
+        thread::spawn(move || {
+            thread::sleep(duration);
+            let mut shared_state = thread_shared_state.lock().unwrap();
+            // 设置休眠时间，已经达到
+            shared_state.completed = true;
+            // 唤醒轮询Future的任务
+            if let Some(waker) = shared_state.waker.take() {
+                waker.wake()
+            }
+        });
+
+        TimerFuture { shared_state }
+    }
+}
+
+```
+
+Executor
+
+顶层`async`函数返回的`Future`的执行者。
+
+
+
+
+
 ## 3. 系统学习
 
 
@@ -2002,16 +2242,14 @@ TODO:
 ## REF
 
 - [Rust官网](https://www.rust-lang.org/zh-CN/)
-
-- [Rust 程序设计语言-中文版](https://kaisery.github.io/trpl-zh-cn/#rust-程序设计语言)
-
-- [通过例子学Rust](https://github.com/rust-lang-cn/rust-by-example-cn)
-
-- [RustPrimer中文版](https://github.com/rustcc/RustPrimer)
-
+- [github:rust-lang](https://github.com/rust-lang) rust语言学习，官方，（book，sync-book，rust-by-example，crate等）
+- [Rust 程序设计语言-中文版](https://kaisery.github.io/trpl-zh-cn/#rust-程序设计语言) 推荐
+- [通过例子学Rust](https://github.com/rust-lang-cn/rust-by-example-cn) 推荐
+- [RustPrimer中文版](https://github.com/rustcc/RustPrimer) 推荐
 - [深入浅出Rust异步编程之Tokio](https://zhuanlan.zhihu.com/p/107820568)
-
 - [透过 Rust 探索系统的本原：编程语言](https://zhuanlan.zhihu.com/p/365905673)
-
 - [Rust学习笔记_2021](https://github.com/xuesongbj/Rust-Notes/tree/main/Rust学习笔记_2021)
+- [深入浅出Rust异步编程之Tokio](https://zhuanlan.zhihu.com/p/107820568) 
+- [rust async-book](https://rust-lang.github.io/async-book/01_getting_started/01_chapter.html) 推荐
+- [books-futures-explained](https://cfsamson.github.io/books-futures-explained/)
 
