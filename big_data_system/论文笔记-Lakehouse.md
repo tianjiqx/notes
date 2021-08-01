@@ -125,7 +125,7 @@ Lakehouses 结合了数据湖和数据仓库的主要优势：前者的各种系
 
 ### 2.2 元数据层
 
-Delta lake的主要工作，以及其他类似的系统（iceberge），将元信息存储在对象中。 而hive 的acid则将元信息部分，存储在数据库。
+Delta lake的主要工作，以及其他类似的系统（iceberge），将元信息存储在对象（**结构化、半结构化，非结构化数据**）中。 而hive 的acid则将元信息部分，存储在数据库。
 
 - 提供与原始 Parquet/ORC 数据湖相似或更好的性能，同时增加了非常有用的管理功能，例如事务、零复制克隆（只复制日志）和时间旅行到表的过去版本。并且对于已经有数据湖的组织而言，很容易添加进去。
 
@@ -146,7 +146,7 @@ Delta lake的主要工作，以及其他类似的系统（iceberge），将元�
 
 ### 2.3 SQL性能（引擎层）
 
-传统数据库，放弃数据独立性，使用专有格式。
+针对**结构化数据**，传统数据库，放弃数据独立性，使用专有格式。
 
 Lakehouse必须使用开放的数据格式（Parquet 和 ORC），而对这些格式的新设计改进不断出现，当前样的开放格式也并不是绝对的完美数据格式。
 
@@ -164,6 +164,11 @@ Delta Engine，对与格式无关的优化进行了研究，提出了几种技�
     - 支持使用单个维度或空间填充曲线（例如 Z-order和 Hilbert 曲线）对记录进行排序，以提供跨多个维度的局部性
     - 各列，采样不同的顺序，不同的压缩策略
 - 向量化执行
+  - C++编写
+
+![](lakehouse图片/delta-engine-og-1024x538.png)
+
+
 
 TODO需要探索：
 
@@ -197,11 +202,34 @@ TODO的探索方向：
 
 ### 3.1 其他的实现LakeHouse目标的方式？
 
-- 数据仓库构建一个大规模并行服务层，该层可以支持来自高级分析工作负载的并行读取？
+- 在数据仓库上构建一个大规模并行服务层，该层可以支持来自高级分析工作负载的并行读取？
   - 论文认为，与让工作负载直接访问对象存储相比，此类基础架构的运行成本更高，更难管理，而且性能可能更低。
   - 将选择一种高效的数据格式进行读取的问题，推给了服务层，而这种格式需要内部转码
   - 云对象存储的主要吸引力在于其低成本、弹性工作负载的高带宽访问以及极高的可用性，在对象存储前面有一个单独的服务层，将会使前面的优势降低。
   - 标准化开放的数据格式，能够免于绑定到特定的供应商
+
+
+
+其他如星环TDH的堆叠的方式：
+
+统一的计算引擎（支持向量化执行，或者独立的更加轻量级的引擎），多存储引擎，针对各种查询负载，使用各种专有格式（列存，全文索引，图）
+
+优点：
+
+- 支持多模的数据格式，并且能够协同工作
+- 能够提供数仓的管理能力（对自研引擎表，也支持事务）
+
+缺点：
+
+- 两层的元信息（计算引擎，底层存储引擎），但是对hadoop表（orc，parquet）未提供事务管理能力
+  - TDH本身支持parquet格式，但是是hive原生能力，无事务管理
+  - 也许后面可以统一起来，提供不同client 接口如metastore
+
+- SerDe开销（底层不同引擎的专有格式，转换成计算引擎统一格式（java），全表扫描，SerDe开销占比超过30%）
+- ML直接分析未满足（需要数据中间格式转换），但机器学习的数据格式能否all in parquet？
+  - lakehouse是否也只是将数据中间格式的转换再往前推？
+
+
 
 ### 3.2 什么是正确的存储格式和访问 API？
 
@@ -219,6 +247,18 @@ Lakehouse的访问接口包括原始存储格式、直接读取这种格式的�
 
 
 
+## 4.总结
+
+本文提出lakehouse架构，可以作为基于Parquet 和ORC等标准开放数据格式的数据湖，但是既能提供数据仓库的性能和管理特性，又能满足来自高级分析工作负载的快速、直接 I/O。
+
+给出databricks实现lakehouse架构的一种方式：
+
+- 利用delta lake的元信息管理层，管理任意的对象，基于对象提供事务的管理能力
+- 利用delta engine引擎，缓存，向量化执行，辅助结构，加速对开放格式的结构化数据（parquet）的SQL查询性能
+- 提供DataFrames API接口，满足对ML的分析支持
+
+
+
 
 
 ## REF
@@ -226,5 +266,6 @@ Lakehouse的访问接口包括原始存储格式、直接读取这种格式的�
 - Armbrust, M., Ghodsi, A., Xin, R., & Zaharia, M. (2021). Lakehouse: A New Generation of Open Platforms that Unify Data Warehousing and Advanced Analytics. 11th Annual Conference on Innovative Data Systems Research (CIDR ’21).
 - [slides:lakehouse architecture](https://www.slideshare.net/databricks/introduction-sql-analytics-on-lakehouse-architecture) 可以算作对论文的精简slide，不过确实ML相关部分
 - [slides:Making Data Timelier and More Reliable with Lakehouse Technology](https://www.slideshare.net/matei/making-data-timelier-and-more-reliable-with-lakehouse-technology)  Matei Zaharia，与上面合起来，论文的补充
+- [Delta engine 介绍](https://databricks.com/blog/2020/06/24/introducing-delta-engine.html)
 - [slides:Achieving Lakehouse Models with Spark 3.0](https://www.slideshare.net/databricks/achieving-lakehouse-models-with-spark-30)
 
