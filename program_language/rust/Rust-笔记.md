@@ -305,7 +305,7 @@ fn main() {
 
 `cargo`  是 Rust 的构建系统和包管理器。
 
-添加依赖和使用，`Cargo.toml` 文件：
+添加依赖和使用，`Cargo.toml` 文件（[TOML](https://toml.io/cn/v1.0.0)是一种配置文件格式）：
 
 ```
 [dependencies]
@@ -376,6 +376,7 @@ let a1 = 5;  // 默认i32
 let a2:i32 = 5;
 
 // 2) 可变绑定，类似于变量，可以改变值，但是不允许改变类型
+// 变量a， 可以改变绑定到变量的值
 let mut a: f64 = 1.0;
 //改变 a 的绑定
 a = 2.0;
@@ -565,6 +566,10 @@ let num: Number = int.into();
 - 经典的 [C 语言风格结构体](https://en.wikipedia.org/wiki/Struct_(C_programming_language))（C struct）。
   - 可嵌套定义
 - 单元结构体（unit struct），不带字段，在泛型中很有用。
+
+读：通过`.` 获取结构体的特定成员的值
+
+写：要求整个结构体实例是可变的，然后进行赋值
 
 ```rust
 // 单元结构体
@@ -872,6 +877,48 @@ impl FooBar for Baz {
 // `Centimeters`，可以比较的元组结构体
 #[derive(PartialEq, PartialOrd)]
 struct Centimeters(f64);
+```
+
+##### Dyn 返回执行堆内存的trait的指针
+
+Rust编译器需要知道每个函数的返回类型需要多少空间，那么每个函数必须返回具体的类型，对于派生对象，无法作为父类的类型的返回值，因为需要的内存空间大小不同。
+
+所以，rust不直接返回一个trait对象，而是使用关键字`dyn`返回指向trait对象的指针。
+
+```rust
+struct Sheep {}
+struct Cow {}
+
+trait Animal {
+    fn noise(&self) -> &'static str;
+}
+// 实现 `Sheep` 的 `Animal` trait。
+impl Animal for Sheep {
+    fn noise(&self) -> &'static str {
+        "baaaaah!"
+    }
+}
+// 实现 `Cow` 的 `Animal` trait。
+impl Animal for Cow {
+    fn noise(&self) -> &'static str {
+        "moooooo!"
+    }
+}
+
+// 返回一些实现 Animal 的结构体，但是在编译时我们不知道哪个结构体。
+fn random_animal(random_number: f64) -> Box<dyn Animal> {
+    if random_number < 0.5 {
+        Box::new(Sheep {})
+    } else {
+        Box::new(Cow {})
+    }
+}
+
+fn main() {
+    let random_number = 0.234;
+    let animal = random_animal(random_number);
+    println!("You've randomly chosen an animal, and it says {}", animal.noise());
+}
 ```
 
 
@@ -1387,6 +1434,7 @@ let y: i32 = 100; // 标识符y，绑定资源100
 - 移动move
   - 将所有权转移到另一个标识符。
   - 当所有权转移时，数据的可变性可能发生改变。
+  - 所有权被移动后，原变量的内存立刻失效。
 
 ```rust
 let a: String = String::from("xyz");
@@ -1434,16 +1482,17 @@ println!("{:?}", a);  //打印："xyz",内存区域B
 
 ##### 引用&借用References&Borrowing
 
-- &引用，允许使用值但不获取其所有权。
+- &引用，允许使用变量的值但不获取其所有权。
 
 - 按引用传递对象的方式称作借用(borrow)。
 
 ```rust
+// let绑定的不可变变量x
 let x: Vec<i32> = vec!(1i32, 2, 3);
 // 借用，不会发生所有权move，所以可以通过x，y访问，同一份资源。
+// 通过`&`引用变量x，let绑定到y，y是对变量x的不可变借用
 let y = &x;
 println!("x={:?}, y={:?}", x, y);
-
 ```
 
 可变性：
@@ -1863,11 +1912,47 @@ unsafe Rust， 提供机制，告诉编译器，我确信没有问题，允许�
 
 一个常用的类型是 **引用计数** （*reference counting*）智能指针类型，其允许数据有多个所有者，当没有任何所有者时负责清理数据（在 Rust 中，每当值离开作用域时，编译器会自动插入这些调用Drop的方法的代码完成资源释放，其他如C++需要手动调用析构函数）。
 
-Rust普通引用和智能指针的区别：引用一般只是借用数据，而智能指针是拥有指向的数据（可以修改）。
+Rust普通引用和智能指针的区别：引用一般只是借用数据（可变借用，不可变借用）的指针，而智能指针是拥有指向的数据（有所有权，并且可以修改），带有元数据，和额外的功能与保证。
 
  `String` 和 `Vec<T>` 本质上就是智能指针。
 
+```rust
+pub struct String {
+    vec: Vec<u8>,
+}
+pub struct Vec<T> {
+    buf: RawVec<T>,
+    len: usize,
+}
+```
+
 智能指针通常使用结构体实现，其实现了 `Deref` 和 `Drop` trait，用于引用和清理数据。
+
+-  实现`Deref` trait 用于使指针当做常规引用，通过解引用符号* 获取指向的对象
+
+  - `*p` 时，实际为 `*(p.deref())` ，deref方法返回引用
+
+  -  `Deref` 还被用于在函数和放啊传参是，进行隐式的强制类型转换，避免过多的使用&和*
+
+    - 当这种特定类型的**引用**作为实参传递给和形参类型不同的函数或方法时，Deref 强制转换将自动发生。
+
+      - 注意是实现 `Deref`的智能指针的引用
+
+        ```rust
+        fn hello(name: &str) {
+            println!("Hello, {}!", name);
+        }
+        let m = MyBox::new(String::from("Rust"));
+        // 指针m的引用
+        // 过程：
+        // 1.通过 deref调用将 &MyBox<String> 变为 &String (MyBox实现的Deref)
+        // 2.通过 deref调用将&String 变为字符串slice &str (String实现的Deref)
+        hello(&m);
+        // 没有Deref，就需要这样写
+        hello(&(*m)[..]);
+        ```
+
+  - `Deref`实现不可变解引用，`DerefMut`实现可变解引用
 
 标准库中常用的智能指针：
 
@@ -1876,16 +1961,19 @@ Rust普通引用和智能指针的区别：引用一般只是借用数据，而�
   - `Arc<T>` 可线程间安全传递
 - `Ref<T>` 和 `RefMut<T>`，通过 `RefCell<T>` 访问。（ `RefCell<T>` 是一个在运行时而不是在编译时执行借用规则的类型）。
 
-**Box<T>**
+###### Box\<T>
 
  box 允许将一个值放在堆上而不是栈上。留在栈上的则是指向堆数据的指针。数据被储存在堆上而不是栈上，box 没有性能损失。
+
+Box 遵循 Rust 的所有权规则，在赋值时，数据和指针的所有权都被移动(move)。（等价于C++的 unique pointer唯一指针）
 
 场景：
 
 - 当有一个在编译时未知大小的类型，而又想要在需要确切大小的上下文中使用这个类型值的时候
   - 创建递归类型，值的一部分是相同类型的另一个值。
-- 当有大量数据，并希望在确保数据不被拷贝的情况下转移所有权的时候
+- 当有大量数据，并希望在确保数据不被拷贝的情况下转移所有权的时候，值需要拷贝栈上的指针
 - 当希望拥有一个值并只关心它的类型是否实现了特定 trait，而不是其具体类型的时候
+  - 与dyn关键字结合，完成面向对象设计的多态，见2.3.2
 
 ```rust
 // 定义变量 b，其值是一个指向被分配在堆上的值5的Box
@@ -1914,7 +2002,7 @@ let list = Cons(1,
             Box::new(Nil))))));
 
 
-// 解引用
+// 解引用*
 let x = 5;
 let y = &x;  // y是x的引用类型
 
@@ -1922,17 +2010,90 @@ assert_eq!(5, x);
 assert_eq!(5, *y);  // 与integer类型比较，需要解引用，将&{integer} 通过解引用符号* 转成与integer
 
 
-// Box重载了解引用符号，可以像引用一样使用 Box<T>
+// Box重载了解引用符号*，可以像引用一样使用 Box<T>
 let x = 5;
 let y = Box::new(x);
 
 assert_eq!(5, x);
 assert_eq!(5, *y);
+// Box<dyn T>
+trait Printable {
+    fn stringify(&self) -> String;
+}
+impl Printable for i32 {
+    fn stringify(&self) -> String { self.to_string() }
+}
+fn print(a: Box<dyn Printable>) {
+    println!("{}", a.stringify());
+}
+print(Box::new(10) as Box<dyn Printable>);
+
+
+//C++风格的单链表Node
+struct Node {
+    value: i32,
+    // 使用Option,因为可能为NULL
+    // 使用Box<T> 声明为指针类型
+    next: Box<Option<Node>>,
+}
+let a = Node {
+    value: 5,
+    next: Box::new(None),
+};
+let b = Node {
+    value: 10,
+    // 注意：这里将变量a的所有权，移动给了b.next
+    next: Box::new(Some(a)),
+};
+println!("b is {:?}", b);
+// 因为所有权被移动，无法再使用变量a
+// 同样的，也无法将变量a 传递给另一个变量c的next，以共享链表节点
+// println!("a is {:?}", a);
+// 为了共享，需要使用下面的Rc<T>
+// 为了能够修改指针所指向的对象，需要使用RefCell<T>
+// 因此一个共享的可修改的List节点定义如下
+struct SharedNode {
+    value: i32,
+    next: Rc<RefCell<Option<SharedNode>>>,
+}
+// 节点node_a
+let node_a = SharedNode {
+    value: 5,
+    next: Rc::new(RefCell::new(None)),
+};
+// 定义共享可修改的节点的指针a，指向node_a
+let a = Rc::new(RefCell::new(Some(node_a)));
+// 定义节点b，next赋值为a
+let b = SharedNode {
+    value: 10,
+    next: Rc::clone(&a),
+};
+// 定义节点c，next赋值为a
+let c = SharedNode {
+    value: 20,
+    next: Rc::clone(&a),
+};
+// *a 解引用成RefCell
+// 通过RefCell的borrow_mut方法，返回一个可变的智能指针RefMut<T> x
+// *x 解引用获得SharedNode类型对象，因为整个实例是可变的，所以可以修改value成员变量
+if let Some(ref mut x) = *a.borrow_mut() {
+    (*x).value += 10;
+}
+
+//实现双向链表时，为了避免循环引用，需要引入Weak<T> weak pointer
+// 持有一个对象的非拥有引用,类似Rc<T>，但是 weak pointer 并不影响析构
+struct DoubleNode {
+  value: i32,
+  next: Rc<RefCell<Option<DoubleNode>>>,
+  prev: Weak<RefCell<Option<DoubleNode>>>,
+}
 ```
 
-**Rc<T> 引用计数智能指针**
+###### Rc\<T> 引用计数
 
 多所有权，允许共享值。应用场景，免数据拷贝。但是不能修改包裹的对象。
+
+等价于C++中的shared pointer共享指针。
 
 ```Rust
 // 共享的list 部分
@@ -1942,24 +2103,30 @@ let b = Cons(3, Rc::clone(&a)); // clone 只是增加引用计数
 let c = Cons(4, Rc::clone(&a));
 ```
 
-**Arc<T>**
+
+
+###### Arc\<T> 原子引用计数
 
 原子引用计数，`Rc`的多线程版本。
 
 - 可以跨线程传递，跨线程共享对象
+  - Arc类型可以保证被共享的类型的生命周期，与运行时间最长的线程活得一样久
 - 对包括的类型对象，无可变性要求
 
 
 
-**RefCell<T>**
+###### RefCell\<T>
 
-`RefCell<T>` 代表其数据的唯一的所有权。用于在运行时，检查借用规则（任意时刻只有一个可变引用或者无数不可变引用，引用必须有效）。单线程场景。
+`RefCell<T>` 代表其数据的唯一的所有权。用于在运行时，检查借用规则（任意时刻只有一个可变引用或者无数不可变引用，引用必须有效）。单线程场景。想要修改所指向的T对象。
 
 区别：
 
 - `Rc<T>` 允许相同数据有多个所有者；`Box<T>` 和 `RefCell<T>` 有单一所有者。
 - `Box<T>` 允许在编译时执行不可变或可变借用检查；`Rc<T>`仅允许在编译时执行不可变借用检查；`RefCell<T>` 允许在运行时执行不可变或可变借用检查。
 - 因为 `RefCell<T>` 允许在运行时执行可变借用检查，所以可以在即便 `RefCell<T>` 自身是不可变的情况下修改其内部的值。
+  - 内部可变性（Interior mutability）
+    - 如果一个类型可以通过共享引用&T来改变其内部数据，则该类型具有内部可变性。
+  - 底层使用`UnsafeCell<T>`
 
 ```rust
 let x = 5;
@@ -1984,6 +2151,7 @@ impl Messenger for MockMessenger {
     fn send(&self, message: &str) {
         // self 是不可变的引用，但是对sent_messages进行了修改
         // borrow_mut 返回可变的指针
+        // borrow 返回不可变的指针
         self.sent_messages.borrow_mut().push(String::from(message));
     }
 }
@@ -1991,7 +2159,7 @@ impl Messenger for MockMessenger {
 
 
 
-##### Pin\<P> 
+###### Pin\<P> 
 
 ```rust
 use std::pin::Pin;
@@ -2252,4 +2420,7 @@ TODO:
 - [深入浅出Rust异步编程之Tokio](https://zhuanlan.zhihu.com/p/107820568) 
 - [rust async-book](https://rust-lang.github.io/async-book/01_getting_started/01_chapter.html) 推荐
 - [books-futures-explained](https://cfsamson.github.io/books-futures-explained/)
+- [Rust：智能指针](https://zhuanlan.zhihu.com/p/125770192) 从rust语言角度
+- [【译】Rust与智能指针](https://zhuanlan.zhihu.com/p/265466916) 从完成类似用C++的一些数据结构（List）功能角度
+- [【译】Arc 在 Rust 中是如何工作的](https://zhuanlan.zhihu.com/p/300971430)
 
