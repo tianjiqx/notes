@@ -77,7 +77,11 @@ Rust足够底层，如果有必要，它可以像 C ⼀样进行优化，以实�
 
 - 并发
   - Go 具有 goroutine+channel 的并发模型
+    - 绿色线程
   - Rust 朝 Future 模型发展， async/await 模型，以同步的方式和思维编写代码，但以异步方式执行。
+    - 零成本抽象（未使用不承担额外开销），
+      - 很多抽象实现，实际是编译器帮你翻译了代码实现
+        - [Rust适合用来写linux内核模块吗？](https://zhuanlan.zhihu.com/p/137907908)
 - 性能
   - Rust核心库有SIMD优化过的库，go需要编写调用的汇编
 - 泛型
@@ -2210,20 +2214,31 @@ println!("a: {}, b: {}", Test::a(test1.as_ref()), Test::b(test1.as_ref()));
 println!("a: {}, b: {}", Test::a(test2.as_ref()), Test::b(test2.as_ref()));
 ```
 
+备注：
 
+在`Future` 引入自引用，是为了解决最初版本的Future，不能跨过**异步等待点**（await point）进行借用的问题。如果你要异步等待（await）某件事，你就不能在那个时候持有任何存活的引用。
+
+但是，实际不需要在Executor和Waker间真正的move `Future` ，创建新的Future变量，持久句柄即可。没有move，那么就不会有自引用在move后，产生悬空指针的风险，或者指向非法地址。
+
+而Pin的作用正是这目的，告诉编译器不能move Future，请检查。
 
 #### 2.6.4 Aysnc/await
 
 rust 提供的**异步并发**编程模型，允许在少量 OS 线程上运行大量并发任务，同时通过`async/await`语法保留普通同步编程的大部分外观。（OS线程池，无法满足大量IO密集型的工作负载）
 
 - 使用async 声明 需要异步的函数
-  - async函数由编辑器生成的Future
+  - async函数由编译器生成的返回Future结果
     - `Future` 是一个用trait实现的状态机，必须在executor上执行。
-      - 如`futures::executor::block_on()` 阻塞，等待Future执行。
+      - 如`futures::executor::block_on()` 阻塞方式执行，传入的Future。
+    - async函数，可以在子线程中调用例如` tokio::spawn(async { ///异步函数调用 });`
 
-- 使用await异步的获取另一个Future返回的结果
-  - await由编译器生成代码调用future的poll方法。
+- 可以使用await异步的获取另一个Future返回的结果
+  - await由编译器生成代码调用future的poll方法
   - await不阻塞当前线程，异步等待Future的执行
+    - await 会触发异步函数的执行
+    - await虽然是异步的，顺序编写的逻辑，但是还是串行的执行逻辑
+      - 即A.await；print "xxx"; B.await；那么还是会先执行A，然后打印“xxx”，最后执行B
+      - 但是我们可以使用一些执行器，让Future并行。
   - await也只能在`async` 声明的函数或者blocks中使用
 
 ```rust
@@ -2288,9 +2303,11 @@ A`Future`是可以产生值（可能为空()）的异步计算。
 trait SimpleFuture {
     // 输出类型
     type Output;
-    // 拉取结果的方法poll
+    // 拉取结果的方法poll，被轮询时需要执行的方法
     // wake方法，用于唤醒Pending的Future，重新调用poll
     // 使用wake，可以避免executor轮询所有的Future
+    // 注意是一个old例子，用于解释Async/await最初实现原理，最新rust的Future tarit，
+    //使用fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output>;
     fn poll(&mut self, wake: fn()) -> Poll<Self::Output>;
 }
 // poll方法返回结果类型
@@ -2313,13 +2330,21 @@ impl SimpleFuture for SocketRead<'_> {
             Poll::Ready(self.socket.read_buf())
         } else {
             // socket无数据，注册wake
-            // 在socket，有数据时，重新调用poll
+            // 在socket，有数据时，将会重新调用poll
+            // 我们通过wake，来觉得下一次调用poll的时机，
+            // 而不是让Executor，一直死循环的轮询Future，调用poll
             self.socket.set_readable_callback(wake);
             Poll::Pending
         }
     }
 }
 ```
+
+`Future` 是一个状态机，每次IO暂停点有有一个变体（variant），而每个变体都保存了恢复执行所需的状态。
+
+这里变体，在实现上是枚举 `Poll<T>`。
+
+
 
 **Waker** 任务唤醒
 
@@ -2355,10 +2380,10 @@ impl Future for TimerFuture {
         if shared_state.completed {
             Poll::Ready(())
         } else {
-            // 克隆waker，是线程能够唤醒当前任务
-            // TimerFuture可以在 executor 上的任务之间移动，
-            // 这可能导致陈旧的唤醒器指向错误的任务，从而阻止 `TimerFuture` 正确唤醒 (TODO)?
-            // TimerFuture可能被移动其他Waker
+            // 克隆waker，使能够唤醒当前任务
+            // TimerFuture可以在 executor上的任务之间移动，
+            // 这可能导致陈旧的唤醒器指向错误的任务，从而阻止 `TimerFuture` 正确唤醒
+            // TimerFuture可能被移动其他Waker上！
             shared_state.waker = Some(cx.waker().clone());
             Poll::Pending
         }
@@ -2370,30 +2395,138 @@ impl TimerFuture {
             completed: false,
             waker: None,
         }));
-        // 启动线程
         let thread_shared_state = shared_state.clone();
+        // 启动线程
         thread::spawn(move || {
             thread::sleep(duration);
             let mut shared_state = thread_shared_state.lock().unwrap();
             // 设置休眠时间，已经达到
             shared_state.completed = true;
-            // 唤醒轮询Future的任务
+            // 通过waker唤醒轮询Future的任务
             if let Some(waker) = shared_state.waker.take() {
                 waker.wake()
             }
         });
-
+		// 返回一个Future结果，在线程完成后才会真正有结果
         TimerFuture { shared_state }
     }
 }
-
 ```
 
-Executor
+**Executor**
 
-顶层`async`函数返回的`Future`的执行者。
+顶层`async`函数返回的`Future`的poll的执行者。统一的管理大量的Future。
+
+```rust
+struct Executor {
+    // 使用通道，来接收任务
+    // 持有通道的Rev端
+    ready_queue: Receiver<Arc<Task>>,
+}
+/// 发送新的Future 任务到通道
+#[derive(Clone)]
+struct Spawner {
+    task_sender: SyncSender<Arc<Task>>,
+}
+impl Spawner {
+    fn spawn(&self, future: impl Future<Output = ()> + 'static + Send) {
+        let future = future.boxed();
+        let task = Arc::new(Task {
+            future: Mutex::new(Some(future)),
+            task_sender: self.task_sender.clone(),
+        });
+        self.task_sender.send(task).expect("too many tasks queued");
+    }
+}
+/// 管理Future的任务
+struct Task {
+    // 任务所持有的Future对象
+    // Mutex用于互斥，生产可以使用UnsafeCell
+    future: Mutex<Option<BoxFuture<'static, ()>>>,
+    // 用以将Task自身放回通道，完成waker功能
+    task_sender: SyncSender<Arc<Task>>,
+}
+// 唤醒者
+impl ArcWake for Task {
+    fn wake_by_ref(arc_self: &Arc<Self>) {
+        // 通过将任务放回通道，来唤醒任务
+        // executor会查询通道，然后完成再次poll Future
+        let cloned = arc_self.clone();
+        arc_self
+            .task_sender
+            .send(cloned)
+            .expect("too many tasks queued");
+    }
+}
+// 创建对象
+fn new_executor_and_spawner() -> (Executor, Spawner) {
+ 	// 通道大小
+    const MAX_QUEUED_TASKS: usize = 10_000;
+    let (task_sender, ready_queue) = sync_channel(MAX_QUEUED_TASKS);
+    (Executor { ready_queue }, Spawner { task_sender })
+}
+// Executor的逻辑
+impl Executor {
+    fn run(&self) {
+        // 循环监听通道，接收Task
+        while let Ok(task) = self.ready_queue.recv() {
+            // 取出Future
+            let mut future_slot = task.future.lock().unwrap();
+            if let Some(mut future) = future_slot.take() {
+                // 根据Task自身，创建waker
+                let waker = waker_ref(&task);
+                let context = &mut Context::from_waker(&*waker);
+                // `BoxFuture<T>`是`Pin<Box<dyn Future<Output=T>+Send+'static>>`的别名
+                if let Poll::Pending = future.as_mut().poll(context) {
+                    //Pending状态的Future，将其放回Task
+                    // 而Task自身是一个waker，会将自身放回通道
+                    // 但是，waker什么时候调用wake_by_ref的？
+                    *future_slot = Some(future);
+                }
+            }
+        }
+    }
+}
+
+fn main() {
+    let (executor, spawner) = new_executor_and_spawner();
+
+    // 发送一个Future
+    spawner.spawn(async {
+        // 依然是串行的执行下面的逻辑；
+        // 整个代码块作为一个Future结果，不阻塞主线程spawner.spawn发送，不需要他执行完。
+        println!("howdy!");
+        // 等待2s后完成
+        TimerFuture::new(Duration::new(2, 0)).await;
+        println!("done!");
+    });
+
+    // 关闭通道的发送端
+    drop(spawner);
+
+    // 通过Executor执行Future
+    // 结果打印 "howdy!", pause, 最后 "done!".
+    executor.run();
+}
+```
 
 
+
+
+
+问题：
+
+跨.await的引用，例如在一个异步函数中获取锁。
+
+简单的解决方案，使用`tokio::sync::Mutex` 异步互斥锁。
+
+
+
+备注：
+
+io密集型并发crate： tokio
+
+cpu密集型并发crate：rayon
 
 
 
@@ -2418,6 +2551,8 @@ TODO:
 - [透过 Rust 探索系统的本原：编程语言](https://zhuanlan.zhihu.com/p/365905673)
 - [Rust学习笔记_2021](https://github.com/xuesongbj/Rust-Notes/tree/main/Rust学习笔记_2021)
 - [深入浅出Rust异步编程之Tokio](https://zhuanlan.zhihu.com/p/107820568) 
+- [零成本异步I/O](https://zhuanlan.zhihu.com/p/97574385) 对于go/java使用绿色线程的分析,为什么后来取消绿色线程的实现（因为非零成本）
+- [tokio 官方教程](https://tokio.rs/tokio/tutorial) 如何用tokio写一个redis服务的教程
 - [rust async-book](https://rust-lang.github.io/async-book/01_getting_started/01_chapter.html) 推荐
 - [books-futures-explained](https://cfsamson.github.io/books-futures-explained/)
 - [Rust：智能指针](https://zhuanlan.zhihu.com/p/125770192) 从rust语言角度
