@@ -273,7 +273,7 @@ run --bin server -- -c qxbase.conf
 cargo run --bin server -- -c qxbase.conf
 
 # 2.clickhouse client连接
-clickhouse-client --port 9528
+clickhouse-client --port 9528 -n
 
 
 #3. sudo权限下启动gdbgui， 非root权限可能导致无法attach上
@@ -284,6 +284,22 @@ sudo ./gdbgui_0.13.2.2
 # b.点击运行
 # c. 打开文件crates/runtime/src/read.rs，设置点击行断点， 使用clickhouse client执行查询SQL
 #   该文件是处理查询逻辑
+
+
+
+# 4.调试断点
+
+b crates/runtime/src/mgmt.rs:655
+b crates/runtime/src/mgmt.rs:1123
+b crates/runtime/src/ch/messages.rs:182
+b crates/runtime/src/ch/blocks.rs:353
+b crates/runtime/src/ch/blocks.rs:299
+b crates/runtime/src/ch/blocks.rs:600
+b crates/runtime/src/ch/blocks.rs:622
+b crates/runtime/src/ch/blocks.rs:681
+
+b crates/runtime/src/ch/messages.rs:95
+b crates/runtime/src/ch/messages.rs:139
 ```
 
 ![](tensorbase笔记图片/Snipaste_2021-07-15_17-43-34.png)
@@ -326,7 +342,10 @@ sudo ./gdbgui_0.13.2.2
     - insert into 语句
       - `command_insert_into` insert 语句处理
         - `InsertIntoContext.parse`() 将`Pair<Rule>`中信息填进InsertIntoContext
-        - `command_insert_into_gen_block`  ，插入数据封装进`Block`
+        - `command_insert_into_gen_header`  ，插入数据表头header、空列填充进`Block`
+          - `Block.encode_to()`
+            - `Block.encode_body()`
+              - `Column.encode()`
           - 暂时不支持部分列，个人测试ok，可能columns解析问题，不过读取异常
           - 根据建表的列顺序插入值
           - 会行转列格式，封装进Column   `runtime/ch/blocks.rs`
@@ -338,6 +357,16 @@ sudo ./gdbgui_0.13.2.2
               - null值的数组Vec<u8>  ，bitmap
               - 偏移数组Vec<u32>
               - lc_dict_data 字典？ Vec<u8>
+            - 每个cell的处理`parse_literal_as_bytes`
+          - `crates/runtime/src/ch/messages.rs`  InsertFormatInline  发送header信息，进入StageKind::DataEODPInsertQuery状态，通过`consume_read_buf`
+          - StageKind::DataPacket 处理待插入的values内容`crates/runtime/src/ch/messages.rs`
+            - CH client 将插入的sql，分成了头和数据包
+            - `process_data_blk` 读取数据buf
+            - `blk.decode_from(bs)` 从byte buf生成`Block`
+              - `BytesDecoder<Column>.decode_column` 解析列数据
+                - `decode_to_column` 函数
+                - 尤其注意，对于String类型，从CH客户端发送的，会有一个offset (变长存储)
+            - 通过WRITE 对象写数据Block
         - `command_insert_into_select` select...insert into 语法处理
           - BaseCommandKind::Query 执行子查询
             - 注意会跳转到`runtime/src/ch/messages.rs` 的`response_query()` 方法处理
@@ -452,6 +481,7 @@ sudo ./gdbgui_0.13.2.2
         - `libc::pwrite()`
         - `libc::close()`
         - 对于字符串列，会额外增加一个_om的列文件，dump_buf两次
+          - om是offset_map简写，设计来自CH协议
         - 文件偏移offset_in_bytes=prid * ctyp_siz;
           - prid 表示总行数，ctyp_siz为定长大小的列类型（数据没有压缩）
       - `PartStore.release_lock(tid)` 释放表锁
