@@ -587,6 +587,119 @@ rust目录，源码结构：
 
 
 
+## 3.实现
+
+### 3.1 数据结构
+
+#### 3.1.1 Buffer
+
+```rust
+pub struct Buffer {
+    /// the internal byte buffer.
+    data: Arc<Bytes>,
+    /// The offset into the buffer.
+    offset: usize,
+}
+```
+
+- buffer表示一段连续的不可变的内存区域，可以与其他buffer跨线程的共享。
+- data
+  - Arc类型，原子类型的指针指针，可以通过clone，获取引用，以共享缓冲区（但是不能修改），避免数据拷贝。
+  - Bytes，结构体，存有原始指针，长度
+- offset
+  - 额外对这个缓存区的位置的指针
+  - 因为使用的是共享缓冲区，原始整个共享的缓存区大小，起始位置是不能改变的，所以通过offset来调整当前缓冲区的所管理的数据位置。
+
+```rust
+// 一些方法
+// 获取缓冲区，起始指针
+pub fn as_ptr(&self) -> *const u8 {
+    unsafe { self.data.ptr().as_ptr().add(self.offset) }
+}
+// 返回缓冲区的byte的切片（&[T]）
+pub fn as_slice(&self) -> &[u8] {
+    &self.data[self.offset..]
+}
+// 返回长度
+pub fn len(&self) -> usize {
+    self.data.len() - self.offset
+}
+
+// 根据Bytes创建新的缓冲区，缓冲区的大小，即Bytes的大小
+pub fn from_bytes(bytes: Bytes) -> Self {
+    Buffer {
+        data: Arc::new(bytes),
+        offset: 0,
+    }
+}
+
+// 根据指针创建新的缓冲区
+unsafe fn build_with_arguments(
+    ptr: NonNull<u8>, // NonNull保证指针永远非null
+    len: usize,
+    deallocation: Deallocation,
+) -> Self {
+    let bytes = Bytes::new(ptr, len, deallocation);
+    Buffer {
+        data: Arc::new(bytes),
+        offset: 0,
+    }
+}
+```
+
+#### 3.1.2 Bytes
+
+```rust
+pub struct Bytes {
+    /// The raw pointer to be begining of the region
+    ptr: NonNull<u8>,
+
+    /// The number of bytes visible to this region. This is always smaller than its capacity (when avaliable).
+    len: usize,
+
+    /// how to deallocate this region
+    deallocation: Deallocation,
+}
+
+// 创建Bytes
+pub unsafe fn new(
+    ptr: std::ptr::NonNull<u8>,
+    len: usize,
+    deallocation: Deallocation,
+) -> Bytes {
+    Bytes {
+        ptr,
+        len,
+        deallocation,
+    }
+}
+// rust标准库
+//封装原始指针，具有永远非null特性
+pub struct NonNull<T: ?Sized> {
+    pointer: *const T, // 指向常量的原始指针
+}
+//创建NonNull指针
+let mut x = [5,6,7];
+// new方法接受一个可变对象的指针，然后检查其不是null，最后创建NonNull
+let nonnull_pointter = NonNull::new(x.as_mut_ptr()).unwarp();
+// 根据nonnull指针，创建slice
+let slice - NonNull::slice_form_raw_parts(nonnull_pointer,3);
+// 使用slice
+assert_eq!(unsafe {slice.as_ref()[2]},7)
+```
+
+- 一个连续，固定大小，不可变的内存区域。被Buffer来共享
+- ptr 
+  - 永远非null的指针，即使永远不会被* 解引用
+- len
+  - 字节长度
+
+
+
+### 3.2 数据类型
+
+
+
 ## REF
 
 - [Apache Arrow官方](https://arrow.apache.org/overview/)
