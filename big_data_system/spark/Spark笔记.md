@@ -103,7 +103,91 @@ AQE 倾斜连接优化会从随机文件统计信息中自动检测此类倾斜�
 
 
 
+### 2.2 SparkSQL
 
+
+
+## 3.开放生态
+
+源码版本2021.07.22：
+
+3a1db2ddd439a6df2a1dd896aab8420a9b45286b
+
+### 3.1 DataSource 
+
+Spark SQL 支持通过 DataFrame 接口对多种数据源进行操作。将DataFrame注册为临时视图，允许对其数据运行SQL查询。
+
+`DataSource`是Spark SQL 中的**Pluggable Data Provider Framework**的重要组成部分。
+
+**关键接口**（`sql/core/src/main/scala/org/apache/spark/sql/sources/interfaces.scala`）:
+
+- `CreatableRelationProvider` 保存接口（trait）
+  - 根据保存模式，保存结构化查询的结果（DataFrame）并返回带有schema的`BaseRelation`
+- `RelationProvider` 创建接口
+  - 接收用户的设置参数，创建`BaseRelation`
+- `SchemaRelationProvider` 通过给定参数和用户定义的Schema创建`BaseRelation`
+  - 需要用户定义的schema
+- `BaseRelation` 抽象类，作为逻辑计划中使用的数据源的表示
+  - 提供数据的schema信息、SQL上下文信息
+  - 各个数据源，需要继承该类，作为其数据源表在spark中的表示
+- `TableScan`  读数据接口
+  - 配合`BaseRelation` ，返回行迭代的RDD[Row]
+  - 其他`PrunedFilteredScan` 支持filter，列裁剪
+- `InsertableRelation` 写数据的接口
+  - 接受DataFrame参数，写到数据源
+- 流相关接口
+  - `StreamSinkProvider`
+    - 流接收器提供者，用于结构化流
+  - `StreamSourceProvider`
+    - 流数据源提供者，用于结构化流
+
+
+
+DataSource
+
+- 创建
+  - 使用需要使用别名或者完全限定的类名（完整类名）来加载类
+    - 别名需要实现`DataSourceRegister` trait
+  - 需要`SparkSession` 提供配置信息，来解析数据源provider
+  - 数据路径列表（默认是空）
+    - 不同数据源，是不同的
+      - Hive表，是uri
+      - mysql表，是表名
+- 被使用的地方
+  - `HiveMetastoreCatalog` 转换`HiveTableRelation`为 `LogicalRelation`
+    - 实际转换为`HadoopFsRelation`
+  - `DataFrameReader` 装载一个数据源
+    - 通过`SparkSession.read`方法获取reader对象
+  - `DataFrameWriter`写入到一个数据源
+    - `DataFrameWriter`是一个以批处理方式将[数据集](https://jaceklaskowski.gitbooks.io/mastering-spark-sql/content/spark-sql-Dataset.html)持久化到外部存储系统的接口。
+    - 通过`DataSet.write`方法获取writer对象
+  - `CreateDataSourceTableCommand` 等命令执行时
+- 内置Datasource API的实现
+  - jdbc jdbc数据源，可以算是最基本通用的方式连接其他数据库，其他数据库只要支持jdbc，就能接入spark，但是jdbc连接性能不行（单点查询），无法支持大规模数据，还是需要通过自己实现的Datasource接口获得更好的性能。
+    - 检查3.0版本源码，允许提供一些分区信息，来生成分区，对此有所改进
+    - jdbc内置，支持的数据库，mysql，db2，mariadb，pg，orcacle，mssql
+    - 关键实现类
+      - `JDBCRelation` 继承`BaseRelation`,实现`PrunedFilteredScan`, `InsertableRelation` 接口
+        - 提供schema信息
+        - 支持对jdbc表的读、写
+          - 读返回的RDD是`JDBCRDD`
+            - 包含schema，要读取的列，filter信息，url信息，jdbc参数，分区
+            - 执行依赖`JdbcUtils` 提供的方法，对jdbc连接的数据库进行查询
+      - `JdbcRelationProvider` 实现`CreatableRelationProvider`,`RelationProvider`,`DataSourceRegister` 接口
+        - 支持根据DF创建jdbc表，即将DF保存
+        - 支持根据指定参数，构造jdbc表
+      - `JdbcUtils` 工具类，通过jdbc连接，执行一些ddl，dml操作
+  - hive(hadoop fs表)
+  - kafka
+  - 官方demo：`SimpleScanSource`
+
+
+
+### 3.2 DataSource V2
+
+
+
+### 3.3 Spark on K8S
 
 
 
@@ -117,4 +201,12 @@ AQE 倾斜连接优化会从随机文件统计信息中自动检测此类倾斜�
 - High performance spark 
 - [如何在 Kyuubi 中使用 Spark 自适应查询执行 (AQE)](https://kyuubi.readthedocs.io/en/latest/deployment/spark/aqe.html)
 - [自适应查询执行：在运行时加速 Spark SQL](https://databricks.com/blog/2020/05/29/adaptive-query-execution-speeding-up-spark-sql-at-runtime.html)
+- [slide:Scaling your Data Pipelines with Apache Spark on Kubernetes](https://www.slideshare.net/databricks/scaling-your-data-pipelines-with-apache-spark-on-kubernetes)
+- [slide:Spark on Kubernetes - Advanced Spark and Tensorflow Meetup - Jan 19 2017 - Anirudh Ramanthan from Google Kubernetes Team](https://www.slideshare.net/cfregly/spark-on-kubernetes-advanced-spark-and-tensorflow-meetup-jan-19-2017-anirudh-ramanthan-from-google-kubernetes-team)
+- [slide:Apache Spark on Kubernetes Anirudh Ramanathan and Tim Chen](https://www.slideshare.net/databricks/apache-spark-on-kubernetes-anirudh-ramanathan-and-tim-chen)
+- [slide:Spark day 2017 - Spark on Kubernetes](https://www.slideshare.net/jerryjung7/spark-day-2017seoul)
+- [spark datasource](https://jaceklaskowski.gitbooks.io/mastering-spark-sql/content/spark-sql-DataSource.html) datasource 接口说明
+- [spark官方datasource 使用教程](https://spark.apache.org/docs/latest/sql-data-sources.html)
+- [slide:Data Source API in Spark](https://www.slideshare.net/databricks/yin-huai-20150325meetupwithdemos)datasource api主要开发者的slide
+- [slide:Anatomy of Data Source API : A deep dive into Spark Data source API](https://www.slideshare.net/datamantra/anatomy-of-data-source-api) CSV具体示例
 
