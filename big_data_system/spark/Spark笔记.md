@@ -105,6 +105,101 @@ AQE 倾斜连接优化会从随机文件统计信息中自动检测此类倾斜�
 
 ### 2.2 SparkSQL
 
+![](spark笔记图片/Snipaste_2021-08-07_22-40-45.png)
+
+- 前端
+  - Analysis  
+  - Logical Optimization  
+- 后端
+  - Physical Planning
+    - 转换逻辑算子为物理算子
+    - 挑选候选的物理执行计划（比如连接算法broadcast-hash-join, sort-merge-join）
+    - 单个算子，产生多个具体的物理算子
+      - partial agg -> shuffle -> final agg
+  - Code Generation
+    - WSCG model代替Volcano iterator model （Pull model; Driven by the final operator）
+      - Push model; Driven by the head/source operator
+      - ![](spark笔记图片/Snipaste_2021-08-07_23-04-03.png)
+    - 将原来的一串操作（next连接），融合成执行生成的代码的单个WSCG操作
+      - 实现
+        - WSCG节点（WholeStageCodegen）包含的操作都是窄依赖
+    - 优点：
+      - 减少虚函数调用
+      - 数据在CPU寄存器
+      - SIMD
+  - Execution
+    - 物理计划的调度
+      - 标量子查询Scalar subquery 切分成为单独的job
+      - shuffle操作作为stage划分边界
+      - 对本地分区的操作，在同一个stage中
+      - ![](spark笔记图片/Snipaste_2021-08-07_23-17-44.png)
+    - 执行
+      - Stage
+        - 一个Stage产生一个TaskSet，每个分区，对应一个该TaskSet的task
+        - Task被发送到Executor上执行
+
+
+
+### 2.3 高效的表达式计算
+
+对于`a+b`这样的表达式计算，解释执行，通常需要如下7步。
+
+![](spark笔记图片/Snipaste_2021-08-07_22-01-13.png)
+
+解释执行的缺点：
+
+- 虚函数调用
+- 存在基于表达式类型的分支（分支预测失败问题）
+- 创建对象，封装原生类型，额外的内存开销
+
+利用运行时反射，进行代码生成，方式执行`a+b`:
+
+![](spark笔记图片/Snipaste_2021-08-07_22-08-43.png)
+
+```scala
+val	left:	Int =	inputRow.getInt(0)	
+val	right:	Int	=	inputRow.getInt(1)	
+val	result:	Int	=	left	+	right	
+resultRow.setInt(0,	result)	
+```
+
+代码生成方式执行优势：
+
+- 更少的函数调用
+- 不需要对原生类型进包装计算
+
+![](spark笔记图片/Snipaste_2021-08-07_22-10-59.png)
+
+
+
+### 2.4 spark 内存管理
+
+- RDD storage（RDD cache()操作）
+  - LRU
+- Execution memory（shuffle ,agg buffer）
+- 用户代码申请的内存空间
+
+内存使用改进:
+
+- Dynamic occupancy，共享，运行时借用其他区域的空闲内存
+  - `spark.memory.storageFraction  `
+- Off-Heap Memory  JVM堆外内存
+  - spark.memory.offHeap.enabled  
+  - spark.memory.offHeap.size  
+
+
+
+### 2.5 向量化读
+
+支持读取列存格式的数据
+
+- parquet
+- orc
+- arrow
+  - PySpark
+
+DataSource v2 API提供对其他数据源的相互化读取。
+
 
 
 ## 3.开放生态
@@ -133,6 +228,7 @@ Spark SQL 支持通过 DataFrame 接口对多种数据源进行操作。将DataF
 - `TableScan`  读数据接口
   - 配合`BaseRelation` ，返回行迭代的RDD[Row]
   - 其他`PrunedFilteredScan` 支持filter，列裁剪
+  - 该接口被`DataSourceStrategy` 的`apply`方法调用，做filter，列裁剪功能
 - `InsertableRelation` 写数据的接口
   - 接受DataFrame参数，写到数据源
 - 流相关接口
@@ -185,6 +281,10 @@ DataSource
 
 ### 3.2 DataSource V2
 
+[SPARK-25186](https://issues.apache.org/jira/browse/SPARK-25186)
+
+
+
 
 
 ### 3.3 Spark on K8S
@@ -201,12 +301,17 @@ DataSource
 - High performance spark 
 - [如何在 Kyuubi 中使用 Spark 自适应查询执行 (AQE)](https://kyuubi.readthedocs.io/en/latest/deployment/spark/aqe.html)
 - [自适应查询执行：在运行时加速 Spark SQL](https://databricks.com/blog/2020/05/29/adaptive-query-execution-speeding-up-spark-sql-at-runtime.html)
-- [slide:Scaling your Data Pipelines with Apache Spark on Kubernetes](https://www.slideshare.net/databricks/scaling-your-data-pipelines-with-apache-spark-on-kubernetes)
-- [slide:Spark on Kubernetes - Advanced Spark and Tensorflow Meetup - Jan 19 2017 - Anirudh Ramanthan from Google Kubernetes Team](https://www.slideshare.net/cfregly/spark-on-kubernetes-advanced-spark-and-tensorflow-meetup-jan-19-2017-anirudh-ramanthan-from-google-kubernetes-team)
-- [slide:Apache Spark on Kubernetes Anirudh Ramanathan and Tim Chen](https://www.slideshare.net/databricks/apache-spark-on-kubernetes-anirudh-ramanathan-and-tim-chen)
-- [slide:Spark day 2017 - Spark on Kubernetes](https://www.slideshare.net/jerryjung7/spark-day-2017seoul)
+- [slides:Scaling your Data Pipelines with Apache Spark on Kubernetes](https://www.slideshare.net/databricks/scaling-your-data-pipelines-with-apache-spark-on-kubernetes)
+- [slides:Spark on Kubernetes - Advanced Spark and Tensorflow Meetup - Jan 19 2017 - Anirudh Ramanthan from Google Kubernetes Team](https://www.slideshare.net/cfregly/spark-on-kubernetes-advanced-spark-and-tensorflow-meetup-jan-19-2017-anirudh-ramanthan-from-google-kubernetes-team)
+- [slides:Apache Spark on Kubernetes Anirudh Ramanathan and Tim Chen](https://www.slideshare.net/databricks/apache-spark-on-kubernetes-anirudh-ramanathan-and-tim-chen)
+- [slides:Spark day 2017 - Spark on Kubernetes](https://www.slideshare.net/jerryjung7/spark-day-2017seoul)
 - [spark datasource](https://jaceklaskowski.gitbooks.io/mastering-spark-sql/content/spark-sql-DataSource.html) datasource 接口说明
 - [spark官方datasource 使用教程](https://spark.apache.org/docs/latest/sql-data-sources.html)
-- [slide:Data Source API in Spark](https://www.slideshare.net/databricks/yin-huai-20150325meetupwithdemos)datasource api主要开发者的slide
-- [slide:Anatomy of Data Source API : A deep dive into Spark Data source API](https://www.slideshare.net/datamantra/anatomy-of-data-source-api) CSV具体示例
+- [slides:Data Source API in Spark](https://www.slideshare.net/databricks/yin-huai-20150325meetupwithdemos)datasource api主要开发者的slide
+- [slides:Anatomy of Data Source API : A deep dive into Spark Data source API](https://www.slideshare.net/datamantra/anatomy-of-data-source-api) CSV具体示例
+- [slides:spark sql-2017](https://www.slideshare.net/joudkhattab/spark-sql-77435155)
+- [slides:Intro to Spark and SparkSQL-2014](https://cseweb.ucsd.edu/classes/fa19/cse232-a/slides/Topic7-SparkSQL.pdf)
+- [slides:A Deep Dive into Query Execution Engine of Spark SQL-2019](https://www.slideshare.net/databricks/a-deep-dive-into-query-execution-engine-of-spark-sql)  WSCG
+- [slides:A Deep Dive into Spark SQL's Catalyst Optimizer with Yin Huai-2017](https://www.slideshare.net/databricks/a-deep-dive-into-spark-sqls-catalyst-optimizer-with-yin-huai)
+- [slides:Understanding Query Plans and Spark UIs-2019](https://www.slideshare.net/databricks/understanding-query-plans-and-spark-uis)
 
