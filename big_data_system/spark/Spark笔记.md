@@ -34,9 +34,7 @@ RDD在性能上获取优势，**在于利用RDD之间的继承关系（宽窄依
 
 
 
-## 2.基本执行原理
-
-
+## 2.基本原理
 
 ### 2.1 Adaptive Query Execution (AQE) 自适应查询执行
 
@@ -105,11 +103,47 @@ AQE 倾斜连接优化会从随机文件统计信息中自动检测此类倾斜�
 
 ### 2.2 SparkSQL
 
+**动机**：
+
+- 支持声明式查询（SQL），给用户提供自动优化体验
+- 衔接关系处理与高级分析（ML），半结构化、非结构化数据的ETL
+  - 关系型系统与程序型系统
+
+![](spark笔记图片/Snipaste_2021-08-08_22-15-15.png)
+
+主要的模块：
+
+- DataFram API
+  - 以columns组织的数据的集合，可以与RDD相互转化，类似关系数据库中的表，可以支持关系操作。
+    - 对外部数据源执行关系操作
+    - 在现有的程序系统中使用关系操作
+      - 可以通过编程，控制SQL操作的生成，不必是完整SQL
+    - 被catalyst分析结构（创建、处理过程），优化执行
+      - 代表逻辑计划
+      - 执行输出操作时，才构建物理计划，经过优化后执行
+  - 用于java, scala api 编程，ML
+    - 将关系表转换为DataFrame，可以复用ML的算法。（混合编程）
+    - UDF
+  - 底层基于RDD
+    - 也是惰性求值
+    - 可以通过反射推断Schema，获取RDD的数据的类型、名称，构造DataFrame
+  - 与Dataset的区别
+    - DataFram = Dataset[row]
+- Catalyst
+  - 解析SQL的优化器框架，类似hive的calcite，可扩展。
+    - 进行自动优化
+      - 规划
+      - 代码生成
+    - 可扩展
+      - 通过添加特定于数据源的规则，可以将过滤或聚合推送到外部存储系统中，或者支持新的数据类型
+  - 使用sql编程的接口
+
 ![](spark笔记图片/Snipaste_2021-08-07_22-40-45.png)
 
 - 前端
-  - Analysis  
-  - Logical Optimization  
+  - Parser
+  - Analysis
+  - Logical Optimization
 - 后端
   - Physical Planning
     - 转换逻辑算子为物理算子
@@ -137,6 +171,103 @@ AQE 倾斜连接优化会从随机文件统计信息中自动检测此类倾斜�
       - Stage
         - 一个Stage产生一个TaskSet，每个分区，对应一个该TaskSet的task
         - Task被发送到Executor上执行
+
+
+
+**数据模型**：
+
+- 基于hive的嵌套数据模型来处理表和数据帧
+- 支持所有主要SQL数据类型
+- 复杂和嵌套结构类型（list，array，map，union）
+- 自定义类型UDT
+
+
+
+#### 2.2.1 catalyst
+
+基于Scala语言（模式匹配）构建的查询优化器。支持基于规则和基于成本的优化。外部开发人员可以扩展优化器。
+
+好处：
+
+- 用户自定义新的优化规则时，可以直接使用scala编写，不需要有额外的理解和学习特定领域语言，编写规则，并编译为可执行的代码。
+
+主要组成:
+
+- 表示树以及操作规则
+- 关系查询处理相关对象（表达式、逻辑查询计划）
+- 查询处理（分析，逻辑优化，物理优化规则，代码生成）
+- 通用扩展点
+  - 外部数据源
+  - 用户定义类型
+
+**trees**
+
+catalyst中的主要数据类型是由节点对象组成的树。
+
+每个节点都有一个节点类型和零个或多个子节点。新的节点类型在 Scala 中定义为 TreeNode 类的子类。
+
+表达式x+(1+2)，对应的Scala表示的树：Add(Attribute(x), Add(Literal(1), Literal(2)))
+
+节点类型：
+
+- Literal(value: Int)： 常量值
+- Attribute(name: String)：一行输入的一个属性（列）
+- Add(left: TreeNode, right: TreeNode)：两个表达式的求和
+
+**Rules**
+
+规则是从一棵树到另一棵树的函数。
+
+常见规则函数：使用一组模式匹配，来查找和替换具有特定结构的子树的函数。
+
+例如常量合并规则`ConstantFolding`：
+
+```scala
+tree.transform { 
+    case Add(Literal(c1), Literal(c2)) => Literal(c1+c2)
+    case Add(left, Literal(0)) => left 
+    case Add(Literal(0), right) => right
+}
+```
+
+x+(1+2) 转换为x+3
+
+特点：
+
+- 一棵树转成另一颗树
+  - 规则自己递归处理
+- 可以在同一个转换调用中匹配多个模式
+- 多次执行同一个规则
+  - Catalyst 将规则分组，并执行每个批次，直到达到固定点（树不再变化）(代码`RuleExecutor.execute()`方法)
+    - 例如(x+0)+(3+3)，重复应用，折叠更大的树（PS：论文中这个例子，觉得不好，事实上还是只需要一次折叠就能推出x+6，或许x+0+3+3更合适，这时需要多次应用）
+- 规则条件及其主体可以包含任意 Scala 代码
+
+**Catalyst工作流程：**
+
+- Analysis
+  - 输入是ast，或者DF，包含包含未解析的属性引用或关系（列名，表名）
+  - 使用Catalog对象和规则解析属性，先创建“unresolved logical plan“，然后
+    - 从catalog中通过名查找关系
+    - 映射属性名，设置提供输入的孩子节点
+    - 表达式传播，强制类型（推导表达式计算的类型）
+  - 输出是LogicalPlan
+- Logical Optimization
+  - 基于规则的优化，应用在逻辑计划上，包括常量折叠、谓词下推、列修剪、空值传播、布尔表达式简化等
+- Physical Planning
+  - 获取一个逻辑计划并生成一个或多个物理计划
+  - 代价模型选择
+    - 选择连接顺序，连接算法（代价（行数，字节数））
+      - `JoinReorderDP.search`
+        - `JoinReorderDPFilters` 搜索空间剪枝（TODO理解）
+- Code Generation
+  - 见2.3
+
+公共扩展点（非规则的扩展）：
+
+- DataSource
+  - 见3.1
+- User-Defined Types (UDTs)
+  - 将用户定义的类型映射到由 Catalyst 的内置类型组成的结构（双向转换）
 
 
 
@@ -176,6 +307,7 @@ resultRow.setInt(0,	result)
 
 - RDD storage（RDD cache()操作）
   - LRU
+  - RDD cache在内存中，用于交互式查询，ML反复迭代算法
 - Execution memory（shuffle ,agg buffer）
 - 用户代码申请的内存空间
 
@@ -199,6 +331,17 @@ resultRow.setInt(0,	result)
   - PySpark
 
 DataSource v2 API提供对其他数据源的相互化读取。
+
+
+
+### 2.6 高级特性
+
+- 半结构化数据的schema推理
+  - json数据（非嵌套数据结构）
+- 集成ML lib
+  - DataFrame
+    - 一列代表一个特征
+- 数据管道集成其他数据源
 
 
 
@@ -291,6 +434,10 @@ DataSource
 
 
 
+### 3.4 Structured Streaming
+
+
+
 
 
 
@@ -298,20 +445,48 @@ DataSource
 ## REF
 
 - [Spark底层执行原理详细解析](https://mp.weixin.qq.com/s/qotI36Kx3nOINKHdOEf6nQ)
+
 - High performance spark 
+
 - [如何在 Kyuubi 中使用 Spark 自适应查询执行 (AQE)](https://kyuubi.readthedocs.io/en/latest/deployment/spark/aqe.html)
+
 - [自适应查询执行：在运行时加速 Spark SQL](https://databricks.com/blog/2020/05/29/adaptive-query-execution-speeding-up-spark-sql-at-runtime.html)
+
 - [slides:Scaling your Data Pipelines with Apache Spark on Kubernetes](https://www.slideshare.net/databricks/scaling-your-data-pipelines-with-apache-spark-on-kubernetes)
+
 - [slides:Spark on Kubernetes - Advanced Spark and Tensorflow Meetup - Jan 19 2017 - Anirudh Ramanthan from Google Kubernetes Team](https://www.slideshare.net/cfregly/spark-on-kubernetes-advanced-spark-and-tensorflow-meetup-jan-19-2017-anirudh-ramanthan-from-google-kubernetes-team)
+
 - [slides:Apache Spark on Kubernetes Anirudh Ramanathan and Tim Chen](https://www.slideshare.net/databricks/apache-spark-on-kubernetes-anirudh-ramanathan-and-tim-chen)
+
 - [slides:Spark day 2017 - Spark on Kubernetes](https://www.slideshare.net/jerryjung7/spark-day-2017seoul)
+
 - [spark datasource](https://jaceklaskowski.gitbooks.io/mastering-spark-sql/content/spark-sql-DataSource.html) datasource 接口说明
+
 - [spark官方datasource 使用教程](https://spark.apache.org/docs/latest/sql-data-sources.html)
+
 - [slides:Data Source API in Spark](https://www.slideshare.net/databricks/yin-huai-20150325meetupwithdemos)datasource api主要开发者的slide
+
 - [slides:Anatomy of Data Source API : A deep dive into Spark Data source API](https://www.slideshare.net/datamantra/anatomy-of-data-source-api) CSV具体示例
+
 - [slides:spark sql-2017](https://www.slideshare.net/joudkhattab/spark-sql-77435155)
+
 - [slides:Intro to Spark and SparkSQL-2014](https://cseweb.ucsd.edu/classes/fa19/cse232-a/slides/Topic7-SparkSQL.pdf)
+
 - [slides:A Deep Dive into Query Execution Engine of Spark SQL-2019](https://www.slideshare.net/databricks/a-deep-dive-into-query-execution-engine-of-spark-sql)  WSCG
+
 - [slides:A Deep Dive into Spark SQL's Catalyst Optimizer with Yin Huai-2017](https://www.slideshare.net/databricks/a-deep-dive-into-spark-sqls-catalyst-optimizer-with-yin-huai)
+
 - [slides:Understanding Query Plans and Spark UIs-2019](https://www.slideshare.net/databricks/understanding-query-plans-and-spark-uis)
+
+- [Spark SQL架构和原理](https://zhuanlan.zhihu.com/p/107904954)
+
+- [是时候放弃 Spark Streaming, 转向 Structured Streaming 了](https://github.com/legendtkl/paper_reading/blob/main/realtime-compute/structured_streaming.md)
+
+- [slides:Intro to Apache Spark(1.0.0)](https://stanford.edu/~rezab/sparkclass/slides/itas_workshop.pdf) 194页，spark编程导论
+
+- [SHORE, M. F. (2015). Spark SQL: Relational Data Processing in Spark. American Journal of Psychiatry, 142(12), 1500-a-1501.](https://doi.org/10.1176/ajp.142.12.1500-a)
+
+- [Spark SQL源码剖析（一）SQL解析框架Catalyst流程概述](https://www.cnblogs.com/listenfwind/p/12724381.html)
+
+- [Spark SQL源码解析（四）Optimization和Physical Planning阶段解析](https://www.cnblogs.com/listenfwind/p/12886205.html)
 
