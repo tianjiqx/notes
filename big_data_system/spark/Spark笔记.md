@@ -208,11 +208,61 @@ catalyst中的主要数据类型是由节点对象组成的树。
 
 表达式x+(1+2)，对应的Scala表示的树：Add(Attribute(x), Add(Literal(1), Literal(2)))
 
+cast(l8, bigint) 折叠为Literal(l8 , bigint)
+
 节点类型：
 
 - Literal(value: Int)： 常量值
 - Attribute(name: String)：一行输入的一个属性（列）
 - Add(left: TreeNode, right: TreeNode)：两个表达式的求和
+
+
+
+`org.apache.spark.sql.catalyst.trees.TreeNode[T]` 体系
+
+- `org.apache.spark.sql.catalyst.expressions.Expression` 表达式
+  - 表达式一般指的是不需要触发执行引擎而能够直接进行计算的单元，可以被各种算子（QueryPlan）调用
+    - 四则运算，逻辑运算，转换，过滤操作等
+    - 属性
+      - `foldable` 能否在查询执行之前直接静态计算，用于常量合并优化
+        - Literal 类型（字面量，常量），子表达式都是foldable
+      - `deterministic`表达式是否为确定性的，即每次执行eval 函数的输出是否
+        都相同，用于判断谓词是否能够下推
+        - 非确定的例子：Rand 表达式，`SparkPartitionID`依赖于TaskContext 返回的分区ID。
+        - 表达式是确定的，要求所有的孩子也是确定的
+          - 叶子节点，一般是确定的
+      - `nullable`表达式是否可能输出 Null 值
+      - `references`AttributeSet 类型, 所有子节点中属性值的集合
+      - `resolved` 表达式和孩子节点是否都解析了schema，数据类型检查
+    - 方法
+      - `eval()` 返回对给定输入行计算此表达式的结果
+      - `genCode()`  返回`ExprCode` 类型，通过代码生成，对表达式生成的java源代码
+- `org.apache.spark.sql.catalyst.plans.QueryPlan[T]` 查询计划
+  - 成员
+    - 输入。输出 `inputSet`/`output`
+      - 节点的输入，输出属性
+    - `schema` 输出结果行的模式，StructType类型
+    - `expressions()` 返回节点中所有的表达式
+      - 需要注意这里使用了scala的`Product` trait的方法，遍历类的所有成员，检查Expression类型相关的成员
+  - 子类
+    - `org.apache.spark.sql.catalyst.plans.logical.LogicalPlan` 逻辑查询计划
+    - `org.apache.spark.sql.execution.SparkPlan` 物理查询计划
+
+
+
+`TreeNode[T]` 通用方法
+
+- `collectLeaves()` 返回所有叶子节点
+- `collectFirst()` 返回第一一个满足给定条件的节点
+- `withNewChildren()`用给定的节点替换孩子节点
+- `transform()` 返回一个递归应用了给定规则，的树的副本，不符合规则的节点不变
+  - `transformDown()` 先序遍历，应用规则，也是transform
+  - `transformUp()` 后序遍历，应用规则，也是transform
+- `transformWithPruning()` 先序遍历，带剪枝规则和剪枝条件，减少不必要的遍历
+
+up表示自底向上，后序；down表示自顶向下，先序；
+
+
 
 **Rules**
 
@@ -241,6 +291,8 @@ x+(1+2) 转换为x+3
   - Catalyst 将规则分组，并执行每个批次，直到达到固定点（树不再变化）(代码`RuleExecutor.execute()`方法)
     - 例如(x+0)+(3+3)，重复应用，折叠更大的树（PS：论文中这个例子，觉得不好，事实上还是只需要一次折叠就能推出x+6，或许x+0+3+3更合适，这时需要多次应用）
 - 规则条件及其主体可以包含任意 Scala 代码
+
+
 
 **Catalyst工作流程：**
 
@@ -280,8 +332,10 @@ x+(1+2) 转换为x+3
     - 阶段2：应用物理计划转换规则，调整计划
   - `org.apache.spark.sql.execution.SparkStrategy`(Strategy) 逻辑计划转换成物理计划的策略
     - 继承`GenericStrategy[SparkPlan]`
+      - `PlanLater` 特殊的`SparkPlan`,起占位符作用，对于策略无法处理的节点，转成`PlanLater`待其他策略处理
     - Logical Plan => Physical Plan
       - 物理计划在spark中实现类型是`org.apache.spark.sql.execution.SparkPlan`
+      - 将strategies应用到逻辑计划，生成候选物理执行计划集合，集合中存在`PlanLater` 时，取出逻辑计划，递归应用plan，替换`PlanLater` 为物理计划，最后对物理计划列表剪枝，去掉不高效的计划（剪枝还是TODO）
   - `org.apache.spark.sql.execution.SparkPlanner` 物理计划生成器
     - 继承`org.apache.spark.sql.execution.SparkStrategies`
       - 继承`org.apache.spark.sql.catalyst.planning.QueryPlanner[SparkPlan]`  抽象类
@@ -304,7 +358,7 @@ x+(1+2) 转换为x+3
 - PLANNING包含2个阶段
   - `QueryExecution.createSparkPlan`  返回一个物理计划
   - `QueryExecution.prepareForExecution` 做`preparations`的物理计划调整
-    - `EnsureRequirements` 属性强制，添加必要的shuffle算子
+    - `EnsureRequirements` 属性强制，添加必要的shuffle算子，分区、order要求
     - `InsertAdaptiveSparkPlan` AQE优化
     - 等
 
@@ -325,6 +379,44 @@ x+(1+2) 转换为x+3
   - 见3.1
 - User-Defined Types (UDTs)
   - 将用户定义的类型映射到由 Catalyst 的内置类型组成的结构（双向转换）
+
+
+
+#### 2.2.2 catalog
+
+在 SparkSQL 中， Catalog 主要用于各种函数资源信息和元数据信息（数据库、数据表、数据视图、数据分区与函数等）的统一管理。   
+
+**关键类：**
+
+`org.apache.spark.sql.catalyst.catalog.SessionCatalog`
+
+- 底层元信息存储的代理（例如Metastore），必须线程安全
+- 通过 `org.apache.spark.sql.SparkSession`(Spark SQL程序入口）提供给外部调用
+  - 一个 SparkSession 对应 一个 SessionCatalog
+- 成员
+  - `ExternalCatalog` 外部系统Catalog
+    - 用来管理数据库（ Databases ）、数据表 （ Tables ）、数据分区（ Partitions）和函数（ Functions）的接口，抽象类
+      - 
+      - 默认实现
+        - `InMemoryCatalog`
+        - `HiveExternalCatalog`
+  - `FunctionRegistry` 函数注册接口
+  - `TableFunctionRegistry` 表函数注册接口
+  - `FunctionResourceLoader` 函数资源加载器
+    - 用户定义函数，hive函数jar、文件资源
+  - `GlobalTempViewManager` 全局临时视图管理
+    - 对应DF中createGlobalTempView方法创建的视图，跨Session管理
+      - 创建，更新，删除，重命名
+
+
+
+spark 3.0 版本新增`org.apache.spark.sql.connector.catalog.CatalogPlugin` 体系。
+
+- `org.apache.spark.sql.connector.catalog.TableCatalog`
+- `org.apache.spark.sql.connector.catalog.FunctionCatalog`
+- `org.apache.spark.sql.connector.catalog.CatalogExtension`
+
+
 
 
 
@@ -500,48 +592,29 @@ DataSource
 ## REF
 
 - [Spark底层执行原理详细解析](https://mp.weixin.qq.com/s/qotI36Kx3nOINKHdOEf6nQ)
-
 - High performance spark 
-
 - [如何在 Kyuubi 中使用 Spark 自适应查询执行 (AQE)](https://kyuubi.readthedocs.io/en/latest/deployment/spark/aqe.html)
-
 - [自适应查询执行：在运行时加速 Spark SQL](https://databricks.com/blog/2020/05/29/adaptive-query-execution-speeding-up-spark-sql-at-runtime.html)
-
 - [slides:Scaling your Data Pipelines with Apache Spark on Kubernetes](https://www.slideshare.net/databricks/scaling-your-data-pipelines-with-apache-spark-on-kubernetes)
-
 - [slides:Spark on Kubernetes - Advanced Spark and Tensorflow Meetup - Jan 19 2017 - Anirudh Ramanthan from Google Kubernetes Team](https://www.slideshare.net/cfregly/spark-on-kubernetes-advanced-spark-and-tensorflow-meetup-jan-19-2017-anirudh-ramanthan-from-google-kubernetes-team)
-
 - [slides:Apache Spark on Kubernetes Anirudh Ramanathan and Tim Chen](https://www.slideshare.net/databricks/apache-spark-on-kubernetes-anirudh-ramanathan-and-tim-chen)
-
 - [slides:Spark day 2017 - Spark on Kubernetes](https://www.slideshare.net/jerryjung7/spark-day-2017seoul)
-
 - [spark datasource](https://jaceklaskowski.gitbooks.io/mastering-spark-sql/content/spark-sql-DataSource.html) datasource 接口说明
-
 - [spark官方datasource 使用教程](https://spark.apache.org/docs/latest/sql-data-sources.html)
-
 - [slides:Data Source API in Spark](https://www.slideshare.net/databricks/yin-huai-20150325meetupwithdemos)datasource api主要开发者的slide
-
 - [slides:Anatomy of Data Source API : A deep dive into Spark Data source API](https://www.slideshare.net/datamantra/anatomy-of-data-source-api) CSV具体示例
-
 - [slides:spark sql-2017](https://www.slideshare.net/joudkhattab/spark-sql-77435155)
-
 - [slides:Intro to Spark and SparkSQL-2014](https://cseweb.ucsd.edu/classes/fa19/cse232-a/slides/Topic7-SparkSQL.pdf)
-
 - [slides:A Deep Dive into Query Execution Engine of Spark SQL-2019](https://www.slideshare.net/databricks/a-deep-dive-into-query-execution-engine-of-spark-sql)  WSCG
-
 - [slides:A Deep Dive into Spark SQL's Catalyst Optimizer with Yin Huai-2017](https://www.slideshare.net/databricks/a-deep-dive-into-spark-sqls-catalyst-optimizer-with-yin-huai)
-
 - [slides:Understanding Query Plans and Spark UIs-2019](https://www.slideshare.net/databricks/understanding-query-plans-and-spark-uis)
-
 - [Spark SQL架构和原理](https://zhuanlan.zhihu.com/p/107904954)
-
 - [是时候放弃 Spark Streaming, 转向 Structured Streaming 了](https://github.com/legendtkl/paper_reading/blob/main/realtime-compute/structured_streaming.md)
-
 - [slides:Intro to Apache Spark(1.0.0)](https://stanford.edu/~rezab/sparkclass/slides/itas_workshop.pdf) 194页，spark编程导论
-
 - [SHORE, M. F. (2015). Spark SQL: Relational Data Processing in Spark. American Journal of Psychiatry, 142(12), 1500-a-1501.](https://doi.org/10.1176/ajp.142.12.1500-a)
-
 - [Spark SQL源码剖析（一）SQL解析框架Catalyst流程概述](https://www.cnblogs.com/listenfwind/p/12724381.html)
-
 - [Spark SQL源码解析（四）Optimization和Physical Planning阶段解析](https://www.cnblogs.com/listenfwind/p/12886205.html)
+- Spark SQL内核剖析-朱峰-2018 spark2.1，推荐
+- [slides:Cost-Based Optimizer in Apache Spark 2.2](https://www.slideshare.net/databricks/costbased-optimizer-in-apache-spark-22)
+- [Spark SQL 源码分析系列文章](http://blog.csdn.net/oopsoom/article/details/38257749) 2014
 
