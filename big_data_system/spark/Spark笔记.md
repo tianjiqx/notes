@@ -204,7 +204,7 @@ AQE 倾斜连接优化会从随机文件统计信息中自动检测此类倾斜�
 
 catalyst中的主要数据类型是由节点对象组成的树。
 
-每个节点都有一个节点类型和零个或多个子节点。新的节点类型在 Scala 中定义为 TreeNode 类的子类。
+每个节点都有一个节点类型和零个或多个子节点。新的节点类型在 Scala 中定义为`TreeNode[T]`类的子类。
 
 表达式x+(1+2)，对应的Scala表示的树：Add(Attribute(x), Add(Literal(1), Literal(2)))
 
@@ -250,19 +250,76 @@ x+(1+2) 转换为x+3
     - 从catalog中通过名查找关系
     - 映射属性名，设置提供输入的孩子节点
     - 表达式传播，强制类型（推导表达式计算的类型）
-  - 输出是LogicalPlan
+  - 输出是“Resolved  LogicalPlan”
 - Logical Optimization
   - 基于规则的优化，应用在逻辑计划上，包括常量折叠、谓词下推、列修剪、空值传播、布尔表达式简化等
+  - `org.apache.spark.sql.catalyst.plans.logical.LogicalPlan`逻辑计划
+    - 继承`QueryPlan[LogicalPlan]`
+      - 继承`TreeNode[LogicalPlan]`
+  - `org.apache.spark.sql.catalyst.rules.Rule` 和 `org.apache.spark.sql.catalyst.rules.RuleExecutor`
+    - Expression =>  Expression
+      - `Rule[Expression]`
+    - Logical Plan => Logical Plan
+      - `Rule[LogicalPlan]`
+    - Physical Plan => Physical Plan （规则的应用并不在逻辑优化阶段）
+      - `Rule[SparkPlan]`
+        - `RemoveRedundantProjects`
+        - `org.apache.spark.sql.execution.QueryExecution` AQE中使用的物理计划转换规则
+  - `org.apache.spark.sql.execution.SparkOptimizer`优化器（逻辑优化，也包含传统数据库里面的物理优化，只是在逻辑计划上转换，统一为逻辑优化）
+    - 继承`org.apache.spark.sql.catalyst.optimizer.Optimizer`
+      - 继承`org.apache.spark.sql.catalyst.rules.RuleExecutor[LogicalPlan]`
+        - 关键方法
+          - `defaultBatches()` 定义的逻辑计划转换规则
+    - 代价模型选择
+      - 选择连接顺序，连接算法（代价（行数，字节数））
+        - `org.apache.spark.sql.catalyst.optimizer.JoinReorderDP.search()`
+          - `JoinReorderDPFilters` 搜索空间剪枝（TODO理解）
 - Physical Planning
   - 获取一个逻辑计划并生成一个或多个物理计划
-  - 代价模型选择
-    - 选择连接顺序，连接算法（代价（行数，字节数））
-      - `JoinReorderDP.search`
-        - `JoinReorderDPFilters` 搜索空间剪枝（TODO理解）
+    - 阶段1：转换优化后的逻辑计划为物理计划（当前只挑选第一个，best plan还在TODO）
+    - 阶段2：应用物理计划转换规则，调整计划
+  - `org.apache.spark.sql.execution.SparkStrategy`(Strategy) 逻辑计划转换成物理计划的策略
+    - 继承`GenericStrategy[SparkPlan]`
+    - Logical Plan => Physical Plan
+      - 物理计划在spark中实现类型是`org.apache.spark.sql.execution.SparkPlan`
+  - `org.apache.spark.sql.execution.SparkPlanner` 物理计划生成器
+    - 继承`org.apache.spark.sql.execution.SparkStrategies`
+      - 继承`org.apache.spark.sql.catalyst.planning.QueryPlanner[SparkPlan]`  抽象类
+        - 关键方法`plan()`逻辑计划转物理计划（迭代器）
+        - 抽象方法`strategies` 提供转换策略，`SparkPlanner` 实现了方法，提供了策略
+        - `extraPlanningStrategies` 开放的扩展策略，用户可以继承`SparkStrategy`实现自己的转换策略（将逻辑计划转物理计划），通过该接口添加进去。
+          - 例如`HiveSessionStateBuilder` 返回的planner 继承`SparkPlanner`扩展策略；
+        - 策略都是使用模式匹配，所以用户自定义的一些类型，不会影响已有策略，只有自定义的策略会处理用户定义的逻辑计划节点，产生相应的物理计划
 - Code Generation
   - 见2.3
 
-公共扩展点（非规则的扩展）：
+
+
+`org.apache.spark.sql.execution.QueryExecution` 工作流代码入口
+
+- `executePhase` 包装了各个执行阶段
+  - ANALYSIS
+  - OPTIMIZATION
+  - PLANNING
+- PLANNING包含2个阶段
+  - `QueryExecution.createSparkPlan`  返回一个物理计划
+  - `QueryExecution.prepareForExecution` 做`preparations`的物理计划调整
+    - `EnsureRequirements` 属性强制，添加必要的shuffle算子
+    - `InsertAdaptiveSparkPlan` AQE优化
+    - 等
+
+
+
+扩展：
+
+- `org.apache.spark.sql.SparkSessionExtensions`
+- experimental 接口
+  - `spark.experimental.extraStrategies = IntervalJoin :: Nil  ` 扩展自定义的策略IntervalJoin 
+  - `spark.experimental.extraOptimizations` 扩展逻辑优化规则
+
+
+
+**公共扩展点（非规则的扩展）：**
 
 - DataSource
   - 见3.1
@@ -435,8 +492,6 @@ DataSource
 
 
 ### 3.4 Structured Streaming
-
-
 
 
 
