@@ -279,6 +279,8 @@ Pod之间共享IP地址空间（无NAT），通过ip地址相互通信。
 
 （Pod的代价很低，分割到多个Pod中，便于扩缩）
 
+Pod是最重要的**API对象**（API对象的概念可以见2.9）。
+
 
 
 #### 2.3 Volumne
@@ -320,15 +322,15 @@ RS是新并版本的RC。
 
 #### 2.7 Deployment
 
-表示用户对 Kubernetes 集群的一次更新操作。
-
-范围更大的API 对象，应用级别。
+表示运行在集群中的应用。
 
 初始：
 
 - 默认命名空间 default 
 
 - 系统命名空间 kube-system
+
+封装了Pod API。
 
 
 
@@ -338,7 +340,74 @@ RS是新并版本的RC。
 
 
 
-#### 2.9 服务网格Service Mesh
+#### **2.9 API对象（Kubernetes Objects）**
+
+操作 Kubernetes 对象，都需要使用Kubernets API，所以也叫 API对象。
+
+API 对象是 Kubernetes 集群中的**管理操作单元**。  
+
+通过引入新的API 对象，来支持新功能的管理操作。
+
+API 对象是持久化的实体， 表示整个集群的状态。描述：
+
+- 哪些容器化应用在运行（以及在哪些节点上）
+- 可以被应用使用的资源
+- 关于应用运行时表现的策略，比如重启策略、升级策略，以及容错策略
+
+API对象的通过`.yaml`文件来声明， `kubectl` 在发起 API 请求时，将这些信息转换成 JSON 格式。
+
+API 对象：
+
+- 元数据 metadata
+  - 用来标识对象
+  - namespace
+  - name
+  - uid
+  - labels
+- 规范（规约）spec
+  - 描述了期望的状态
+    - 例如，期望通过复制控制器 Replication Controller设置的 Pod 副本数为3  
+- 状态 status
+  - 描述系统当前达到的状态
+  - 由 Kubernetes 系统和组件设置并更新
+
+Deployment，ReplicaSet，Service，Job，DaemonSet，StatefulSet，这些都是API对象
+
+例子：application/deployment.yaml
+
+```yaml
+apiVersion: apps/v1  #必须，创建该对象所使用的 Kubernetes API 的版本
+kind: Deployment     #必须，想要创建的对象的类别
+metadata: 			 #必须，唯一性标识
+  name: nginx-deployment
+spec:				 #必须，嵌套结构
+  selector:			 # 如何查找要管理的Pods
+    matchLabels:
+      app: nginx
+  replicas: 2 # tells deployment to run 2 pods matching the template
+  template:
+  	# Pod 模板 - start
+    metadata:
+      labels:		# 标签 app: nginx 
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+   # Pod 模板 - end
+```
+
+创建Deployment命令：
+
+```shell
+kubectl apply -f https://k8s.io/examples/controllers/nginx-deployment.yaml
+```
+
+
+
+#### 2.10 服务网格Service Mesh
 
 用于管理服务之间的网络流量，云原生的网络基础设施层。
 
@@ -370,6 +439,34 @@ RS是新并版本的RC。
 
 
 ## 4.组件详细
+
+### 4.1 API Server
+
+API Server是控制平面的核心。
+
+API 服务器负责提供 HTTP API，以供用户、集群中的不同部分和集群外部组件相互通信。
+
+通过`kubectl` 命令行接口、`kubeadmin`工具，执行查询、操作 API对象。
+
+
+
+### 4.2 Controllers
+
+
+
+
+
+### 4.3 Kubelt
+
+
+
+### 4.4 Scheduler
+
+
+
+
+
+
 
 
 
@@ -483,6 +580,56 @@ API：
 
 
 
+## 6.Kubernetes Operator
+
+ Kubernetes Operator是由CoreOS开发的Kubernetes扩展特性, 目标是通过定义一系列CRD(自定义资源)和实现控制器,将特定领域的应用程序运维技术和知识(如部署方法、监控、故障恢复等)通过代码的方式固化下来.
+
+
+
+数据库系统通过Operator进行自动运维管理的例子：[TiDB Operator](https://docs.pingcap.com/zh/tidb-in-kubernetes/stable/tidb-operator-overview)。
+
+主要的作用：
+
+- 部署
+  - 在K8S集群上部署TiDB集群
+    - 公有云环境、私有环境
+- 访问
+  - k8s统一的pod信息管理，查看所有节点上的pod状态，进入pod
+- TiDB 集群扩缩容
+- TiDB 集群升级
+  - 滚动升级
+  - 例如对环境，依赖发生升级，只需要更新image即可，物理机环境完全无需关心调整
+- TiDB 集群配置变更
+- 配置 TiDB 集群故障自动转移
+- 监控 TiDB 集群
+  - Dashboard
+- 查看 TiDB 日志
+
+
+
+容器环境性能与host环境，QPS，网络latency 差距微弱，容器开销成本极低。
+
+
+
+系统上K8S优缺点：
+
+优点：
+
+- 核心优势在于机器资源的利用（如果机器资源已经K8S化），可以运行多种其他应用，部署其他应用。
+  - 对于大数据生态而言，各个系统、组件很多，确实是很适合。
+- 运维（管理，扩缩，升级，环境依赖）方便。
+
+缺点：
+
+- 开发人员技术栈增加学习负担
+  - 需要学习系统如何上K8S
+  - K8S自身系统的运维，docker，k8s崩溃问题解决（重启大法）
+- 容器环境，带来的一些系统需要额外设计考量。
+  - 存储，路径地址
+  - 组件间通信。
+
+对于小规模集群环境，系统的机器资源是专用的情况下，额外上K8S，收益下降。
+
 
 
 
@@ -500,4 +647,5 @@ API：
 - [Kubernetes Handbook——Kubernetes 中文指南/云原生应用架构实践手册](https://jimmysong.io/kubernetes-handbook/)
 - [Istio 服务网格](https://jimmysong.io/istio-handbook/)
 - Kubernetes源码剖析-郑东旭-2020
+- [TiDB Operator](https://docs.pingcap.com/zh/tidb-in-kubernetes/stable/tidb-operator-overview)
 
