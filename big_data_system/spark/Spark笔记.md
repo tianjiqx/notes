@@ -577,9 +577,74 @@ DataSource
 
 
 
-
-
 ### 3.3 Spark on K8S
+
+理由：
+
+- Docker与容器生态系统
+  - 业务使用统一的容器运行环境，解除环境依赖。
+  - 机器资源利用更充分，不用再划分某些机器给spark，一些给stream，kafka等服务。
+  - 使用完即释放资源
+- Kubernets是容器事实编排标准
+  - 插件服务：日志、监控（Prometheus）、安全工具
+  - lstio 提供服务网格，授权，跟踪，容器通信。
+- 资源共享，无两层调度，利用更合理
+  - 取消yarn调度机制，直接使用k8s的资源调度器
+
+
+
+#### 3.3.1 spark-submit方式
+
+[SPARK-18278](https://issues.apache.org/jira/browse/SPARK-18278?spm=a2c6h.12873639.0.0.35f321c4iFmFJI)
+
+提交Spark应用程序到 Kubernetes 集群
+
+![](spark笔记图片/k8s-cluster-mode.png)
+
+- spark-submit 想k8s api server提交创建spark driver的pod
+- spark driver的pod，调用K8s API，创建executor的pod
+  - 应该也是向api server提交创建pod请求，然后被Scheduler调度
+- 当应用程序完成时，executor pod 终止并被清理
+  - driver的pod的清理，通过垃圾回收或者手动清理。
+
+
+
+K8S需要spark的镜像，需要提前构建并push，之后通过submit的-conf 参数传入
+
+```shell
+$ ./bin/docker-image-tool.sh -r <repo> -t my-tag build
+$ ./bin/docker-image-tool.sh -r <repo> -t my-tag push
+```
+
+
+
+#### 3.3.2 spark-kubernetes operator方式
+
+![](spark笔记图片/architecture-diagram.png)
+
+
+
+- SparkApplication控制器
+  - 用于创建、更新、删除SparkApplication对象,同时控制器还会监控相应的事件,执行相应的动作;
+- Submission Runner
+  - 负责调用spark-submit提交Spark作业, 作业提交的流程完全复用Spark on K8s的模式;
+- Spark Pod Monitor
+  - 监控Spark作业相关Pod的状态,并同步到控制器中;
+- Mutating Admission Webhook
+  - 可选模块
+  - 基于注解来实现Driver/Executor Pod的一些定制化需求;
+- SparkCtl
+  - 用于和Spark Operator交互的命令行工具
+
+
+
+Spark Operator集成了Spark on K8s的方案，遵循K8S的 [operator](https://coreos.com/blog/introducing-operators.html) 模式，管理 Kubernetes 集群上 Spark 应用程序生命周期，提供了更全面管控特性：
+
+- 声明式的作业管理;
+- 支持更新SparkApplication对象后自动重新提交作业;
+- 支持可配置的重启策略;
+- 支持失败重试;
+- 集成prometheus, 可以收集和转发Spark应用级别的度量和Driver/Executor的度量到prometheus中.
 
 
 
@@ -617,4 +682,7 @@ DataSource
 - Spark SQL内核剖析-朱峰-2018 spark2.1，推荐
 - [slides:Cost-Based Optimizer in Apache Spark 2.2](https://www.slideshare.net/databricks/costbased-optimizer-in-apache-spark-22)
 - [Spark SQL 源码分析系列文章](http://blog.csdn.net/oopsoom/article/details/38257749) 2014
+- [官方：在k8s上运行spark](https://spark.apache.org/docs/latest/running-on-kubernetes.html)
+- [Spark Operator浅析](https://developer.aliyun.com/article/726791)
+- [Kubernetes Operator for Apache Spark Design](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator/blob/master/docs/design.md?spm=a2c6h.12873639.0.0.35f321c4iFmFJI&file=design.md)
 
