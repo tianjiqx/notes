@@ -418,9 +418,7 @@ spark 3.0 版本新增`org.apache.spark.sql.connector.catalog.CatalogPlugin` 体
 
 
 
-
-
-### 2.3 高效的表达式计算
+#### 2.2.3 高效的表达式计算
 
 对于`a+b`这样的表达式计算，解释执行，通常需要如下7步。
 
@@ -452,7 +450,7 @@ resultRow.setInt(0,	result)
 
 
 
-### 2.4 spark 内存管理
+### 2.3 spark 内存管理
 
 - RDD storage（RDD cache()操作）
   - LRU
@@ -470,7 +468,7 @@ resultRow.setInt(0,	result)
 
 
 
-### 2.5 向量化读
+### 2.4 向量化读
 
 支持读取列存格式的数据
 
@@ -483,7 +481,7 @@ DataSource v2 API提供对其他数据源的相互化读取。
 
 
 
-### 2.6 高级特性
+### 2.5 高级特性
 
 - 半结构化数据的schema推理
   - json数据（非嵌套数据结构）
@@ -491,6 +489,86 @@ DataSource v2 API提供对其他数据源的相互化读取。
   - DataFrame
     - 一列代表一个特征
 - 数据管道集成其他数据源
+
+
+
+### 2.6 RDD
+
+提出的背景：
+
+- MapReduce、Dryad的数据流编程模型，缺少高效率的数据共享（每个步骤，都基于磁盘文件共享数据）。
+- Pregel、HaLoop 只支持特定计算模式
+
+
+
+RDD的表达能力：
+
+- 继承MR模型
+  - MR模型可以模仿任何分布式计算任务（虽然有效率问题）
+    - 分布式计算系统，由执行本地算和进行消息交换的节点组成
+    - Map操作执行本地计算
+    - Reduce操作用来所有节点间相互通信
+  - 低效率原因
+    - 共享数据的方式——可复制的外部存储系统，而每一步都需要输出状态
+    - MR步骤的网络延迟
+- 不变性
+  - 无更新，导致一致性性问题
+  - 操作集，处理数据
+    - 高级别的编程接口
+- 对多条记录执行相同的操作
+- 对数据共享的抽象（更高效）
+  - 划分宽窄依赖，避免复制，内存数据共享
+  - 相比传统MR系统低延迟(100ms)
+    - “优先位置” ，避免跨节点搬数据，减少网络传输开销
+- 基于lineage的恢复机制
+  - 常驻内存
+  - shuffle操作提供检查点，作为恢复起点，减少恢复代价
+  - 分区划分，减少需要恢复的数据
+
+
+
+RDD中的数据格式
+
+- 扁平的数据记录（行）
+  - 但是可以一条记录中存储多个数据项（列存、向量化处理）
+    - 10000,10w条记录的压缩存储接近列存压缩比率
+
+
+
+RDD的数据分区作为任务粒度，提供并发处理能力。
+
+
+
+数据的遍历接口：迭代器
+
+
+
+RDD通信模式
+
+- 点对点
+- 广播
+
+
+
+
+
+离散流模型（D-Stream），数据流转化为一系列短时间间隔无状态、确定性的批计算：
+
+- 处理大规模数据流
+  - 提供必要的容错
+- 处理straggler慢任务问题（推测执行）
+  - 故障节点
+- 时序问题
+  - 使用到达系统时间，而非时间发生时间
+    - 外部时间处理
+      - 等待有限时间
+      - 应用级别，定期纠正
+
+
+
+
+
+
 
 
 
@@ -586,7 +664,7 @@ DataSource
   - 机器资源利用更充分，不用再划分某些机器给spark，一些给stream，kafka等服务。
   - 使用完即释放资源
 - Kubernets是容器事实编排标准
-  - 插件服务：日志、监控（Prometheus）、安全工具
+  - 插件服务：日志、监控（Prometheus）、UI(Grafana仪表盘)、安全工具
   - lstio 提供服务网格，授权，跟踪，容器通信。
 - 资源共享，无两层调度，利用更合理
   - 取消yarn调度机制，直接使用k8s的资源调度器
@@ -603,7 +681,7 @@ DataSource
 
 - spark-submit 想k8s api server提交创建spark driver的pod
 - spark driver的pod，调用K8s API，创建executor的pod
-  - 应该也是向api server提交创建pod请求，然后被Scheduler调度
+  - driver也是向api server提交创建Executor pods的请求，然后被Scheduler调度
 - 当应用程序完成时，executor pod 终止并被清理
   - driver的pod的清理，通过垃圾回收或者手动清理。
 
@@ -615,6 +693,18 @@ K8S需要spark的镜像，需要提前构建并push，之后通过submit的-conf
 $ ./bin/docker-image-tool.sh -r <repo> -t my-tag build
 $ ./bin/docker-image-tool.sh -r <repo> -t my-tag push
 ```
+
+Spark on Kubernetes 设计：
+
+- K8S配置：spark conf提供
+- Executor的动态扩展
+  - Driver pod 作为控制器，发布需要创建的Executor Pod数
+    - 不直接通过ReplicaSet pod的副本管理
+- Shuffle Service
+  - 持久化executor写的文件的组件，生命周期长于executors
+  - executor被kill，无丢数据风险，触发重算
+
+
 
 
 
