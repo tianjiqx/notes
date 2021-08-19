@@ -253,94 +253,9 @@ Docker是一个打包、分发和运行应用程序的平台。
 
 ![](k8s笔记图片/Snipaste_2021-08-12_17-06-14.png)
 
-#### 2.2.2 Pod
-
-Pod是代表一组并置的容器（也可以是单个容器）。
-
-一个Pod的容器，都运行在同一个节点上。
-
-一个容器一个进程的最佳实践。（进程崩溃，自动重启，记录错误，都是单进程更好处理。）
-
-Pod也可以被当做是多进程的容器，同时运行一些密切相关的进程，提供（几乎）完全相同的环境，又保持一定的隔离性。
-
-- 共享network，UTS名字空间（PID）,存储卷volumne
-  - 相同的IP，端口空间
-- 隔离的文件系统
-
-Pod是K8S中的基本构建模块。
-
-Pod视为独立的机器。
-
-Pod之间共享IP地址空间（无NAT），通过ip地址相互通信。
-
-专用的网络实现，基于真实链路。（与实际网络拓扑无关）
-
-应用的Pod的设计实践：分层的应用，每层使用一个Pod。（例如Web服务Pod，数据库服务Pod）
-
-（Pod的代价很低，分割到多个Pod中，便于扩缩）
-
-Pod是最重要的**API对象**（API对象的概念可以见2.9）。
 
 
-
-#### 2.3 Volumne
-
-Volume（存储卷） 是Pod中能够被多个容器访问的共享目录。  
-
-支持多种类型的Volume， 例如GlusterFS、 Ceph等先进的分布式文件系统 。
-
-
-
-#### 2.4 Kubectl
-
-命令行工具，用于与 Kubernetes 集群和其中的 pod 通信。
-
-- 查看集群的状态
-- 列出所有pod
-- 进入pod
-- 添加使用yaml文件定义资源对象到集群
-
-
-
-#### 2.5 Ingress & Egress
-
-进入 Kubernetes pod 的流量称为 Ingress，而从 pod 到集群外的出站流量称为 egress。
-
-
-
-#### 2.6 Replica & ReplicaSet
-
-Pod的副本，被称为 Replica。
-
-ReplicationController 或 ReplicaSet 会监控和保证活动副本的数量。
-
-RC是Kubernetes 较早期的技术概念，只适用于长期服务型的业务类型。
-
-RS是新并版本的RC。
-
-
-
-#### 2.7 Deployment
-
-表示运行在集群中的应用。
-
-初始：
-
-- 默认命名空间 default 
-
-- 系统命名空间 kube-system
-
-封装了Pod API。
-
-
-
-#### 2.8 Namespace
-
-虚拟的隔离Pod。操作管理，显示。
-
-
-
-#### **2.9 API对象（Kubernetes Objects）**
+#### **2.2.2 API对象（Kubernetes Objects）**
 
 操作 Kubernetes 对象，都需要使用Kubernets API，所以也叫 API对象。
 
@@ -407,7 +322,197 @@ kubectl apply -f https://k8s.io/examples/controllers/nginx-deployment.yaml
 
 
 
-#### 2.10 服务网格Service Mesh
+#### 2.2.3 Pod
+
+Pod是代表一组并置的容器（也可以是单个容器）。
+
+一个Pod的容器，都运行在同一个节点上。
+
+一个容器一个进程的最佳实践。（进程崩溃，自动重启，记录错误，都是单进程更好处理。）
+
+Pod也可以被当做是多进程的容器，同时运行一些密切相关的进程，提供（几乎）完全相同的环境，又保持一定的隔离性。
+
+- 共享network，UTS名字空间（PID）,存储卷volumne
+  - 相同的IP，端口空间
+- 隔离的文件系统
+
+Pod是K8S中的基本构建模块。
+
+Pod视为独立的机器。
+
+Pod之间共享IP地址空间（无NAT），通过ip地址相互通信。
+
+专用的网络实现，基于真实链路。（与实际网络拓扑无关）
+
+应用的Pod的设计实践：分层的应用，每层使用一个Pod。（例如Web服务Pod，数据库服务Pod）
+
+（Pod的代价很低，分割到多个Pod中，便于扩缩）
+
+Pod是最重要的**API对象**。
+
+一般情况下，用户通过更上层的控制器来完成Pod部署，上层的控制器包括Deployment、DaemonSet以及StatefulSet。
+
+![](k8s笔记图片/module_03_nodes.svg)
+
+每个Pod 都有一个唯一的ip地址，即使在同一个node上。
+
+#### 2.2.4 Replica & ReplicaSet
+
+Pod的副本，被称为 Replica。
+
+ReplicationController 或 ReplicaSet 会监控和保证活动副本的数量。
+
+RC是Kubernetes 较早期的技术概念，只适用于长期服务型的业务类型。
+
+RS是新并版本的RC。
+
+一般不直接使用该对象，而是使用Deployment来完成副本管理。
+
+
+
+#### 2.2.5 Deployment
+
+表示运行在集群中的应用。在 Pod 这个抽象上更为上层的一个抽象。
+
+- Pod 的副本数目管理（扩缩容）
+- Pod 的版本控制（更新、回滚）
+
+Deployment管理ReplicaSet，ReplicaSet管理Pod。
+
+
+
+滚动升级：
+
+- 将应用中的每个独立的服务作为一个Pod来定义
+- 将Pod包在Deployment（自愈、扩缩容）
+  - 副本数、镜像、网络端口。滚动升级细节
+- 修复bug之类，需要升级
+- 修改Deployment的YAML文件，将镜像版本更新并重新POST到APIServer
+- Kubernetes基于新镜像的Pod创建了一个新的ReplicaSet
+  - 每次Kubernetes增加新ReplicaSet（新版镜像）中的Pod数量的时候，都会相应地减少旧ReplicaSet（旧版镜像）中的Pod数量
+- 旧版的ReplicaSet暂停，并且不再管理任何Pod，但是仍然保留了所有的配置信息（可以用于回滚）
+  - 回滚，逆过程，旧版的ReplicaSet增加pod，新ReplicaSet减少pod
+
+
+
+#### 2.2.6 Service
+
+逻辑抽象，定义了Pod 的逻辑集和访问 Pod 的协议。
+
+Service与Pod之间是通过Label和Label筛选器（selector）松耦合在一起。
+
+Service 提供了一个或者多个 Pod 实例的稳定访问地址。
+
+- 负载均衡
+- 容错（Pod失效）
+
+![](k8s笔记图片/Snipaste_2021-08-19_21-41-36.png)
+
+
+
+
+
+![](k8s笔记图片/module_04_labels.svg)
+
+
+
+服务类型：
+
+- ClusterIP
+  - 默认
+  - ClusterIP Service拥有固定的IP地址和端口号，并且仅能够从集群内部访问得到
+    - ClusterIP、端口号和Service名称会注册到集群的DNS服务
+  - Pod（应用的微服务）知道Service的名称，就能够解析对应的ClusterIP，进而连接到所需的Pod
+- NodePort
+  - 在ClusterIP的基础上增加了从集群外部访问能力
+    - 增加从集群外部访问到Service的端口NodePort
+
+
+
+创建Kubernetes Service的命令: `kubectl expose`
+
+每一个Service都有一个与其同名的Endpoint对象。
+
+Endpoint对象，维护着所有与该Service匹配的动态的Pod列表。
+
+`kubectl get ep <serviceName>`  
+
+`kubectl  describe ep <serviceName> `
+
+
+
+#### 2.2.7 Job
+
+Job 是 Kubernetes ⽤来控制批处理型任务的 API 对象。
+
+运行一次性任务，Pod内的任务成功结束时，不重启容器。
+
+
+
+#### 2.2.8 DaemonSet & StatefulSet
+
+DaemonSet ：
+
+功能：在每个节点上运行一个Pod。
+
+存储，日志，监控服务。
+
+StatefulSet：
+
+有状态的Pod服务。
+
+
+
+#### 2.2.9 Volumne
+
+Volume（存储卷） 是Pod中能够被多个容器访问的共享目录。  
+
+- 声明Pod中的容器可以访问文件目录
+
+- 可以被挂载在 Pod 中一个或者多个容器的指定路径下面。
+
+- 支持多种类型的Volume，
+  - 例如GlusterFS、 Ceph等先进的分布式文件系统 。
+
+
+
+#### 2.2.10 Kubectl
+
+命令行工具，用于与 Kubernetes 集群和其中的 pod 通信。
+
+- 查看集群的状态
+- 列出所有pod
+- 进入pod
+- 添加使用yaml文件定义资源对象到集群
+
+常用命令：
+
+- **kubectl get** - 列出资源
+- **kubectl describe** - 显示有关资源的详细信息
+- **kubectl logs** - 打印 pod 和其中容器的日志
+- **kubectl exec** - 在 pod 中的容器上执行命令
+
+
+
+#### 2.2.11 Ingress & Egress
+
+进入 Kubernetes pod 的流量称为 Ingress，而从 pod 到集群外的出站流量称为 egress。
+
+
+
+#### 2.2.12 Namespace
+
+虚拟的隔离Pod。操作管理，显示。
+
+初始：
+
+- 默认命名空间 default 
+
+- 系统命名空间 kube-system
+
+
+
+#### 2.2.13 服务网格Service Mesh
 
 用于管理服务之间的网络流量，云原生的网络基础设施层。
 
@@ -618,6 +723,12 @@ API：
 - 核心优势在于机器资源的利用（如果机器资源已经K8S化），可以运行多种其他应用，部署其他应用。
   - 对于大数据生态而言，各个系统、组件很多，确实是很适合。
 - 运维（管理，扩缩，升级，环境依赖）方便。
+  - 动态扩缩（业务无需停机）
+    - 无状态Pod副本数有K8S管理
+    - 有状态的Pod的扩缩，还是需要operator实现相关逻辑
+  - 资源隔离
+    - CPU，内存，IO限制，不影响其他业务
+  - 高可用，自动节点的容错
 
 缺点：
 
@@ -629,6 +740,84 @@ API：
   - 组件间通信。
 
 对于小规模集群环境，系统的机器资源是专用的情况下，额外上K8S，收益下降。
+
+
+
+
+
+## 7. Play on K8S
+
+因为硬件需求很低，所以使用[minikube](https://minikube.sigs.k8s.io/docs/start/) 来体验学习K8S。
+
+```shell
+# 开启docker服务
+sudo systemctl start docker
+# 添加当前用户到docker 用户组
+sudo usermod -aG docker $USER && newgrp docker
+
+# 可能VM Ubuntu环境
+# 下载docker-machine-driver-vmware linux版本，并添加到path
+
+
+# 安装minikube
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
+sudo dpkg -i minikube_latest_amd64.deb
+
+# 启动, 网络情况不好
+minikube start
+
+# 建议直接使用官网https://kubernetes.io/zh/docs/tutorials/kubernetes-basics/create-cluster/cluster-interactive/ 教程查看
+
+
+# 查看集群信息
+kubectl cluster-info
+
+# 查看节点信息
+kubectl get nodes
+
+# 查看部署
+kubectl get deployments
+
+# 查看pods
+kubectl get pods
+
+# 通过API访问 pod
+curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/
+
+# 列出env
+kubectl exec $POD_NAME -- env
+
+# 进入pod
+kubectl exec -it $POD_NAME -- bash
+
+# 列出服务
+kubectl get services
+
+# 暴露应用作为NodePort服务，提供集群外访问能力
+kubectl expose deployment/kubernetes-bootcamp --type="NodePort" --port 8080
+
+# 查看服务描述
+kubectl describe services/kubernetes-bootcamp
+
+# 列出指定标签的服务
+kubectl get services -l app=kubernetes-bootcamp
+
+# 查看RS，创建Deployment自动创建的同名RS
+kubectl get rs
+
+# 扩展pod副本数
+kubectl scale deployments/kubernetes-bootcamp --replicas=4
+
+# 查看pod，并显示ip
+kubectl get pods -o wide
+
+# 更新image，（自动滚动升级）
+kubectl set image deployments/kubernetes-bootcamp kubernetes-bootcamp=jocatalin/kubernetes-bootcamp:v2
+
+# 滚动升级状态/回滚
+kubectl rollout status deployments/kubernetes-bootcamp
+kubectl rollout undo deployments/kubernetes-bootcamp
+```
 
 
 
@@ -648,4 +837,6 @@ API：
 - [Istio 服务网格](https://jimmysong.io/istio-handbook/)
 - Kubernetes源码剖析-郑东旭-2020
 - [TiDB Operator](https://docs.pingcap.com/zh/tidb-in-kubernetes/stable/tidb-operator-overview)
+- [阿里云：云原生技术公开课](https://edu.aliyun.com/roadmap/cloudnative)
+- [Kubernetes修炼手册-奈吉尔·波尔顿-2021](https://weread.qq.com/web/reader/faa3296072462dc6faa52bfkc81322c012c81e728d9d180)
 
