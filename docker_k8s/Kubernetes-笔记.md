@@ -350,7 +350,15 @@ Pod之间共享IP地址空间（无NAT），通过ip地址相互通信。
 
 Pod是最重要的**API对象**。
 
-一般情况下，用户通过更上层的控制器来完成Pod部署，上层的控制器包括Deployment、DaemonSet以及StatefulSet。
+一般情况下，用户通过更上层的控制器来完成Pod的管理，上层的控制器包括Deployment、DaemonSet以及StatefulSet，这些也叫做工作负载（Workloads）。
+
+- Deployment 和 ReplicaSet 。 管理无状态应用，Deployment 中的所有 Pod 都是相互等价的，并且在需要的时候被换掉。Deployment 内部使用ReplicaSet。
+- StatefulSet。管理有状态应用。将StatefulSet每个Pod与某个PV对应起来。
+- DaemonSet。定义节点本地支撑的Pod。与节点一一对应。
+- Job和CronJob。 定义一些一直运行到结束并停止的任务。Job用来表达的是一次性的任务，而 CronJob会根据其时间规划反复运行。
+- 定制资源定义（CRD），用户（第三方）扩展的负载资源（如TiDB Operator定义的CRD），完成原本不是 Kubernetes 核心功能的工作。
+
+
 
 ![](k8s笔记图片/module_03_nodes.svg)
 
@@ -459,20 +467,301 @@ DaemonSet ：
 
 StatefulSet：
 
-有状态的Pod服务。
+管理有状态的Pods集合的部署、扩缩， 并为这些 Pod 提供持久存储和持久标识符。
+
+特性：
+
+- 稳定的、唯一的网络标识符。
+  - 标识与Pod绑定，无论调度到那个节点
+- 稳定的、持久的存储。
+- 有序的、优雅的部署和缩放。
+  - 0..N-1 的创建，N-1...0的删除（不会跳过）。
+  - 应用缩放时，之前的所有Pod必须是Running 和 Ready 状态
+    - 副本数从3调整到1，2已终止，0运行失败，不会终止1。
+- 有序的、自动的滚动更新。
+
+```yaml
+apiVersion: v1
+kind: Service   # 集群外访问的服务
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None
+  selector:
+    app: nginx
+---
+apiVersion: apps/v1
+kind: StatefulSet # 有状态pod集合
+metadata:
+  name: web
+spec:
+  selector: # 识别需要操作Pods的选择器
+    matchLabels:
+      app: nginx # has to match .spec.template.metadata.labels
+  serviceName: "nginx"
+  replicas: 3 # by default is 1
+  template:  # Pod
+    metadata:
+      labels:
+        app: nginx # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: nginx
+        image: k8s.gcr.io/nginx-slim:0.8
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:  # 挂载PVC
+        - name: www
+          mountPath: /usr/share/nginx/html
+  volumeClaimTemplates:  # 定义PVC
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "my-storage-class" # 根据存储类创建PV
+      resources:
+        requests:
+          storage: 1Gi
+```
 
 
 
 #### 2.2.9 Volumne
 
-Volume（存储卷） 是Pod中能够被多个容器访问的共享目录。  
+**Volume（卷）** 是Pod中能够被多个容器访问的共享目录。  
+
+用于处理容器奔溃，文件丢失，同一个Pod中多个容器共享文件。
 
 - 声明Pod中的容器可以访问文件目录
 
 - 可以被挂载在 Pod 中一个或者多个容器的指定路径下面。
+  - 每个Pod需要独立指定卷的挂载位置
 
 - 支持多种类型的Volume，
   - 例如GlusterFS、 Ceph等先进的分布式文件系统 。
+
+指定AWS EBS卷的Pod实例
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-ebs
+spec:
+  containers:
+  - image: k8s.gcr.io/test-webserver
+    name: test-container
+    // 声明卷挂载位置
+    volumeMounts:
+    - mountPath: /test-ebs
+      name: test-volume
+  volumes:
+  - name: test-volume
+    # 此 AWS EBS 卷必须已经存在，awsElasticBlockStore是卷类型
+    awsElasticBlockStore:
+      volumeID: "<volume-id>"
+      fsType: ext4
+```
+
+
+
+**configMap**卷
+
+提供向 Pod 注入配置数据的方法。
+
+允许将配置文件与镜像文件分离，以使容器化的应用程序具有可移植性。
+
+创建ConfigMap
+
+```shell
+# 创建本地目录
+mkdir -p configure-pod-container/configmap/
+
+# 将实例文件下载到 `configure-pod-container/configmap/` 目录
+wget https://kubernetes.io/examples/configmap/game.properties -O configure-pod-container/configmap/game.properties
+wget https://kubernetes.io/examples/configmap/ui.properties -O configure-pod-container/configmap/ui.properties
+
+# 基于文件创建configmap
+kubectl create configmap game-config --from-file=configure-pod-container/configmap/
+
+# 查看
+kubectl describe configmaps game-config
+```
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-pod
+spec:
+  containers:
+    - name: test
+      image: busybox
+      volumeMounts:
+        - name: config-vol
+          mountPath: /etc/config
+  volumes:
+    - name: config-vol
+      # 也需要先创建
+      configMap:
+        name: log-config
+        items:
+          # 存储在log_level条目中的所有内容,都被挂载到Pod的/etc/config/log_level路径下
+          - key: log_level
+            path: log_level
+```
+
+HostPath卷
+
+将主机节点文件系统上的文件或目录挂载到你的Pod中。
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pd
+spec:
+  containers:
+  - image: k8s.gcr.io/test-webserver
+    name: test-container
+    volumeMounts:
+    - mountPath: /test-pd
+      name: test-volume
+  volumes:
+  - name: test-volume
+    hostPath:
+      # 宿主上目录位置
+      path: /data
+      # 此字段为可选，Directory，在给定路径上必须存在的目录
+      # DirectoryOrCreate，给定路径不存在是创建，755，具有与 kubelet 相同的组和属主信息
+      type: Directory
+```
+
+
+
+容器存储接口CSI，容器编排系统定义的标准接口，用来将任意存储系统暴露给它们的容器工作负载。
+
+
+
+**持久卷（Persistent Volume）**是集群中的一块存储，可以由管理员事先提供，或者 使用存储类（Storage Class）来动态提供。
+
+普通的 Volume 一样，但是拥有独立于任何使用 PV 的 Pod 的生命周期。不会被销毁，容器重启期间数据不丢失。
+
+持久卷申请（PersistentVolumeClaim，PVC）表达的是用户对存储的请求（特定的大小和访问模式）。申请使用PV资源。
+
+Pod 将 PVC 申请当做存储卷来使用。
+
+PV卷的提供方式：
+
+- 静态
+  - 集群管理员创建若干 PV 卷，些卷对象带有真实存储信息，对集群用户可见
+- 动态
+  - 若静态PV卷无法与用户的 PersistentVolumeClaim 匹配， 集群将尝试基于StorageClass，为该PVC动态提供一个存储卷
+    - 要求PVC请求的某个StorageClass已经存在
+
+将 PVC 对象删除，可以回收PV资源。
+
+PVC扩展，部分卷如awsElasticBlockStore 可以扩展，默认启用。
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume  # PV
+metadata:
+  name: pv0003
+spec:
+  capacity:	# 容量
+    storage: 5Gi
+  volumeMode: Filesystem # 卷模式Filesystem，会挂载到Pod的某个目录，另外一种Block，原始块设备
+  accessModes: # 访问模式
+    - ReadWriteOnce # 被一个节点以读写方式挂载，Once一个，Many多个，表示可以绑定到多个PVC
+  persistentVolumeReclaimPolicy: Recycle # 回收策略，Recycle -- 基本擦除，rm -rf /thevolume/*
+  storageClassName: slow # 特定类的PV卷只能绑定到请求该类存储卷的 PVC，未指定则只能绑定未指定存储类的PVC
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+  nfs: # 卷类型是nfs
+    path: /tmp
+    server: 172.17.0.2
+```
+
+
+
+卷的阶段：
+
+- Available（可用）-- 卷是一个空闲资源，尚未绑定到任何PVC；
+- Bound（已绑定）-- 该卷已经绑定到某PVC；
+- Released（已释放）-- 所绑定的PVC已被删除，但是资源尚未被集群回收
+- Failed（失败）-- 卷的自动回收操作失败
+
+
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim  # PVC
+metadata:
+  name: myclaim
+spec:
+  accessModes:
+    - ReadWriteOnce		# 访问模式，与PV相同
+  volumeMode: Filesystem # 卷模式，与PV相同
+  resources:  # 资源
+    requests:
+      storage: 8Gi  # 8G容量
+  storageClassName: slow # 存储类，与PV相同
+  selector:  # 过滤候选PV
+    matchLabels:
+      release: "stable"
+    matchExpressions:
+      - {key: environment, operator: In, values: [dev]}
+```
+
+
+
+StorageClass存储类
+
+存储映射策略。
+
+关键字段
+
+- provisioner存储制备器
+  - 指定卷插件制备PV
+  - 包含存储来源？
+- parameters
+  - 描述存储类的卷（这里不指定大小，卷大小在PVC使用StorageClass时，通过资源描述）
+    - 类型（标准磁盘，ssd）
+- reclaimPolicy
+  - 回收策略
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: standard
+provisioner: kubernetes.io/aws-ebs  # 存储制备器
+parameters: # 卷的参数
+  type: gp2
+reclaimPolicy: Retain # 回收策略，销毁
+allowVolumeExpansion: true
+mountOptions:
+  - debug
+volumeBindingMode: Immediate
+```
+
+
+
+使用存储卷的过程：
+
+- 创建PV
+- 创建PVC
+- 在PodSpec中定义使用的卷（pvc）
+- 挂载到一个容器的路径上
 
 
 
