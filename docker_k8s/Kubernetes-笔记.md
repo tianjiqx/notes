@@ -650,13 +650,15 @@ spec:
 
 
 
-**持久卷（Persistent Volume）**是集群中的一块存储，可以由管理员事先提供，或者 使用存储类（Storage Class）来动态提供。
+**持久卷（Persistent Volume）**是集群中的一块存储，可以由管理员事先提供，或者使用存储类（Storage Class）来动态提供。
 
-普通的 Volume 一样，但是拥有独立于任何使用 PV 的 Pod 的生命周期。不会被销毁，容器重启期间数据不丢失。
+普通的 Volume 一样，拥有独立于任何使用 PV 的 Pod 的生命周期。不会被销毁，容器重启期间数据不丢失。
 
 持久卷申请（PersistentVolumeClaim，PVC）表达的是用户对存储的请求（特定的大小和访问模式）。申请使用PV资源。
 
 Pod 将 PVC 申请当做存储卷来使用。
+
+应用开发人员使用PV和PVC，只需要告诉Kubernetes需要什么样的存储资源，而不必关心真正的空间从哪里分配、如何访问等底层细节信息，而不是V来进行管理（分离K8S集群管理和应用开发人员职责）。
 
 PV卷的提供方式：
 
@@ -783,6 +785,18 @@ volumeBindingMode: Immediate
 
 
 
+相应的，Kubernetes Dashboard是一个基于Web的K8S集群信息可视化组件。
+
+功能：
+
+- 部署容器化的应用
+- 监控应用的状态
+- 执行故障排查任务
+- 管理Kubernetes的各种资源
+  - Node、Pod、Deployment、Job、DaemonSet等
+
+
+
 #### 2.2.11 Ingress & Egress
 
 进入 Kubernetes pod 的流量称为 Ingress，而从 pod 到集群外的出站流量称为 egress。
@@ -832,6 +846,81 @@ volumeBindingMode: Immediate
 
 
 
+### 3.2 在K8S中开发部署应用
+
+#### 3.2.1 移传统应⽤到Kubernetes步骤
+
+Spark on YARN  迁移步骤示例
+
+![](k8s笔记图片/Snipaste_2021-08-21_20-02-21.png)
+
+迁移步骤：
+
+- 将原有应⽤拆解为服务
+  - YARN
+    - ResourceManager  
+    - NodeManager  
+  - Spark
+- 制作镜像
+  - hadoop（yarn） 
+    - yarn的两个服务使用相同的镜像，但是通过后面配置启动不同的服务
+  - Spark
+- 定义 k8s yaml 文件
+  - 使用Service 和 StatefulSet
+    - yarn-nm-statefulset.yaml  
+    - yarn-rm-statefulset.yaml  
+    - yarn-cluster-namespace.yaml  
+    - kube-yarn-ingress.yaml  暴露到集群外
+    - spark-statefulset.yaml
+- Bootstrap 脚本
+  - Pod的启动文件
+- ConfigMaps
+  - 配置文件挂载
+
+
+
+### 3.3 Kubernetes的包管理器Helm
+
+应用包管理器Helm，类似linux操作系统的包管理器，apt，yum。
+
+原因：通过命令行，一个个的yaml文件的管理数十、数百的应用服务、pod等，太过繁琐。并且各个服务具有复杂的服务依赖关系。
+
+概念：
+
+- chart
+  - 创建一个应用的信息集合，包括各种Kubernetes对象的配置模板、参数定义、依赖关系、文档说明等。
+  - 应用部署的自包含逻辑单元。
+  - Helm中的包。
+    - 通常整个chart被打成tar包
+- release
+  - 是chart的运行实例，代表了一个正在运行的应用。
+  - chart能够多次安装到同一个集群，每次安装都是一个release。
+
+
+
+Helm组件：
+
+- Helm客户端
+  - 本地开发chart
+  - 管理chart仓库
+    - 拉取、保存和更新chart
+  - 与Tiller服务器交互
+    - 在远程Kubernetes集群上安装chart
+    - 查看release信息
+    - 升级或卸载已有的release
+- Tiller服务器
+  - 处理Helm客户端的请求，与Kubernetes API Server交互。
+    - 通过chart构建release
+    - 跟踪release的状态
+    - 通过API Server升级或卸载已有的release
+  - 作为容器化应用运行在Kubernetes Cluster中
+
+
+
+
+
+
+
 ## 4.组件详细
 
 ### 4.1 API Server
@@ -841,6 +930,52 @@ API Server是控制平面的核心。
 API 服务器负责提供 HTTP API，以供用户、集群中的不同部分和集群外部组件相互通信。
 
 通过`kubectl` 命令行接口、`kubeadmin`工具，执行查询、操作 API对象。
+
+
+
+#### RESTFul
+
+REST（Representational State Transfer）是现代客户端应用程序通过HTTP协议与HTTP Server通信的机制，也是目前最流行的API设计规范。
+
+支持基本的CRUD操作。
+
+Kubernetes使用go语言实现一种RESTFul框架go-restful。
+
+![](k8s笔记图片/Snipaste_2021-08-21_17-50-01.png)
+
+- Container：HTTPServer
+  - WebService：一组不同服务
+    - Router ：根据HTTP请求的URL路由到对应的处理函数
+
+
+
+#### gRPC
+
+Google开源的RPC服务框架。
+
+特性：
+
+- 支持多语言实现（java，go，c++）
+  - 支持跨语言通信
+- Protocol Buffers作为IDL（Interface DescriptionLanguage）语言，用于结构化数据的序列化和反序列化。
+  - SerDe RPC调用过程请求信息/ 
+
+kube-apiserver架构设计:
+
+![](k8s笔记图片/Snipaste_2021-08-21_19-42-05.png)
+
+
+
+- APIExtensionsServer API扩展服务
+  - 提供CRD自定义资源服务
+  - CustomResourceDefinitions
+  - extensionsapiserver.Scheme资源注册表
+- AggregatorServer API聚合服务
+  - merics等
+- KubeAPIServer API核心服务
+  - 内置核心资源服务，Pod，Service等对象的管理
+- GenericAPIServer 底层服务
+  - 将Kubernetes资源与REST API进行映射
 
 
 
@@ -976,7 +1111,7 @@ API：
 
 ## 6.Kubernetes Operator
 
- Kubernetes Operator是由CoreOS开发的Kubernetes扩展特性, 目标是通过定义一系列CRD(自定义资源)和实现控制器,将特定领域的应用程序运维技术和知识(如部署方法、监控、故障恢复等)通过代码的方式固化下来.
+ Kubernetes Operator是由CoreOS开发的Kubernetes扩展特性，目标是通过定义一系列CRD(自定义资源)和实现控制器，将特定领域的应用程序运维技术和知识(如部署方法、监控、故障恢复等)通过代码的方式固化下来。
 
 
 
@@ -1031,6 +1166,56 @@ API：
 对于小规模集群环境，系统的机器资源是专用的情况下，额外上K8S，收益下降。
 
 
+
+官方[operator hub ](https://operatorhub.io/)
+
+
+
+### 6.1 TiDB Operator
+
+![](k8s笔记图片/tidb_operator_overview_984f8dc0d4.png)
+
+
+
+- 自定义资源CRD（Helm Chart）
+  - TidbCluster 用于描述用户期望的 TiDB 集群
+  - TidbMonitor 用于描述用户期望的 TiDB 集群监控组件
+  - TidbInitializer 用于描述用户期望的 TiDB 集群初始化 Job
+  - Backup 用于描述用户期望的 TiDB 集群备份 Job
+  - Restore 用于描述用户期望的 TiDB 集群恢复 Job
+  - BackupSchedule 用于描述用户期望的 TiDB 集群周期性备份 Job
+  - TidbClusterAutoScaler 用于描述用户期望的 TiDB 集群自动伸缩规则
+- tidb-controller-manager 自定义控制器
+  - 完成TidbCluster的描述，驱动TiDB 集群满足期望状态
+  - 控制器通过循环不断比对被控制对象的期望状态与实际状态，并通过自定义的逻辑驱动被控制对象达到期望状态。  
+- tidb-scheduler K8S调度器扩展
+  - 完成TiDB集群拓扑特有的调度逻辑
+    - 为保证高可用，任一Node 不能调度超过 TiDB 集群半数以上的 TiKV 实例
+  - 物理部署的一个Pod内包含两个容器
+    -  原生kube-scheduler
+    - 扩展tidb-scheduler
+      - 调度过程，实际是先经过tidb-scheduler根据规则对节点过滤，最后经kube-scheduler调度。
+- tidb-admission-webhook 动态准入控制器
+  - 完成Pod、StatefulSet 等相关资源的修改、验证与运维
+
+
+
+工作流程：
+
+![](k8s笔记图片/tidb-operator-control-flow-1.1.png)
+
+- 用户通过 kubectl 创建 `TidbCluster` 和其他 CR 对象，比如 `TidbMonitor` 等；
+- TiDB Operator 会 watch `TidbCluster` 以及其它相关对象，基于集群的实际状态不断调整 PD、TiKV、TiDB 或者 Monitor 等组件的 `StatefulSet`、`Deployment` 和 `Service` 等对象；
+- Kubernetes 的原生控制器根据 `StatefulSet`、`Deployment`、`Job` 等对象创建更新或删除对应的 `Pod`；
+- PD、TiKV、TiDB 的 `Pod` 声明中会指定使用 `tidb-scheduler` 调度器，`tidb-scheduler` 会在调度对应 `Pod` 时应用TiDB 的特定调度逻辑。
+
+
+
+功能：
+
+基于这样的声明式控制流程，TiDB Operator 能够自动进行集群节点健康检查和故障恢复。
+
+部署、升级、扩缩容等操作，可以通过修改 `TidbCluster` 对象声明完成。
 
 
 
@@ -1128,4 +1313,6 @@ kubectl rollout undo deployments/kubernetes-bootcamp
 - [TiDB Operator](https://docs.pingcap.com/zh/tidb-in-kubernetes/stable/tidb-operator-overview)
 - [阿里云：云原生技术公开课](https://edu.aliyun.com/roadmap/cloudnative)
 - [Kubernetes修炼手册-奈吉尔·波尔顿-2021](https://weread.qq.com/web/reader/faa3296072462dc6faa52bfkc81322c012c81e728d9d180)
+- [tidb-operator](https://docs.pingcap.com/zh/tidb-in-kubernetes/stable)
+- [TiDB Operator 源码阅读 (一) 序](https://pingcap.com/zh/blog/tidb-operator-source-code-1)
 
