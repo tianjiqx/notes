@@ -60,40 +60,91 @@ TiSpark实际上继承Spark的DataSource接口，来支持Spark读取TiKV的数�
 
 执行环境TiContext 是对SparkSession的包装，持有关键的TiSession和TiSessionCatalog
 
-- TiSession
+- `com.pingcap.tikv.TiSession`
   - 维持与TiKV、PD通信的会话信息。缓存Catalog，region元信息。
-- TiSessionCatalog
-  - TiCompositeSessionCatalog ddl操作，spark SessionCatalog 接口实现
-
-
-
-
+    - `com.pingcap.tikv.region.RegionManager`
+      - `com.pingcap.tikv.region.RegionCache` region缓存管理器
+        - `com.pingcap.tikv.PDClient`  PD 客户端
+      - `com.pingcap.tikv.catalog.Catalog` 数据库、表信息
+        - `com.pingcap.tikv.catalog.CatalogCache`
+  - 获取PD全局唯一时间戳
+    - `com.pingcap.tikv.PDClient` 
+  - tikv事务客户端
+    - `com.pingcap.tikv.txn.TxnKVClient` 用于写数据时，2阶段提交
+  - 获取索引扫描，表扫描的全局工作线程池
+    - `com.pingcap.tikv.operation.iterator.ScanIterator`
+    - `com.pingcap.tikv.operation.iterator.IndexScanIterator`
+      - Future 异步IO模式？
+- `org.apache.spark.sql.catalyst.catalog.TiSessionCatalog` 
+  - TiCompositeSessionCatalog ddl操作，sparkSQL的 `SessionCatalog` 扩展接口的实现
+  - 子类`org.apache.spark.sql.catalyst.catalog.TiCompositeSessionCatalog`
+    - 继承sparkSQL的`SessionCatalog` 类型
+    - 组合spark 和 tidb的 Catalog信息，完整的给spark使用的SessionCatalog。
+  - 子类`org.apache.spark.sql.catalyst.catalog.TiConcreteSessionCatalog` tidb的Catalog信息
+    - 继承sparkSQL的`SessionCatalog` 类型，该类的说明，见[spark笔记](https://github.com/tianjiqx/notes/blob/master/big_data_system/spark/Spark%E7%AC%94%E8%AE%B0.md)2.2.2 catalog 节
+    - `org.apache.spark.sql.catalyst.catalog.TiDirectExternalCatalog` 成员
+      - 继承sparksql `ExternalCatalog`, sparkSQL外接注册的catalog信息
+      - 关键成员 `com.pingcap.tispark.MetaManager` 获取tidb数据库、表
+        - 包装`com.pingcap.tikv.catalog.Catalog`
 
 ### 3.2 元信息
 
-TiSessionCatalog
+`org.apache.spark.sql.TiExtensions`
 
-TiCatalog 继承spark TableCatalog，具体DDL实现。
+- 继承sparksql的`SparkSessionExtensions`
+- 用于注册spark 计划生成（catalyst）的扩展
+  - 配置文件需要设置conf:`spark.sql.extensions org.apache.spark.sql.TiExtensions `
+- 扩展
+  - `org.apache.spark.sql.extensions.TiParser`
+  - `org.apache.spark.sql.extensions.TiDDLRule`
+  - `org.apache.spark.sql.extensions.TiResolutionRuleV2` 逻辑优化
+  - `org.apache.spark.sql.TiStrategy` 逻辑计划转物理计划的策略
+    - 将`com.pingcap.tispark.TiDBRelation`  转换成`SparkPlan`
+      - 这一步会生成`com.pingcap.tikv.meta.TiDAGRequest` 对象
+  - `org.apache.spark.sql.catalyst.expressions.TiBasicExpression`
+    - spark表达式转换tidb表达式
 
-`TiDBDataSource`
+`org.apache.spark.sql.catalyst.catalog.TiCatalog ` 
 
+- 继承spark `TableCatalog`,`SupportsNamespaces` 接口
+  - spark 3.0 的Catalog接口
+- 底层依然使用`com.pingcap.tispark.MetaManager` 获取tidb数据库、表
+
+
+
+`com.pingcap.tispark.TiDBDataSource` 
+
+- 写数据
 - 实现了`DataSourceRegister`,`RelationProvider`,`SchemaRelationProvider`,`CreatableRelationProvider`接口
   - 提供别名
   - 根据参数，创建`TiDBRelation`
   - 根据用户定义的Schema创建`TiDBRelation`
   - 根据DF，保存数据并创建`TiDBRelation`
 
-`TiDBRelation`
+`com.pingcap.tispark.TiDBRelation`
 
+- 逻辑查询计划，表示一张表
 - 继承`BaseRelation`，实现`InsertableRelation`接口
   - 支持将DF写入TiDB(实际TiKV)
     - `TiDBWriter.write()`
 
-
-
 ### 3.3 读
 
+- `com.pingcap.tikv.meta.TiDAGRequest` TiKV 读取数据请求
+  - TypeTableScan
+  - TypeIndexScan
+  - TypeSelection
+  - TypeAggregation
+  - TypeTopN
+  - TypeLimit
 
+- `com.pingcap.tikv.operation.iterator.DAGIterator<T>` 继承 `CoprocessorIterator<T>`
+  - 根据`DAGRequest` 迭代数据 （同TiDB 的Select API模型，可参考tidb原理笔记）
+    - 根据`RegionTask` 读取region数据
+    - `com.pingcap.tidb.tipb.SelectResponse`  单个region的响应，会存储在`com.pingcap.tidb.tipb.Chunk` 
+  - `com.pingcap.tikv.row.DefaultRowReader ` 继承`RowReader` 
+    - `Row readRow(DataType[] dataTypes)` 根据row的类型，从输入流中，解析row对象每个一列值
+      - `com.pingcap.tikv.codec.CodecDataInput` 输入流
 
 
 
@@ -113,7 +164,7 @@ TiDBWriter
     - 预先切分region，避免热点写，和region分裂
   - **挑选primarykey， percolator模型2pc提交**
 
-### 
+
 
 Spark的DataFrame是针对单表概念，只能完成单表的事务ACID。
 
