@@ -4,6 +4,13 @@
 
 参考个人workspace项目的[.vimrc](https://github.com/tianjiqx/workspace/blob/master/.vimrc)文件
 
+注意，其中配置使用了系统剪切板，可能需要安装
+
+```shell
+vim --version | grep clipboard
+sudo apt install vim-gtk
+```
+
 
 
 ## 关键插件
@@ -41,4 +48,8 @@
 TODO：更现代化的vim8 配置，[如何在 Linux 下利用 Vim 搭建 C/C++ 开发环境? - 韦易笑的回答 - 知乎](https://www.zhihu.com/question/47691414/answer/373700711)
 
 [Vim 8 下 C/C++ 开发环境搭建](http://www.skywind.me/blog/archives/2084)
+
+[将vim与系统剪贴板的交互使用](https://zhuanlan.zhihu.com/p/73984381)
+
+
 
