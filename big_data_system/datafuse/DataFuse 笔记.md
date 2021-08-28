@@ -132,7 +132,169 @@ Datafuse 对传统数仓架构的批评：
 
 ## 3. 实现
 
+分析源码版本：
 
+`72ec7e9cd5bc80849656b1a588cbca1ee43ededc`
+
+### 3.1 源码结构
+
+- cli
+  - 命令行工具，用于datafuse的设置和管理
+    - 查看帮助，版本管理
+- deploy
+  - datafuse 运行在K8S上的Helm的charts
+- docker
+  - docker image的构建脚本，支持多个平台（macos，linux）
+- scripts
+  - 编译代码、单元测试、安装、部署等的相关脚本
+- website
+  - 构建doc文档，的本地网站服务
+- common
+  - 公共模块源码定义
+  - Datafuse 依赖的crate（如arrow）的声明
+- query
+  - 分布式查询引擎层
+- store
+  - 分布式存储层
+- test
+  - 集成测试，性能测试
+
+
+
+### 3.1 元信息管理
+
+
+
+###  3.2 查询引擎
+
+- `query/src/bin/datafuse-query.rs` 入口
+  - `mian()` 
+    - `Config::load_from_args();` 加载配置参数
+    - `Config::load_from_toml` 加载配置文件
+    - `Config::load_from_env`  加载环境变量
+    - `Cluster::create_global` 创建`Cluster` 对象
+      - 集群信息，管理节点
+    - `SessionManager::from_conf` 创建会话管理器
+    - `ShutdownHandle::create` 停机服务
+    - ` MySQLHandler::create` mysql 客户端请求处理
+    - `ClickHouseHandler::create` clickhouse client 请求处理
+    - `MetricService::create`  metric 服务
+    - `HttpService::create` HTTP 服务
+      - 集群、配置
+    - `RpcService::create`  flight 服务
+      - `DatafuseQueryFlightDispatcher` 查询的`FlightAction`分发器？
+  - `query/src/servers/mysql/mysql_handler.rs` 
+    - `MySQLHandler` mysql client 请求处理
+      - `start()` 启动服务
+        - `listener_tcp()`  监听tcp端口，默认3307
+        - `listen_loop()` 循环处理监听到的socket请求
+          - `accept_socket` 处理socket请求
+            - `query/src/sessions/session.rs` SessionManager
+              - `create_session` 创建会话
+            - `MySQLConnection::run_on_stream(session, socket) ` 处理
+              - 启动线程处理，` MySQLConnection::session_executor(session, blocking_stream);`
+                - ` MysqlIntermediary::run_on_tcp(interactive_worker, blocking_stream) `
+                  - `query/src/servers/mysql/mysql_interactive_worker.rs`
+                    - `do_query` 处理查询语句
+
+
+
+- `InteractiveWorkerBase::do_query`
+  - `query/src/servers/mysql/mysql_interactive_worker.rs` or `query/src/servers/clickhouse/interactive_worker.rs`
+  -  `query/src/sql/plan_parser.rs`语法解析 
+    - `PlanParser.build_with_hint_from_sql()`  字符串转 `PlanNode` 树
+      - PlanNode: `common/planners/src/plan_node.rs`
+      - `DfParser::parse_sql(query);` 解析成`Statement`
+      - `statement_to_plan` `Statement` 转 plannode
+  - `InterpreterFactory.get(ctx: DatafuseQueryContextRef, plan: PlanNode) ` 根据计划，获取解释器
+    - `SelectInterpreter` select 语句
+      - `query/src/interpreters/interpreter_select.rs`
+      - `execute()`
+        - `schedule_query` 返回调度流`ScheduledStream` (`SendableDataBlockStream`)
+          - `Optimizers.optimize` 逻辑优化
+            - `query/src/optimizers/optimizer.rs`
+          - `PlanScheduler.reschedule` 调度计划成local或者remote模式，stage（plan node） 转成task，返回Tasks
+            - `query/src/interpreters/plan_scheduler.rs`
+              - `visit_plan_node`  根据调度器的运行模式，处理节点，单点执行或者按分区进行并行执行
+                - 后序遍历
+          - `Tasks.get_tasks` 
+            - 获取tasks中的`FlightAction`
+          - 遍历action，并执行
+            - `FlightClient.execute_action`
+              - `query/src/api/rpc/flight_client.rs`
+          - 构建pipeline，并执行，返回`SendableDataBlockStream`
+            - `Tasks.get_local_task`  就是整个计划
+            - `PipelineBuilder.build`
+              - `query/src/pipelines/processors/pipeline_builder.rs` 
+              - `visit` 后序遍历
+                - `visit_read_data_source`   处理`ReadDataSourcePlan`，返回`pipeline`
+                  - `SourceTransform::try_create` 创建数据源
+                    - `SourceTransform` 实现了`Processor` trait
+                    - `read_table` 读取数据，返回数据流`SendableDataBlockStream`
+                      - `Table.read` tarit
+                        - `MemoryTable`
+                          - query/src/datasources/local/memory_table.rs
+                        - `CsvTable`
+                          - query/src/datasources/local/csv_table.rs
+                        - `ParquetTable`
+                        - `RemoteTable`
+                          - `query/src/datasources/remote/remote_table.rs`
+    - `InsertIntoInterpreter` 插入语句
+      - `query/src/interpreters/interpreter_insert_into.rs`
+    - `CreateTableInterpreter` 建表语句
+      - `query/src/interpreters/interpreter_table_create.rs`
+      - `execute()`
+        - `DatafuseQueryContext.get_datasource`  返回`Arc<DatabaseCatalog>`
+          - `query/src/sessions/context.rs`
+        - `DatabaseCatalog.get_database` 获取数据库， `Arc<dyn Database> `
+          - `query/src/catalogs/impls/database_catalog.rs`
+        - `Database.create_table`
+          - `query/src/datasources/database.rs`  tarit
+            - 实现`SystemDatabase` 系统数据库， 系统库
+            - 实现 `LocalDataBase` 用户数据库（只内存? 暂未看到持久化）
+            - 实现 `RemoteDatabase` 用户数据库
+              - `DBMetaStoreClient`  arrow_flight  rpc调用
+                - `query/src/catalogs/meta_store_client.rs` tarit
+  - 输出查执行结果
+    - mysql: `query/src/servers/mysql/writers/query_result_writer.rs`
+      - `DFQueryResultWriter.wirte`
+    - clickhouse `query/src/servers/clickhouse/writers/query_writer.rs`
+      - `QueryWriter.write()`
+
+
+
+
+
+`pipeline`
+
+- `query/src/pipelines/processors/pipeline.rs`
+  - 关键方法
+    - `add_source`  添加一个数据源类型的 Processor 到头Pipe
+    - `add_simple_transform` 在尾部添加一个新Pipe，其Processor的输入是原最后一个Pipe里的所有Processor
+    - `merge_processor` 将最后的Pipe的多个Processor合并成一个Processor
+    - mixed_processor 将最后的Pipe的多个Processor 混洗成指定n个Processor
+  - 成员`Vec<Pipe>` 
+    - Pipe 由`Vec<Arc<dyn Processor>>` 组成，包装类
+      - 关键方法
+        - `add` 添加Processor
+      - Processor 处理器，表示执行单元，处理一个分区
+        - `query/src/pipelines/processors/processor.rs`
+          - 核心方法
+            - `async fn execute(&self) -> Result<SendableDataBlockStream> `
+              - 与spark rdd 的 execute 方法有些类似，但是processor 只是表示一个分区
+              - `SendableDataBlockStream` 是一个future的 数据块流
+                - `DataBlock` 是一个apache arrow 风格的 数据块，包含schema，列存组织，可以与apache arrow  `RecordBatch` 互转
+            - `fn connect_to(&mut self, input: Arc<dyn Processor>) -> Result<()>;` 
+              - 设置输入processor
+        - 实现类：
+          - `SourceTransform` 数据源
+          - `FilterTransform` filter 处理
+
+
+
+
+
+### 3.3 存储引擎
 
 
 
