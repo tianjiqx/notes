@@ -560,6 +560,8 @@ TB利用的Apache Arrow格式，实际上支持字典编码，压缩数据。
       - `crates/engine/src/datafusions.rs`
         - `setup_tables`  将TB的表信息、数据注册到DataFusion，作为内存表使用
           - `gen_arrow_arraydata`生成 arrow格式的数据
+          - 使用mmap技术，虚拟内存地址到物理内存映射
+            - `crates/meta/src/store/parts.rs`  `fill_copainfos_int_by_ptk` 方法获取内存地址
       - `crates/datafusion/src/execution/context.rs` 的`sql()`方法，执行原始SQL然后创建数据帧
         -  `create_logical_plan` 创建逻辑计划
           - `DFParser::parse_sql(sql)` 解析sql成DFStatement
@@ -600,6 +602,7 @@ TensorBase的读数据的流程，实际上自身先解析一次sql，获取表�
 - 可以分布式读取数据源，
 - ~~可以pipeline，不必等待数据完全加载进内存后才能进行后续处理。~~
   - 数据注册过程，根据沟通，只是做磁盘文件与内存的映射，并不真正加载数据，所以不会暂停
+    - 内存映射mmap，对虚拟地址空间进行处理，复制，计算不会触发IO，只有在真正读取数据的时候才会发生缺页中断，装载数据进物理内存
 - 重用查询优化，不必自己重写一套分区裁剪等逻辑减少读取的数据。并且后续能够基于真实代价模型，调整执行计划。
 
 
