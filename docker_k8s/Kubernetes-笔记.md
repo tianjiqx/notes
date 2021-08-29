@@ -903,7 +903,7 @@ Helm组件：
 - Helm客户端
   - 本地开发chart
   - 管理chart仓库
-    - 拉取、保存和更新chart
+    - 搜索、拉取、保存和更新chart
   - 与Tiller服务器交互
     - 在远程Kubernetes集群上安装chart
     - 查看release信息
@@ -917,7 +917,19 @@ Helm组件：
 
 
 
+基本使用：
 
+- 搜索（查找charts）
+  - `helm search hub/repo <chartname>` 从artifact hub 查询/本地helm客户端仓库查找
+- 安装（charts，产生release）
+  - `helm install<releasename> <chartname>|chartsource `  chartsource可以是本地压缩包，URL
+  - 后台按一定顺序，安装各个定义的K8S资源对象
+    - `helm status <releasename>`
+- 升级（release）
+  - `helm upgrade -f <file.yaml> <releasename> <chartsname> ` 升级到 chart 的新版本，或是修改 release 的配置
+  - `helm rollback <releasename> <reversion>` 回滚relase的版本，初始值为1
+- 卸载（release）
+  - `helm uninstall <releasename>`
 
 
 
@@ -1315,4 +1327,7 @@ kubectl rollout undo deployments/kubernetes-bootcamp
 - [Kubernetes修炼手册-奈吉尔·波尔顿-2021](https://weread.qq.com/web/reader/faa3296072462dc6faa52bfkc81322c012c81e728d9d180)
 - [tidb-operator](https://docs.pingcap.com/zh/tidb-in-kubernetes/stable)
 - [TiDB Operator 源码阅读 (一) 序](https://pingcap.com/zh/blog/tidb-operator-source-code-1)
+- [分布式计算引擎 Flink/Spark on k8s 的实现对比以及实践](https://zhuanlan.zhihu.com/p/404171594)
+- [使用Golang构建一个高可用的Kubernetes Operator](https://zhuanlan.zhihu.com/p/400890229)
+- [Helm 官网](https://helm.sh/zh/) helm 概念与教材
 
