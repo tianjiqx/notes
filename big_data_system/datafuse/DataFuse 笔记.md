@@ -132,7 +132,7 @@ Datafuse 对传统数仓架构的批评：
 
 ## 3. 实现
 
-分析源码版本：
+源码版本（2021.08.27）：
 
 `72ec7e9cd5bc80849656b1a588cbca1ee43ededc`
 
@@ -179,6 +179,7 @@ Datafuse 对传统数仓架构的批评：
     - ` MySQLHandler::create` mysql 客户端请求处理
     - `ClickHouseHandler::create` clickhouse client 请求处理
     - `MetricService::create`  metric 服务
+      - for prometheus
     - `HttpService::create` HTTP 服务
       - 集群、配置
     - `RpcService::create`  flight 服务
@@ -217,6 +218,7 @@ Datafuse 对传统数仓架构的批评：
             - `query/src/interpreters/plan_scheduler.rs`
               - `visit_plan_node`  根据调度器的运行模式，处理节点，单点执行或者按分区进行并行执行
                 - 后序遍历
+                - 对于cluster mode，每个
           - `Tasks.get_tasks` 
             - 获取tasks中的`FlightAction`
           - 遍历action，并执行
@@ -263,6 +265,59 @@ Datafuse 对传统数仓架构的批评：
 
 
 
+`PlanScheduler`  计划调度器
+
+- `query/src/interpreters/plan_scheduler.rs`
+- 作用将原单节点计划，根据分配的节点数量逐一生成要在对应节点执行的`PlanNode` 树的执行计划。
+- 成员
+  - `stage_id`  DAG的stage id
+    - 遍历PlanNode树时，可能会增长
+  - `cluster_nodes: Vec<PlanNode>`  集群所有的节点
+    - （TODO，节点的加入和退出处理？）
+  - `local_pos` 当前的节点在数组的位置
+  - `nodes_plan: Vec<PlanNode>` 每个节点的计划根节点
+    - visit是后续遍历，每次都会更新，所以最后持有的是每个节点待执行的root `PlanNode`
+  - `running_mode` 计划的执行模式 local或者cluster
+  - `query_context` 查询上下文
+  - `subqueries_expressions`  子查询的语法树
+- 成员方法
+  - `try_create` 构造方法
+    - 根据`context: DatafuseQueryContextRef` 查询上下文创建，并初始化
+  - `reschedule()`  调度计划入口
+    - `visit_plan_node()` 后序遍历处理输入的单节点计划PlanNode tree
+  -  `visit_plan_node`
+    - `visit_aggr_part` ，`visit_aggr_final` 等
+    - stage,flightaction 相关
+      - `visit_stage` cluster才有stagePlan
+        - 产生新的stage id
+        - `schedule_normal_tasks`
+          - 产生`PrepareShuffleAction`
+            - 包装`ShuffleAction`
+          - 产生`PlanNode::Remote` 计划节点
+            - 包装`RemotePlan`
+        - `schedule_expansive_tasks`
+          - 
+        - `schedule_converge_tasks`
+
+
+
+`Tasks`
+
+- `query/src/interpreters/plan_scheduler.rs`
+- 成员
+  - `plan: PlanNode` 执行计划树根节点
+  - `context: DatafuseQueryContextRef,`
+  - `actions: HashMap<String, VecDeque<FlightAction>>,` 
+    - k: 集群node名字
+    - v：FlightAction 队列
+- 方法：
+  - `finalize` 设置最终的planNode
+  - `get_local_task` 获取`plan` ，执行计划树根节点
+  - `get_tasks` actions 相同内容，但是是Vec结构
+  - `add_task` 添加 <nodename, flightaction>
+
+
+
 
 
 `pipeline`
@@ -292,8 +347,6 @@ Datafuse 对传统数仓架构的批评：
 
 
 
-
-
 ### 3.3 存储引擎
 
 
@@ -310,4 +363,5 @@ Datafuse 对传统数仓架构的批评：
 - [未来数据库应具备什么核心能力？](https://pingcap.com/zh/blog/core-competence-of-future-database)
 - [云原生数据库设计新思路](https://pingcap.com/zh/blog/new-ideas-for-designing-cloud-native-database)
 - [[Snowflake核心技术解读系列一]架构设计](https://developer.aliyun.com/article/780125)
+- [存算分离/DB on K8s 论文/blog收集](https://zhuanlan.zhihu.com/p/377755864) 与palardb 架构对比
 
