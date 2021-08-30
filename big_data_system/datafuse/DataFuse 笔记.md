@@ -98,8 +98,8 @@ Datafuse 对传统数仓架构的批评：
     - 当前只有基于规则的优化
   - 处理器（processors）
     - 根据执行计划，处理器们被编排成一个流水线（Pipeline），用于执行计算任务
-      - 是MR，不是MPP？
-        - 分布式计划，使用了arrow-flight，应该会将shffle数据落盘
+      - MPP框架
+        - 分布式计划，使用了arrow-flight rpc框架
   - 缓存（cache）
     - 使用本地 SSD 缓存热点数据和索引
       - LOAD_ON_DEMAND - 按需加载索引或数据块（默认）。
@@ -269,6 +269,9 @@ Datafuse 对传统数仓架构的批评：
 
 - `query/src/interpreters/plan_scheduler.rs`
 - 作用将原单节点计划，根据分配的节点数量逐一生成要在对应节点执行的`PlanNode` 树的执行计划。
+  - 生成过程中，部分plannode节点（stage，broadcast）会产生FlightAction表示 计划一部分执行动作
+    - arrow flight 框架，应当会输出结果到磁盘，供其他节点查询
+    - `query/src/api/rpc/flight_actions.rs`
 - 成员
   - `stage_id`  DAG的stage id
     - 遍历PlanNode树时，可能会增长
@@ -278,8 +281,9 @@ Datafuse 对传统数仓架构的批评：
   - `nodes_plan: Vec<PlanNode>` 每个节点的计划根节点
     - visit是后续遍历，每次都会更新，所以最后持有的是每个节点待执行的root `PlanNode`
   - `running_mode` 计划的执行模式 local或者cluster
+    - visit过程也在修改
   - `query_context` 查询上下文
-  - `subqueries_expressions`  子查询的语法树
+  - `subqueries_expressions`  子查询的表达式
 - 成员方法
   - `try_create` 构造方法
     - 根据`context: DatafuseQueryContextRef` 查询上下文创建，并初始化
@@ -287,23 +291,47 @@ Datafuse 对传统数仓架构的批评：
     - `visit_plan_node()` 后序遍历处理输入的单节点计划PlanNode tree
   -  `visit_plan_node`
     - `visit_aggr_part` ，`visit_aggr_final` 等
+    - `visit_data_source` 读取数据源
+      - `repartition` 数据重分区
+        - 按每个节点读一定数量的分区
+          - 不能整除的剩下分区，从头开始依次分配各个节点
+        - 读取的分区在同一个节点是连续的数据分区
+        - （不考虑数据本地化，都是远端共享存储）
+      - 分布式的表，每个节点创建`ReadSource` planNode，读取对应该节点需要的分区的数据
     - stage,flightaction 相关
-      - `visit_stage` cluster才有stagePlan
+      - `visit_stage` 
         - 产生新的stage id
-        - `schedule_normal_tasks`
+        - `schedule_normal_tasks`  cluster
           - 产生`PrepareShuffleAction`
             - 包装`ShuffleAction`
+              - `sinks` 根据`scatters_expression`写到集群所有节点
           - 产生`PlanNode::Remote` 计划节点
             - 包装`RemotePlan`
-        - `schedule_expansive_tasks`
-          - 
-        - `schedule_converge_tasks`
+            - `fetch_nodes` 全部集群节点
+        - `schedule_expansive_tasks` 不能运行在cluster模式
+          - 创建一个运行在当前节点的`ShuffleAction`
+          - 每个节点创建 remoteplan
+            - `fetch_nodes` 当前的本地节点
+        - `schedule_converge_tasks` 不能运行在Standalone模式
+          - 每个集群节点，创建一个PrepareShuffleAction
+          - 本地节点的nodePlan 更新为remote plan node
+            - `fetch_nodes` 全部集群节点
+      - `visit_broadcast`
+        - local模式 （1:N）
+          - 为当前节点创建BroadcastAction
+          - 为每个节点创建remote plan note
+            - `fetch_nodes` 当前的本地节点
+        - cluster模式  (N:N)
+          - 为每个节点创建`BroadcastAction`
+          - 为每个节点创建remote plan node
+            - `fetch_nodes` 全部集群节点
 
 
 
 `Tasks`
 
 - `query/src/interpreters/plan_scheduler.rs`
+- 存储计划各个节点的action
 - 成员
   - `plan: PlanNode` 执行计划树根节点
   - `context: DatafuseQueryContextRef,`
@@ -315,8 +343,6 @@ Datafuse 对传统数仓架构的批评：
   - `get_local_task` 获取`plan` ，执行计划树根节点
   - `get_tasks` actions 相同内容，但是是Vec结构
   - `add_task` 添加 <nodename, flightaction>
-
-
 
 
 
@@ -344,6 +370,31 @@ Datafuse 对传统数仓架构的批评：
         - 实现类：
           - `SourceTransform` 数据源
           - `FilterTransform` filter 处理
+
+`DatafuseQueryFlightService`
+
+- `query/src/api/rpc/flight_service.rs`
+- flight action 处理服务
+- 当前处理三种action
+  - `CancelAction` 关闭会话
+  - `BroadcastAction` 广播数据到其他节点
+  - `PrepareShuffleAction` 更据分区表达式，shuffle 数据到其他节点
+    - `DatafuseQueryFlightDispatcher`  分发器对象
+      - `query/src/api/rpc/flight_dispatcher.rs` 
+      - `broadcast_action`
+      - `shuffle_action`
+        - `create_stage_streams`  创建写到多个集群节点的数据流
+          - `mpsc::channel(5);`
+        - `action_with_scatter` 
+          - 更据执行计划，构建pipeline，异步等待结果（数据流），然后将数据发送到目标通道
+- 获取数据
+  - `do_get`
+    - `DatafuseQueryFlightDispatcher.get_stream()` 
+      - 根据`StreamTicket` 查询数据流数据Receiver端
+        - `query_id`,`stage_id`,`stream` name
+      - 根据通道的Receiver 端构建读取数据流
+
+使用的是arrow flight rpc 框架，观察其实现，构建通道，异步io，通过 do_action 写数据到 flight  服务器，do_get 从服务下载数据。数据流临时存储在通道中，并不落盘。每个数据流具有`query_id`,`stage_id`,`stream`  构成的名字唯一标识。
 
 
 
