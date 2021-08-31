@@ -181,7 +181,7 @@ Measurement Interval in Throughput Test (Ts) 1,225.51 seconds
 - [TPC-H 性能测试排行](http://tpc.org/tpch/results/tpch_perf_results5.asp?resulttype=all)
 - [OceanBase 数据库 TPC-H 测试](https://open.oceanbase.com/docs/community/oceanbase-database/V3.1.0/tpch-test-for-oceanbase)
 - [OceanBase TPC-H 100G 性能测试报告](https://open.oceanbase.com/docs/community/oceanbase-database/V3.1.0/wtu4kv)
-- [OceanBase开源版与TiDB对比测试报告](https://mp.weixin.qq.com/ s/1_4z1qU0EfM4Bimk5ddh2Q) 文中有误，OB官网是100G测试，文章使用10G做对比测试
+- [OceanBase开源版与TiDB对比测试报告](https://mp.weixin.qq.com/s/1_4z1qU0EfM4Bimk5ddh2Q) 文中有误，OB官网是100G测试，文章使用10G做对比测试
 - [你的数据库，能撑起多少并发，有数吗？](https://zhuanlan.zhihu.com/p/265188868)
 - [开源如何先不说但我有两个疑问：小议“OceanBase登顶TPC-H”](https://zhuanlan.zhihu.com/p/377843752)
 

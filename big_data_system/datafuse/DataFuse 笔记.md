@@ -106,6 +106,10 @@ Datafuse 对传统数仓架构的批评：
       - LOAD_INDEX - 只加载索引。
       - LOAD_ALL - 加载全部的数据和索引，对于较小的表可以采取这种模式。
 - Shared Storage
+  - 功能：
+    - 元数据存储，如用户、数据库、表和模式
+    - 块生命周期管理，例如分配、压缩等
+    - 数据/元数据的一致性和可靠性
   - 存储格式
     - Parquet 数据文件，按主键排序
     - min_max.idx （整个文件的min max）, sparse.idx 索引文件
@@ -125,8 +129,6 @@ Datafuse 对传统数仓架构的批评：
           - 学习tidb TiFlash？
     - 块存储集群
       - 提供读取，写入API
-
-
 
 
 
@@ -162,6 +164,50 @@ Datafuse 对传统数仓架构的批评：
 
 
 ### 3.1 元信息管理
+
+查询引擎的元信息：
+
+- `Database` trait
+  - `query/src/datasources/database.rs`
+  - 数据库对象，提供表，函数等元信息
+  - 实现 `query/src/datasources/`
+    - `LocalDatabase`
+      - 本地数据库，似乎仅内存表
+    - `RemoteDatabase`
+      - 远程数据库，共享存储上的表
+    - `SystemDatabase`
+      - 系统表，系统元信息
+
+- `SystemDatabase` 系统数据库
+  - `query/src/datasources/system/system_database.rs`
+  - 包含的表
+    - dummy、functions、settings、databases、tables、clusters、tracing（执行时间trace）、processes（从sessionManager中获取的处理过、处理中的query信息）等
+    - numbers表，似乎是测试表
+    - 彩蛋：`contributors` 贡献者表，从环境变量`FUSE_COMMIT_AUTHORS` 中获取。
+- `LocalDataBase` 本地数据库
+- `RemoteDatabase` 远程数据库
+- `DatabaseCatalog` 包含所有database的元信息
+  - `query/src/catalogs/impls/database_catalog.rs`
+  - `SessionManager` 中调用创建
+  - `try_create()`
+    - 创建`RemoteMetaStoreClient` 远程数据库客户端
+      - `RemoteMetaStoreClient` 用于获取远程表的元信息
+    - `try_create_with_config()` 
+      - `register_system_database()` 注册系统表（SystemDatabase）
+      - `register_local_database()` 注册本地表（LocalDatabase）
+      - `register_default_database()` 注册默认数据库（也是LocalDatabase）
+  - `get_datbases()`
+    - 加载所有local和remote 数据库并排序
+  - `get_database()`
+    - 先查看本地数据库，没有根据远程数据库客户端获取数据库
+
+
+
+元信息服务层
+
+`store/src/meta_service/`
+
+与tensorbase类似，包装使用了 `sled` 作为 kv存储库。 并且通过raft机制支持高可用。
 
 
 
@@ -394,15 +440,67 @@ Datafuse 对传统数仓架构的批评：
         - `query_id`,`stage_id`,`stream` name
       - 根据通道的Receiver 端构建读取数据流
 
-使用的是arrow flight rpc 框架，观察其实现，构建通道，异步io，通过 do_action 写数据到 flight  服务器，do_get 从服务下载数据。数据流临时存储在通道中，并不落盘。每个数据流具有`query_id`,`stage_id`,`stream`  构成的名字唯一标识。
+使用的是arrow flight rpc 框架，观察其实现，构建通道，异步io，通过 do_action 写数据到 flight  服务器，do_get 从服务下载数据。数据流临时存储在通道中，并不落盘。每个数据流具有`query_id`,`stage_id`,`stream`  构成的名字唯一标识。相对的，另一个分布式执行框架[Ballista](https://github.com/apache/arrow-datafusion) 是spark 风格，通过磁盘文件进行数据共享（详细，可参考arrow笔记，tensorbase笔记）。
+
+
+
+比较两种实现，给予思考：MPP框架容错
+
+MPP相对MR，一个较大缺陷是，对于大批量任务查询，或者查询时间很长，涉及的节点数量很多，难以避免节点失效，磁盘损坏，进程OOM崩溃等问题。归根结底，是全内存的RPC通信，缺少stage数据持久化机制以及调度器重启任务。大数据系统spark类系统，其实已经给出了一个规范的MR实现机制，通过任务调度和基于磁盘文件的中间结果持久化。
+
+并且两者并不是相互冲突的机制。所以完全可以考虑，stage之间的数据shuffle的实现，使用抽象的接口，具体实现可以有进程通信，文件交换（我全都要.jpg）。 而实现的选择。可以在查询优化优化阶段根据数据量规模、执行时间预估等决策，秒级查询可以完全内存交换shuffle，失败整个查询重试。分钟级，小时级的查询，通过MR模式进行shuffle。
+
+（TODO，HAWQ的 MMP和MR融合）
 
 
 
 ### 3.3 存储引擎
 
+DatafuseQuery(client) ---->(rpc)  DatafuseStore{flightServer ---> ActionHandler -->  IFileSystem  写文件 }
 
 
 
+- `RemoteTable` 远程表
+  - `read_plan` 创建 `ReadDataSourcePlan()` 执行计划
+    - `partitions_to_plan()`
+  - `read()` 读数据
+    - `S3InputStream.do_read()` 读S3数据
+      - `common/dal/src/impls/aws_s3/s3_input_stream.rs`
+  - `append_data()` 写数据
+    - `StoreApisProvider.append_data()`
+
+
+
+- `store/src/bin/datafuse-store.rs` 入口 main()
+  - `init_sled_db()` 初始化元信息
+  - `MetricService`
+  - `HttpService`
+  - `StoreServer`  RPC服务
+    - `StoreFlightImpl` 
+      - `store/src/api/rpc/flight_service.rs`
+        - `do_get`
+          - `StoreClient.read_partition()` 读分区数据
+          - `ActionHandler.do_pull_file()`
+        - `do_put`
+          - `ActionHandler.do_put()`
+
+
+
+- `ActionHandler`
+
+  - `store/src/executor/action_handler.rs`
+
+    - action
+      - 数据库，表相关 ddl操作
+      - 读执行计划 `StoreDoAction::ReadPlan`
+    - `do_pull_file`  内部复制数据副本
+    - `do_put` 写数据到通道
+      - `Appender.append_data`
+        - `DFS.add()` 分布式文件系统写
+    - `read_partition` 读分区数据
+      - `Dfs.read_all()` 分布式文件系统读
+
+    
 
 ## REF
 
