@@ -61,16 +61,18 @@ Datafuse 对传统数仓架构的批评：
 
   设计：
 
-- 通过cache Shared Storage上的数据到计算层节点，避免网络抖动。
+- 通过cache Shared Storage上的数据到计算层节点，避免网络延迟。
 
   - 失效，从S3查询，新增Latency抖动。
   - Snowflake 在计算和存储之间加了一个共享的Distributed Ephemeral Storage 存储Intermediate data
-    - 资源隔离问题 （TODO：Distributed Ephemeral Storage简单搜索暂未找到说明，只VM 计算节点有cache模块，作者取名的吗）
-    - Snowflake 使用的优势似乎是提供了强大的数据管理服务，开箱即用的数据湖，数据仓库
+    - （snowflake的论文中cache模块是随着VM的工作节点分配的，并且使用一致性hash，减轻节点变化缓存失效的影响）
+    - 多租户资源隔离问题
+      - （这是未理解datafuse的看法，如果单纯根据论文中的内容，VM是单用户的，非多租户的，而多租户只是云服务层，是后来snowflake实现有改变吗？）
 - Datafuse状态分离
   - 为Persistent data生成足够多的索引放到Metadata Service，计算节点进行订阅，更新本地cache
-    - 海量索引块的同步
-    - Persistent data 怎么处理？
+    - 问题：海量索引块的同步
+    - （这里的设计与snowflake的区别是，增加了索引，snowflake不使用索引，下图只有index，但是架构图中存在数据的索引，和snowflake一样）
+    - （另外，索引不是在计算节点的cache中吗，怎么是“放到Metadata Service”？笔误?）
 
 ![](datafuse笔记图片/v2-56d66f4cf2971f9c111342ac4d444d64_720w.jpg)
 
@@ -487,9 +489,7 @@ DatafuseQuery(client) ---->(rpc)  DatafuseStore{flightServer ---> ActionHandler 
 
 
 - `ActionHandler`
-
   - `store/src/executor/action_handler.rs`
-
     - action
       - 数据库，表相关 ddl操作
       - 读执行计划 `StoreDoAction::ReadPlan`
@@ -500,7 +500,17 @@ DatafuseQuery(client) ---->(rpc)  DatafuseStore{flightServer ---> ActionHandler 
     - `read_partition` 读分区数据
       - `Dfs.read_all()` 分布式文件系统读
 
-    
+总结：
+
+根据对比snowflake的论文，可以发现，datafuse的整体架构和思路与snowflake是一样的，在具体实现上有一定差别。
+
+元信息服务和存储引擎，看起来不大。
+
+而在查询引擎上，snowflake通过划分VM作为单个查询的计算资源。datafuse暂时没有进一步划分，整体是计算节点组成的集群（一个VM）。
+
+都是列存，向量化处理，只是datafuse使用pipeline，而snowflake使用pushed-base模式。
+
+
 
 ## REF
 
