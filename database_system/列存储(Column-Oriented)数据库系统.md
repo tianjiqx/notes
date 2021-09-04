@@ -92,6 +92,14 @@ Arrow 专注于矢量化处理和和低开销压缩算法（字典压缩等）�
 
 
 
+## 6. 列散列
+
+对于列存数据库，shuffle数据时，会涉及到将原来在内存中列存格式数据，根据hash条件，重新分段（段数等于机器节点个数），依然是列存格式。（可参考datafusion的hash过程，@tensorbase笔记）
+
+如rust这样的语法，可以通过智能指针共享数据，重新调整结构，免数据拷贝，但是还是需要经过NIC发送到其他节点。根据[IO性能改进技术](https://github.com/tianjiqx/notes/blob/master/performance/IO%E6%80%A7%E8%83%BD%E6%94%B9%E8%BF%9B%E6%8A%80%E6%9C%AF.md) 的linux IO过程，如果是普通的write方式，会涉及将CPU copy，显然内存是离散的，是否会存在cache miss的影响呢。
+
+以[Intel(R) Xeon(R) Platinum 8269CY ](https://ark.intel.com/content/www/cn/zh/ark/products/192474/intel-xeon-platinum-8260-processor-35-75m-cache-2-40-ghz.html) CPU cache L3 大小35.75 MB  [Intel Xeon Platinum 8176](https://www.spec.org/cpu2017/results/res2018q3/cpu2017-20180820-08541.html) L1 CPU cache 32KB L2 1024KB L3  CPU cache 35.75 MB，int64列，1k行的大小是 8  * 1000 = 8KB 大小，不超过L1 的Cache， 因此，因此列存散列，按列进行处理的开销并不大，但是尽量应该在控制在4K行以内。L1 cache 0.5us，而L2 cache在7us，相对还是差距较大。
+
 
 
 ## REF
@@ -107,4 +115,5 @@ Arrow 专注于矢量化处理和和低开销压缩算法（字典压缩等）�
 - [Apache Arrow 与 Parquet 和 ORC：我们真的需要第三个 Apache 项目来表示列数据吗？](http://dbmsmusings.blogspot.com/2017/10/apache-arrow-vs-parquet-and-orc-do-we.html)
 - [slides:ORC Deep dive 2020](https://www.slideshare.net/oom65/orc-deep-dive-2020)
 - [slides:File Format Benchmarks - Avro, JSON, ORC, & Parquet-2016](https://www.slideshare.net/oom65/file-format-benchmarks-avro-json-orc-parquet)
+- [ORC](https://orc.apache.org/docs/)
 
