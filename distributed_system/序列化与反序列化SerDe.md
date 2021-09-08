@@ -157,9 +157,7 @@ Protocol Buffer此类框架，可以提供更加完善、快捷的SerDe解决方
 
 
 
-但是需要注意，Ser/De 并非必须的，apache arrow作为一个跨语言的内存数据开发平台，能够跨语言，程序间直接交换内存数据格式，而不需要SerDe。(通过规范数据格式，各语言的库实现，完成对数据的直接处理，免除数据的格式转换)
-
-
+但是需要注意，Ser/De 并非必须的，[apache arrow](https://github.com/tianjiqx/notes/blob/master/big_data_system/Apache%20Arrow.md)作为一个跨语言的内存数据开发平台，能够跨语言，程序间直接交换内存数据格式，而不需要SerDe。(通过规范数据格式，各语言的库实现，完成对数据的直接处理，免除数据的格式转换)
 
 
 
@@ -231,8 +229,6 @@ Protocol Buffer是Google提供的跨语言、跨平台的二进制序列化方�
 
 
 
-
-
 ### 3.2 proto文件
 
 文件格式：
@@ -273,6 +269,8 @@ Protocol Buffer是Google提供的跨语言、跨平台的二进制序列化方�
 
 - 字段名定义采用匈牙利命名法
 
+  - `[ "repeated" ] type fieldName "=" fieldNumber [ "[" fieldOptions "]" ] ";"`
+
 
 
 proto生成对象，Builder模式。
@@ -292,6 +290,7 @@ CodeOutputStream提供了一组wirte接口来实现不同类型数据的序列�
 Tag-Length-Value数据格式
 
 - tag是fieldNumber和字段内容类型的bit组合
+  - fieldNumber 字段序号
 - length，字段长度（变长类型）
 - value，字段值
 
@@ -350,12 +349,41 @@ ProtoBuf应用开发：
 
 
 
+### 3.5 兼容性
+
+兼容性是如何做到的？
+
+向前兼容：默认值，字段序号
+
+向后兼容：忽略属性，字段序号
+
+
+
+更新规范：
+
+- 不要改变已有字段的字段编号
+- 当你增加一个新的字段的时候，老系统序列化后的数据依然可以被你的新的格式所解析，只不过你需要处理新加字段的缺省值。 老系统也能解析你信息的值，新加字段只不过被丢弃了
+- 字段也可以被移除，但是建议你Reserved这个字段，避免将来会使用这个字段
+  - Reserved可以用来指明此message不使用某些字段，也就是忽略这些字段。
+- int32, uint32, int64, uint64 和 bool类型都是兼容的
+- sint32 和 sint64兼容，但是不和其它整数类型兼容
+- string 和 bytes兼容，如果 bytes 是合法的UTF-8 bytes的话
+- 嵌入类型和bytes兼容，如果bytes包含一个消息的编码版本的话
+- fixed32和sfixed32, fixed64和sfixed64
+- enum和int32, uint32, int64, uint64格式兼容
+- 把单一一个值改变成一个新的oneof类型的一个成员是安全和二进制兼容的。把一组字段变成一个新的oneof字段也是安全的，如果你确保这一组字段最多只会设置一个。把一个字段移动到一个已存在的oneof字段是不安全的
+
+
+
 ## REF
 
 - [深入理解序列化与反序列化-潘洪安-2020](https://weread.qq.com/web/reader/810324e07210fc018104ee1kc81322c012c81e728d9d180)
 - [Why Externalizable when read/writeObject method are there in serializable duplicate](https://stackoverflow.com/questions/49532046/why-externalizable-when-read-writeobject-method-are-there-in-serializable)
 - [github:google protobuf](https://github.com/protocolbuffers/protobuf)
 - [protobuf tutorials](https://developers.google.com/protocol-buffers/docs/tutorials)
+- [Protobuf 终极教程](https://colobu.com/2019/10/03/protobuf-ultimate-tutorial-in-go/)
+- [深入理解 ProtoBuf 原理与工程实践（概述）](https://segmentfault.com/a/1190000039158535)
+- [protobuf 向前兼容向后兼容](https://www.cnblogs.com/i80386/p/4362720.html)
 
 扩展阅读材料：
 
