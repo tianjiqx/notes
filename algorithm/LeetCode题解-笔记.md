@@ -1110,6 +1110,123 @@ int BitAdd(int num1, int num2){
 
 ### 数组
 
+```java
+// leetcode: 删除排序数组中的重复项
+/*
+给你一个有序数组 nums ，请你 原地 删除重复出现的元素，使每个元素 只出现一次 ，返回删除后数组的新长度。
+
+不要使用额外的数组空间，你必须在 原地 修改输入数组 并在使用 O(1) 额外空间的条件下完成。
+
+提示：
+0 <= nums.length <= 3 * 104
+-104 <= nums[i] <= 104
+nums 已按升序排列
+
+作者：力扣 (LeetCode)
+链接：https://leetcode-cn.com/leetbook/read/top-interview-questions-easy/x2gy9m/
+来源：力扣（LeetCode）
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+*/
+
+/*
+分析:
+条件有序数组，去除重复，返回结果是数组长度。
+输入即形如：1,2,2,3,4,4,4,5
+限制原地删除，那么返回的结果使用原数组，期望是1,2,3,4,5
+需要将重复值位置占位，依次将不重复值移动到前面，因此考虑双指针记录扫描位置和不重复值位置。
+*/
+public int removeDuplicates(int[] nums) {
+    int len = nums.length;
+    // 边界值入考虑
+    if (len <=1) {
+        return len;
+    }
+    // i 是不重复值，j是以扫描值位置
+    int i=0,j=1;
+    while (j<len) {
+        /*  分类讨论： 有序数组（默认从小到大），前后值小于和等于2种情况
+        小于，则当前j位置是我们需要输出的值，于是将其搬到i后，并且i，j都移
+        这里可能i+1==j情况，可以不用搬，为了代码简洁，统一规则直接简写。
+        等于，则说明是重复值，j后移。
+        因为，无论如何，每次判断j的值后，需要后移，所以提取出来。
+        */
+        if (nums[i] < nums[j]) {
+            nums[i+1]=nums[j];
+            i++;
+        }
+        j++;
+    }
+    // 完全不重复情况，i+1也不会超出len，因为从j=1 开始，i 最多到len-1
+    return i+1;
+}
+
+// 其他更简洁的写法
+//双指针解决
+public int removeDuplicates(int[] A) {
+    //边界条件判断
+    /*觉得null值，应该不会作为case，一般不需要考虑*/
+    if (A == null || A.length == 0)
+        return 0;
+    int left = 0;
+    /* for 循环代替while;  != 代替 < 更通用; */
+    for (int right = 1; right < A.length; right++)
+        //如果左指针和右指针指向的值一样，说明有重复的，
+        //这个时候，左指针不动，右指针继续往右移。如果他俩
+        //指向的值不一样就把右指针指向的值往前挪
+        if (A[left] != A[right])
+            A[++left] = A[right];
+    return ++left;
+}
+
+// leetcode: 旋转数组
+/*
+给定一个数组，将数组中的元素向右移动 k 个位置，其中 k 是非负数。
+进阶：
+尽可能想出更多的解决方案，至少有三种不同的方法可以解决这个问题。
+你可以使用空间复杂度为 O(1) 的 原地 算法解决这个问题吗？
+*/
+/*
+方案：
+1. 使用O(K) 空间，暂存末尾K个数，然后O(N) 后移，与前K个填写
+2. 多次反转，第一次全部反转，第二次，反转前k个，第三次反转后面的。 时间开销O(2n)
+3. 环形旋转，https://leetcode-cn.com/leetbook/read/top-interview-questions-easy/x2skh7/
+还需要注意， 数组长度为k的倍数，这个会原地打转
+*/
+// 方案2
+/*
+反转法，可以完成，数组的左右交换。
+（TODO）
+*/
+public void rotate(int[] nums, int k) {
+    int length = nums.length;
+    k %= length;
+    reverse(nums, 0, length - 1);//先反转全部的元素
+    reverse(nums, 0, k - 1);//在反转前k个元素
+    reverse(nums, k, length - 1);//接着反转剩余的
+}
+
+//把数组中从[start，end]之间的元素两两交换,也就是反转
+public void reverse(int[] nums, int start, int end) {
+    while (start < end) {
+        int temp = nums[start];
+        nums[start++] = nums[end];
+        nums[end--] = temp;
+    }
+}
+```
+
+
+
+排序：
+
+```java
+import java.util.Arrays;
+// sort int[] arr, int from_Index, int to_Index
+Arrays.sort(); 
+```
+
+
+
 
 
 ### 哈希表Map
