@@ -256,7 +256,7 @@ Key:   tablePrefix{TableID}_indexPrefixSep{IndexID}_indexedColumnsValue_{RowID}
 Value: null
 ```
 
-### 
+
 
 ### 4.2 Region
 
@@ -272,6 +272,10 @@ Value: null
 
 
 
+
+
+
+
 ## REF
 
 - [MPP and SMP in TiDB](https://pingcap.com/blog-cn/mpp-smp-tidb) 2016年11月，早期并行计划框架（多map，单reduce）
@@ -279,4 +283,12 @@ Value: null
 - [TiFlash](https://docs.pingcap.com/zh/tidb/stable/tiflash-overview)
 - [pdf: TiDB快速起步01-07课](https://learn.pingcap.com/api/learner/docs/info/download/90003/73e770aa-8e03-443d-af0a-5000bb8b15ae.pdf?fileName=01%E8%AF%BE-07%E8%AF%BE_TiDB_%E5%BF%AB%E9%80%9F%E8%B5%B7%E6%AD%A5_%E5%AD%A6%E7%94%9F%E6%8C%87%E5%8D%97) 原理，演进哲学
 - [pdf:TiDB系统管理08-22](https://learn.pingcap.com/api/learner/docs/info/download/2/3de619f7-2ff5-4b4f-934f-64f32242a2c8.pdf?fileName=08%E8%AF%BE-22%E8%AF%BE_TiDB_%E7%B3%BB%E7%BB%9F%E7%AE%A1%E7%90%86%E5%9F%BA%E7%A1%80_%E5%AE%9E%E9%AA%8C%E6%89%8B%E5%86%8C)  使用运维教程大全
+- [[笔记] TiDB: a Raft-based HTAP database](https://fuzhe1989.github.io/2021/01/03/tidb-a-raft-based-htap-database/)
+- [TiDB 5.0 在TPCH和SSB基准测试下OLAP方面的能力表现](https://asktug.com/t/topic/93535)
+  - 整体上DorisDB相对更好，TiDB 5.0 MPP架构的差距已经不大
+  - DorisDB 性能某些case比clickhouse 略好，TiFlash也使用了CH
+- [DorisDB1.11、TiDB/TiFlash 4.0、ClickHouse20.3性能对比- SSB测试-单多表场景](https://forum.dorisdb.com/t/topic/105) 
+  - TiDB 4.0 OLAP 性能差距明显
+- [bilibili: 【PingCAP Infra Meetup】No.139 TiDB HTAP 专题 Meetup](https://www.bilibili.com/video/BV1Rb4y117Mz)
+  - 58同城 刘春雷测试，5.0 版本 优化器 自动决策存在优化空间（代价模型的问题），不如强制全走TiFlash。
 
