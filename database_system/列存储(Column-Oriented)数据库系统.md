@@ -211,6 +211,12 @@ ORC最初是为了Hive而提出了一种列存格式，取代原始的text，seq
 
 
 
+ACID支持：
+
+hive acid实现原理，参见 [大数据系统-鉴赏 6.2.2节](https://github.com/tianjiqx/notes/blob/master/big_data_system/%E5%A4%A7%E6%95%B0%E6%8D%AE%E7%B3%BB%E7%BB%9F-%E9%89%B4%E8%B5%8F.md)
+
+
+
 ORC reader 对单个文件，最少读取16k，其他根据需要读取。
 
 postscripr-> file Footer -> stripe footer -> col present + data
@@ -220,16 +226,14 @@ postscripr-> file Footer -> stripe footer -> col present + data
 其他细节
 
 - 元信息，使用Protocol Buffers存储
-
   - 为了能增删属性
-
 - ORC Reader支持跳过给定行
-
 - 无checksum，HDFS 具有了该功能
-
 - 元信息可以在ORC Writer关闭前，任何时间添加（插入时优化？）
 
-  
+
+
+
 
 ### 2.2 Dremel / Apache Parquet
 
@@ -350,6 +354,8 @@ NULL值 编码：RLE，例如（0,1000） , 表示1000个NULL值。
 
 一般性能测试，orc压缩与性能更好。orc自己也宣称自己是最小，最快的列存格式。 parquet 支持的引擎更多，更广泛，另外据其宣称，可能在嵌套结构类型上表现更好。
 
+功能上，orc 为hive支持acid（hive orc事务表）。
+
 
 
 Parquet 和 ORC，支持高比率压缩算法（snappy，zlib，lz4）
@@ -406,5 +412,6 @@ Arrow 专注于矢量化处理和和低开销压缩算法（字典压缩等）�
 - [doc: apache parquet](https://parquet.apache.org/documentation/latest/)  897 stars (都相对很少)
 - [github: apache parquet](https://github.com/apache/parquet-format)
 - [slides:Efficient Data Storage for Analytics with Apache Parquet 2.0](https://www.slideshare.net/cloudera/hadoop-summit-36479635) 2014
+- [再来聊一聊 Parquet 列式存储格式](https://zhuanlan.zhihu.com/p/141908285)  parquet 交互逻辑
 - [Uber是如何低成本构建开源大数据平台的？](https://www.infoq.cn/article/4SRRiP7ZUhYMoAK7dafQ)
 
