@@ -1090,7 +1090,116 @@ int BitAdd(int num1, int num2){
 
 ```
 
+### 链表
 
+常用技巧：
+
+双指针，用于一次遍历，或者step长不一样，检查是否相遇，判断是否有环。
+
+```java
+/*
+leetcode:删除链表的倒数第N个节点，并且返回链表的头结点。
+解题方法：双指针。额外需要注意，删除头节点情况。
+*/
+public ListNode removeNthFromEnd(ListNode head, int n) {
+    ListNode fast = head;
+    ListNode slow = head;
+    //fast移n步，这里忽略了 n > length处理
+    for (int i = 0; i < n; i++) {
+        fast = fast.next;
+    }
+    //如果fast为空，表示删除的是头结点
+    if (fast == null)
+        return head.next;
+
+    while (fast.next != null) {
+        fast = fast.next;
+        slow = slow.next;
+    }
+    //这里最终slow不是倒数第n个节点，他是倒数第n+1个节点，
+    //他的下一个结点是倒数第n个节点,所以删除的是他的下一个结点
+    slow.next = slow.next.next;
+    return head;
+}
+```
+
+借助栈，对单链表，回文，逆序访问。
+
+```java
+/*
+leetcode:回文链表
+给你一个单链表的头节点 head ，请你判断该链表是否为回文链表。如果是，返回 true ；否则，返回 false 。
+*/
+
+// 直接反转链表
+public boolean isPalindrome(ListNode head) {
+    ListNode fast = head, slow = head;
+    //通过快慢指针找到中点
+    while (fast != null && fast.next != null) {
+        fast = fast.next.next;
+        slow = slow.next;
+    }
+    //如果fast不为空，说明链表的长度是奇数个
+    if (fast != null) {
+        slow = slow.next;
+    }
+    //反转后半部分链表
+    slow = reverse(slow);
+
+    fast = head;
+    while (slow != null) {
+        //然后比较，判断节点值是否相等
+        if (fast.val != slow.val)
+            return false;
+        fast = fast.next;
+        slow = slow.next;
+    }
+    return true;
+}
+
+//反转链表
+public ListNode reverse(ListNode head) {
+    ListNode prev = null;
+    while (head != null) {
+        ListNode next = head.next;
+        head.next = prev;
+        prev = head;
+        head = next;
+    }
+    return prev;
+}
+
+作者：数据结构和算法
+链接：https://leetcode-cn.com/leetbook/read/top-interview-questions-easy/xnv1oc/?discussion=HUFvuK
+来源：力扣（LeetCode）
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+
+
+// 性能差一点
+public boolean isPalindrome(ListNode head) {
+    if (head == null)
+        return true;
+    ListNode temp = head;
+    Stack<Integer> stack = new Stack();
+    //链表的长度
+    int len = 0;
+    //把链表节点的值存放到栈中
+    while (temp != null) {
+        stack.push(temp.val);
+        temp = temp.next;
+        len++;
+    }
+    //len长度除以2
+    len >>= 1;
+    //然后再出栈
+    while (len-- >= 0) {
+        if (head.val != stack.pop())
+            return false;
+        head = head.next;
+    }
+    return true;
+}
+```
 
 
 
@@ -1103,6 +1212,10 @@ int BitAdd(int num1, int num2){
 
 
 ### 二叉树树
+
+
+
+
 
 ### B树
 
@@ -1227,8 +1340,6 @@ Arrays.sort();
 
 
 
-
-
 ### 哈希表Map
 
 映射的集合。
@@ -1302,6 +1413,103 @@ class Solution {
             }
         }
         return stack.isEmpty();
+    }
+}
+
+/*
+leetcode:
+设计一个支持 push ，pop ，top 操作，并能在常数时间内检索到最小元素的栈。
+
+push(x) —— 将元素 x 推入栈中。
+pop() —— 删除栈顶的元素。
+top() —— 获取栈顶元素。
+getMin() —— 检索栈中的最小元素。
+
+解题方法；
+1. 辅助类，定义ListNode，带有min属性，push操作头插入，并且新的头节点记录当前的min，pop，删除头节点，min值还是是当前头节点的min。top，头节点。min，头节点的min。
+2. 双栈，栈1存放需要压栈的值，栈2存放最小值。push，先栈1，入栈。栈2为空，或者当前最小值大于或等于入栈值，入栈新最小值到栈2；pop，先出栈1，出栈结果等于当前最小值，那么栈2也出栈；top，栈1的栈顶，min，栈2的栈顶。
+
+https://leetcode-cn.com/leetbook/read/top-interview-questions-easy/xnkq37/
+*/
+
+class MinStack {
+    //链表头，相当于栈顶
+    private ListNode head;
+
+    //压栈，需要判断栈是否为空
+    public void push(int x) {
+        if (empty())
+            head = new ListNode(x, x, null);
+        else
+            head = new ListNode(x, Math.min(x, head.min), head);
+    }
+
+    //出栈，相当于把链表头删除
+    public void pop() {
+        if (empty())
+            throw new IllegalStateException("栈为空……");
+        head = head.next;
+    }
+
+    //栈顶的值也就是链表头的值
+    public int top() {
+        if (empty())
+            throw new IllegalStateException("栈为空……");
+        return head.val;
+    }
+
+    //链表中头结点保存的是整个链表最小的值，所以返回head.min也就是
+    //相当于返回栈中最小的值
+    public int getMin() {
+        if (empty())
+            throw new IllegalStateException("栈为空……");
+        return head.min;
+    }
+
+    //判断栈是否为空
+    private boolean empty() {
+        return head == null;
+    }
+}
+
+class ListNode {
+    public int val;
+    public int min;//最小值
+    public ListNode next;
+
+    public ListNode(int val, int min, ListNode next) {
+        this.val = val;
+        this.min = min;
+        this.next = next;
+    }
+}
+
+class MinStack {
+    //栈1存放的是需要压栈的值
+    Stack<Integer> stack1 = new Stack<>();
+    //栈2存放的是最小值
+    Stack<Integer> stack2 = new Stack<>();
+
+    public void push(int x) {
+        stack1.push(x);
+        if (stack2.empty() || x <= getMin())
+            stack2.push(x);
+    }
+
+    public void pop() {
+        //如果出栈的值等于最小值，说明栈中的最小值
+        //已经出栈了，因为stack2中的栈顶元素存放的
+        //就是最小值，所以stack2栈顶元素也要出栈
+        if (stack1.pop() == getMin())
+            stack2.pop();
+    }
+
+    public int top() {
+        return stack1.peek();
+    }
+
+    public int getMin() {
+        return stack2.peek();
     }
 }
 ```
