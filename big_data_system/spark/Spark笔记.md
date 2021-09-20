@@ -326,6 +326,17 @@ x+(1+2) 转换为x+3
       - 选择连接顺序，连接算法（代价（行数，字节数））
         - `org.apache.spark.sql.catalyst.optimizer.JoinReorderDP.search()`
           - `JoinReorderDPFilters` 搜索空间剪枝（TODO理解）
+          - `betterThan` 方法
+            - pow(relativeRows , weight) * pow(relativeSize, 1- weight) < 1
+              - （weight 默认0.7）
+        - join行数估计`org.apache.spark.sql.catalyst.plans.logical.statsEstimation.JoinEstimation`
+          - `estimateInnerOuterJoin`
+            - `val card = BigDecimal(leftStats.rowCount.get * rightStats.rowCount.get) / BigDecimal(maxNdv)`  行数
+            - `val newNdv = Some(leftKeyStat.distinctCount.get.min(rightKeyStat.distinctCount.get))`
+          - `org.apache.spark.sql.catalyst.plans.logical.statsEstimation.EstimationUtils`  
+          - `org.apache.spark.sql.catalyst.plans.logical.ColumnStat` 统计信息更新，如根据filter等过滤后，ndv值个数推导（按选择率直接乘）
+            - `updateCountStats`
+            - （PS: 可以的优化，考虑null值，直方图等信息，假设局部均匀而非全局均匀来计算）
 - Physical Planning
   - 获取一个逻辑计划并生成一个或多个物理计划
     - 阶段1：转换优化后的逻辑计划为物理计划（当前只挑选第一个，best plan还在TODO）
@@ -341,6 +352,8 @@ x+(1+2) 转换为x+3
       - 继承`org.apache.spark.sql.catalyst.planning.QueryPlanner[SparkPlan]`  抽象类
         - 关键方法`plan()`逻辑计划转物理计划（迭代器）
         - 抽象方法`strategies` 提供转换策略，`SparkPlanner` 实现了方法，提供了策略
+          - join算法选择
+            - `org.apache.spark.sql.execution.JoinSelection` 根据size阈值和启发式条件决策
         - `extraPlanningStrategies` 开放的扩展策略，用户可以继承`SparkStrategy`实现自己的转换策略（将逻辑计划转物理计划），通过该接口添加进去。
           - 例如`HiveSessionStateBuilder` 返回的planner 继承`SparkPlanner`扩展策略；
         - 策略都是使用模式匹配，所以用户自定义的一些类型，不会影响已有策略，只有自定义的策略会处理用户定义的逻辑计划节点，产生相应的物理计划
@@ -396,7 +409,6 @@ x+(1+2) 转换为x+3
 - 成员
   - `ExternalCatalog` 外部系统Catalog
     - 用来管理数据库（ Databases ）、数据表 （ Tables ）、数据分区（ Partitions）和函数（ Functions）的接口，抽象类
-      - 
       - 默认实现
         - `InMemoryCatalog`
         - `HiveExternalCatalog`
@@ -680,10 +692,13 @@ DataSource
 ![](spark笔记图片/k8s-cluster-mode.png)
 
 - spark-submit 想k8s api server提交创建spark driver的pod
+  - cluster mode
+    - client mode，driver运行在提交作业节点，不以Pod方式运行在K8S集群
 - spark driver的pod，调用K8s API，创建executor的pod
   - driver也是向api server提交创建Executor pods的请求，然后被Scheduler调度
 - 当应用程序完成时，executor pod 终止并被清理
   - driver的pod的清理，通过垃圾回收或者手动清理。
+    - onwer reference机制，driver pod 被删除的时候，关联的 executor pod也被删除
 
 
 
@@ -775,4 +790,5 @@ Spark Operator集成了Spark on K8s的方案，遵循K8S的 [operator](https://c
 - [官方：在k8s上运行spark](https://spark.apache.org/docs/latest/running-on-kubernetes.html)
 - [Spark Operator浅析](https://developer.aliyun.com/article/726791)
 - [Kubernetes Operator for Apache Spark Design](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator/blob/master/docs/design.md?spm=a2c6h.12873639.0.0.35f321c4iFmFJI&file=design.md)
+- [分布式计算引擎 Flink/Spark on k8s 的实现对比以及实践](https://zhuanlan.zhihu.com/p/404171594)
 
