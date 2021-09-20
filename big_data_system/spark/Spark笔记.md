@@ -377,6 +377,67 @@ x+(1+2) 转换为x+3
 
 
 
+**Join算子**：
+
+- Broadcast hash join (BHJ)广播哈希连接
+  - 仅支持相等联接，而联接键不需要可排序
+  - 除完全外部联接外，所有联接类型都支持
+  - 缺点：
+    - 构建/广播端较大时，OOM或性能较差
+- Shuffle hash join随机散列联接
+  - 仅支持相等联接，而联接键不需要可排序
+  - 支持所有联接类型
+  - 缺点：
+    - 构建hashmap的一端较大时，可能OOM
+    - 也容易产生数据倾斜
+- Shuffle sort merge join (SMJ): 随机归并排序连接
+  - 仅支持相等联接，而联接键需要可排序
+  - 支持所有联接类型
+- Broadcast nested loop join广播嵌套循环联接（BNLJ）
+  - 广播小表，然后做NLJ
+  - 支持等值，非等值连接
+  - 支持所有联接类型，实现优化为：
+    - 在right out join中广播左侧
+      - 因为右表一定全部保留
+    - 在left out,left semi, left anti or existence join中广播右侧
+- Shuffle-and-replicate nested loop join 笛卡尔积连接
+  - 支持等值，非等值连接
+  - 支持inner join类型
+
+**Join算子决策规则**：
+
+- 等值连接，是否有hint
+  - broadcast
+    - 广播最小的小表
+  - sort merge
+  - shuffle hash
+  - shuffle replicate NL
+  - 无hint
+    - broadcast
+      - 小表小于给定阈值
+    - shuffle hash
+      - 构建hash的表大小小于阈值（广播大小*分区数）
+    - sort merge join
+      - join列可排序（只检查left表，因为右表join列类型可提升一致）
+    - cartesian product
+      - inner join
+    - broadcast NL
+- 非等值连接
+  - 有hint
+    - broadcast
+    - shuffle replicate NL
+  - 无hint
+    - broadcast NL
+      - 小表小于给定阈值
+    - cartesian product
+      - inner join
+    - broadcast NL
+      - 实在没有其他选择，即使可能OOM
+      - inner, full join 广播小表
+      - left，ritght join广播 right，left表
+
+
+
 扩展：
 
 - `org.apache.spark.sql.SparkSessionExtensions`
