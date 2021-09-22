@@ -1,4 +1,4 @@
-# Naiad A Timely Dataflow System 论文笔记
+Naiad A Timely Dataflow System 论文笔记
 
 [TOC]
 
@@ -96,7 +96,7 @@ Naiad 特性：
 
 - 每条消息都带有一个逻辑时间戳
 - 时间戳格式![](naiad笔记图片/Snipaste_2021-09-21_21-25-10.png)
-  - `e` 是epoch
+  - `e` 是epoch，integer
   - `<C1,...Ck> ∈ N^k ` loop counters循环计数器
     - 区分不同的迭代
     - 跟踪数据流图处理状态（全部循环上下文处理完毕，最后输出的消息，循环计数器应该是空集，只剩epoch）
@@ -121,18 +121,22 @@ Naiad 特性：
 
 ### 2.2 顶点计算
 
-- 回调方法
+- 回调方法（继承顶点的类需要实现的方法，默认为空）
   - `v.OnRecv(e:Edge, m:Message, t:Timestamp)`
     - 接受到消息时被回调
   - `v.OnNotify(t:Timestamp)`
     - 接受到生产者通知epoch 结束？
     - 表示对于顶点v，t的所有工作以及完成
+    - 表示具有给定时间（或更早）的所有消息都已传递
+  - 约束：`OnRecv` 和 `OnNotify` 处理的时间戳必须顺序执行，保证没有任何Timestamp先执行了OnNotify再OnRecv，保证消息顺序处理
 - 主动方法
   - `tihis.sendBy(e:Edge, m:Message, t:Timestamp)`
     - 发送消息 u -> v， 导致v产生回调`OnRecv()`
   - `this.notifyAt(t:Timestamp)`
     - v 调用通知，导致v产生回调`OnNotify()` ？
     - 通知消费者，epoch结束？
+    - 在传递给定时间或更早的所有消息后请求通知
+      - 通知请求放入调度器队列
 
 ```scala
 // 计算不同值个数的顶点
@@ -170,6 +174,13 @@ class DistinctCount<S,T> : Vertex<T> {
     }
 }
 ```
+
+ REF 
+
+- [Vertex class](http://microsoftresearch.github.io/Naiad/html/T_Microsoft_Research_Naiad_Dataflow_Vertex_1.htm) API
+- [Github: Naiad](https://github.com/MicrosoftResearch/Naiad)
+
+
 
 
 
@@ -210,6 +221,29 @@ Pointstamp 点戳：
 
 
 
+单线程调度器，传递事件机制：
+
+- 调度器维护一组活动点戳，这些点戳对应于至少一个未处理的事件
+  - 每个活动点戳，调度程序维护两个计数
+    - occurrence count 未完成事件带有点戳计数器
+    - precursor count 在可能结果顺序中在它之前有多少活动点戳的前导计数器
+  - 计数器更新
+    - `sendby` 和 `notifyat` 调用开始时更新
+    - `onrecv` 和 `onnotify` 调用完成时更新
+    - ![](naiad笔记图片/Snipaste_2021-09-22_15-15-58.png)
+
+当计算开始时，系统在每个输入顶点的位置初始化一个活动点戳，用第一个epoch打上时间戳，出现计数为 1，前驱计数为 0。
+
+当一个纪元 e 被标记为完成时，输入顶点为 e + 1 添加一个新的活动点戳，然后删除 e 的点戳，允许为纪元 e 传递下游通知。
+
+点戳活动状态：
+
+- 当点标记 p 变为活动时，调度程序将其先驱计数初始化为可能导致 p 的现有活动点标记的数量
+
+- 当它的出现计数下降到零时，点戳 p 离开活动集
+
+（PS：论文不够细节详细，再结合slides，推测保证消息能够顺序处理，似乎是通过调度器全局汇总各节点处理状态，即节点的OC[(t,e)] =0 时，可以认为所有节点都完成onrecv了消息，可以安全的执行onnotify消息了。）
+
 
 ## 3. 分布式执行引擎
 
@@ -222,13 +256,20 @@ Naiad 作为及时数据流的高性能分布式实现。
 - 进程组
   - 多个worker，管理一部分数据流中的分区（实际每个worker再细分处理的分区）
     - worker 间通过共享内存，交换消息
+      - 具有调度器，维护活动点戳状态
   - 进程间通过基于tcp/ip的分布式进度跟踪协议，协调通知的传递
 
 ### 3.1 数据并行化
 
+分区函数，对消息分区到各个顶点
+
 
 
 ### 3.2 workers
+
+根据点戳大小，优先发送小的消息，减少延迟
+
+workers间通过共享队列，在一个顶点只有一个线程内执行。
 
 
 
@@ -238,11 +279,24 @@ Naiad 作为及时数据流的高性能分布式实现。
 
 ### 3.4 容错和高可用
 
+每个顶点可以定义checkpoint()，在失败时Restore()。系统会根据需要调用这些接口以在所有workers之间生成一致的检查点。（定期停机，每个顶点执行写检查点）
+
+顶点是有状态的，导致无法向spark/MR 重新执行任务，任何节点失败，Naiad必须停止所有节点并从最后一个全系统检查点恢复。
+
 
 
 ### 3.5 延迟处理
 
+优化--防止微掉队Micro-Stragglers
 
+- 针对此工作负载调优TCP（例如，减少重传超时）
+  - 延迟确认超时减少到 20 毫秒
+- 调整GC以减少停止世界的次数
+  - 使用缓冲池来回收消息缓冲区和瞬态算子状态
+  - 使用值类型，将一组值类型对象分配为具有单个指针的单个内存区域
+- 共享内存争用，并发队列和轻量级自旋锁
+  - 休眠 1 毫秒来，默认15.6 ms
+  - 保持消息队列小
 
 ## 4. Naiad开发
 
@@ -350,10 +404,9 @@ Naiad 与最先进的分布式机器学习自定义实现具有竞争力，并�
 
 
 
-
-
 ## REF
 
 - Johansson, T., & Bergvik, A. (1975). Naiad: A Timely Dataflow System Derek. Acta Neurologica Scandinavica, 52(1), 63–70. https://doi.org/10.1111/j.1600-0404.1975.tb02828.x 2013
-- [slides: naiad](https://cs.stanford.edu/~matei/courses/2015/6.S897/slides/naiad.pdf)  Matei Zaharia, stamford  6.S89, 2015 
+- [slides: naiad](https://cs.stanford.edu/~matei/courses/2015/6.S897/slides/naiad.pdf)  Matei Zaharia, stamford  6.S89, 2015
+- [Github: Naiad](https://github.com/MicrosoftResearch/Naiad)
 
