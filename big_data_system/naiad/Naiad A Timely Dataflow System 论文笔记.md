@@ -122,17 +122,17 @@ Naiad 特性：
 ### 2.2 顶点计算
 
 - 回调方法（继承顶点的类需要实现的方法，默认为空）
-  - `v.OnRecv(e:Edge, m:Message, t:Timestamp)`
+  - `v.OnRecv(e:Edge, m:Message, t:Timestamp)`  （流处理）
     - 接受到消息时被回调
-  - `v.OnNotify(t:Timestamp)`
+  - `v.OnNotify(t:Timestamp)`   (进行批处理)
     - 接受到生产者通知epoch 结束？
     - 表示对于顶点v，t的所有工作以及完成
     - 表示具有给定时间（或更早）的所有消息都已传递
   - 约束：`OnRecv` 和 `OnNotify` 处理的时间戳必须顺序执行，保证没有任何Timestamp先执行了OnNotify再OnRecv，保证消息顺序处理
 - 主动方法
-  - `tihis.sendBy(e:Edge, m:Message, t:Timestamp)`
+  - `tihis.sendBy(e:Edge, m:Message, t:Timestamp)`  （流处理）
     - 发送消息 u -> v， 导致v产生回调`OnRecv()`
-  - `this.notifyAt(t:Timestamp)`
+  - `this.notifyAt(t:Timestamp)`  (进行批处理)
     - v 调用通知，导致v产生回调`OnNotify()` ？
     - 通知消费者，epoch结束？
     - 在传递给定时间或更早的所有消息后请求通知
@@ -404,9 +404,23 @@ Naiad 与最先进的分布式机器学习自定义实现具有竞争力，并�
 
 
 
+优点：
+
+- 图，流，批处理的统一模型
+
+缺点：
+
+- 理想化的计算模型
+  - 迭代计算不会需要修改图结构
+- 容错机制，对性能的影响大
+
+
+
 ## REF
 
 - Johansson, T., & Bergvik, A. (1975). Naiad: A Timely Dataflow System Derek. Acta Neurologica Scandinavica, 52(1), 63–70. https://doi.org/10.1111/j.1600-0404.1975.tb02828.x 2013
 - [slides: naiad](https://cs.stanford.edu/~matei/courses/2015/6.S897/slides/naiad.pdf)  Matei Zaharia, stamford  6.S89, 2015
+- [slides: naiad](https://pdfs.semanticscholar.org/0774/8b82e2ac459ae0bfbd22e02ffefd23355683.pdf?_ga=2.185145005.567254618.1632291900-491559077.1526307170) Presented by Jesse Mu (jlm95)  74 pages 推荐
+- [slides: naiad](https://pdfs.semanticscholar.org/f483/49013d88dd9bbf5a50cb76b42b667874f02c.pdf?_ga=2.122223887.567254618.1632291900-491559077.1526307170) pages 24  点戳
 - [Github: Naiad](https://github.com/MicrosoftResearch/Naiad)
 
