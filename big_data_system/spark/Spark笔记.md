@@ -853,3 +853,11 @@ Spark Operator集成了Spark on K8s的方案，遵循K8S的 [operator](https://c
 - [Kubernetes Operator for Apache Spark Design](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator/blob/master/docs/design.md?spm=a2c6h.12873639.0.0.35f321c4iFmFJI&file=design.md)
 - [分布式计算引擎 Flink/Spark on k8s 的实现对比以及实践](https://zhuanlan.zhihu.com/p/404171594)
 
+扩展材料：
+
+- [用 C++ 实现 Spark 有意义吗？ - tobe的回答 - 知乎](https://www.zhihu.com/question/31250150/answer/1743573800) Runtime层的工作
+  - 阿里 Weld 的 codegen， C++实现
+  - intel OAP  重写执行算子，java应用逻辑计划转换
+  - Nvidia  GPU加速 部分执行算子
+  - 第四范式 LLVM-based Spark Native Execution Engine，llvm ir代码
+
