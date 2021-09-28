@@ -375,7 +375,7 @@ x+(1+2) 转换为x+3
     - `InsertAdaptiveSparkPlan` AQE优化
     - 等
 
-
+##### Spark Join
 
 **Join算子**：
 
@@ -639,11 +639,54 @@ RDD通信模式
 
 
 
+### 2.7 Spark Shuffle
+
+shuffle 算子
+
+- shuffle writer （map 阶段）
+- shuffle reader （reduce阶段）
+
+基于hash的shuffle
+
+- `HashShuffleManager`
+  - shuffle writer基于分区条件，reduce task数量，为每个reduce task产生输出文件
+  - 数据位置信息汇报driver，数据存储在blockManager上
+  - 问题：小文件过多，总量 map task * reduce task
+- 改进增加`File Consolidation`
+  - 把在统一core上运行的多个Mapper 输出的合并到同一个文件
+    - map task 对每个reducer的输出文件，变成同一个文件的FileSegment
+  - 文件总量 = cpu core number * reduce task
+
+基于排序的shuffle
+
+- `org.apache.spark.shuffle.sort.SortShuffleManager`
+  - map task 按 分区id和key 进行排序，并将结果输出到同一个文件，以及生成索引文件（分区粒度），reducer 根据自己的分区id，读取所属的数据
+  - 
+  - 实现细分
+    - map分区数是否小于spark.shuffle.sort.bypassMergeThreshold阈值，并且非聚合类shuffle
+      - `org.apache.spark.shuffle.sort.BypassMergeSortShuffleWriter` （200）
+        - map task 为每个reduce task 创建临时文件，数据按key进行hash，写入各个临时文件，最后map task合并临时文件，创建索引。
+          - 无需排序，节省排序开销
+        - 文件数量 = map task 数量
+    - 否则，是否Serializer支持relocation
+      - 是，UnsafeShuffleWriter （或者 Tungsten-Sort Based Shuffle）
+        - 原始数据首先被序列化处理，然后在二进制上排序，Serializer支持relocation，可以在指定位置读取对应数据
+      - 否，SortShuffleWriter
+        - 根据key hash，写入内存Map（聚合shuffle）/Array（join shuffle），然后根据key排序，分批落盘，或者溢出写临时文件，最后merge文件，最后生成索引文件。
+        - 文件数量 = map task 数量
+        - 排序过的sort输出，其实有益与merge sort join。
 
 
 
+shuffle reader 对各个map task 输出有序FileSegement，建立最小（大）堆，可以输出更大范围的有序的文件（如果只有一个，那么即全局有序）。
 
 
+
+#### REF
+
+- [彻底搞懂spark的shuffle过程（shuffle write）](https://mp.weixin.qq.com/s/6zvUHOa935xaEKpp_KCyGA?)
+- [Spark性能优化指南——高级篇](https://tech.meituan.com/2016/05/12/spark-tuning-pro.html)
+- [Spark Shuffle 详解](https://zhuanlan.zhihu.com/p/67061627)
 
 ## 3.开放生态
 
