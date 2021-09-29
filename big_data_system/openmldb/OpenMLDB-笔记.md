@@ -87,6 +87,8 @@ sql执行入口：
   - `hybridse::node::kPlanTypeInsert` 插入类型
     - `ExecuteInsert`
 
+（应该有分布计划类型的分支，当前分析的分支Query，直接走到tablet server上了，或者批量，实时的类型查询应该会跳到java目录下）
+
 
 
 ## 3.  执行引擎HybridSE
@@ -128,6 +130,69 @@ HybridSE(Hybrid SQL Engine)是基于C++和LLVM实现的高性能混合SQL执行�
         - `QueryNode` -> `PlanNode`  通过`node::NodeManager` 创建逻辑计划节点
 
 最终逻辑计划节点会被各个后续具体的执行引擎转换为物理执行计划（批，流方式执行）。
+
+
+
+
+
+## 4. ApiSever
+
+
+
+## 5. NameSever
+
+
+
+## 6. tablet server
+
+tablet client 接口：
+
+`src/client/tablet_client.h`
+
+- DDL，元信息操作
+  - `CreateTable()`
+  - `DropTable()`
+  - `UpdateTableMetaForAddField()`
+  - `GetCatalog()`
+  - `AddIndex()`
+  - `DeleteIndex()`
+  - `UpdateTTL()`
+- 读写数据
+  - `Query()`
+  - `SQLBatchRequestQuery()`
+  - `SubQuery()` 似乎会有分布式子计划执行？
+  - `Put()`
+  - `Get()`
+  - `Delete()`
+  - `Count()`
+  - `Scan() `  返回kv迭代结果
+  - `AsyncScan()`
+  - `LoadTable`
+- 副本管理
+  - `AddReplica()` 
+  - `DelReplica()`
+  - `ChangeRole()`
+- 快照
+  - `MakeSnapshot()`
+  - `SendSnapshot()`
+  - `RecoverSnapshot()`
+- 存储过程
+  - `CreateProcedure()`
+  - `CallProcedure()`
+
+
+
+tabet server
+
+`src/tablet/tablet_impl.cc`
+
+- `TabletImpl::Query()`  TabletImpl 继承TabletServer
+  - `TabletImpl::ProcessQuery()`
+    - `hybridse::vm::BatchRunSession.run()`  执行查询
+
+（因其他事情暂停分析，TODO，当前未知，分布式计划如何执行。认为应该还是tablet server之上有一层工作，应该在java目录下（批处理，流处理），tabletserver 应该还是单点上执行子计划。并且使用hybridse 的vm模块。）
+
+
 
 
 
