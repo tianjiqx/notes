@@ -6,13 +6,32 @@
 
 
 
-
-
 分析源码版本（2021.09.28）：
 
 `432da3afbed240eb0b8d0571c05f233b1a5a1cd4`
 
 
+
+源码核心目录结构：
+
+- `hybridse`: sql引擎，解析sql字符串，生成执行计划
+- `java`:  java 语言项目相关的模块
+  - spark api
+  - 批处理执行模块，将hybridse 的逻辑执行计划，翻译成物理执行计划
+  - 导入
+  - task 管理器
+  - nearline tablet ？
+- `src`主要源码部分
+  - api server
+  - tablet server
+    - 存储，rpc，log，副本等
+  - nameserver
+
+
+
+项目依赖：
+
+- [zetasql](https://github.com/google/zetasql)  google 开源的语言 解析器和分析器。openmldb 用来做语法解析
 
 
 
@@ -33,6 +52,40 @@
   - 提供 resutful api 访问nameserver
 
 
+
+
+
+sql执行入口：
+
+`src/cmd/sql_cmd.h`
+
+- `HandleSQL()`  处理sql
+  - `hybridse::plan::PlanAPI::CreatePlanTreeFromScript()` 解析sql，生成逻辑计划
+    - (稍微有点奇怪，解析完的计划，只是用来简单分别sql类型，检查db是否存在。之后还是使用sql，重新解析一遍，可能是之前没有db信息? 后续再次解析时，添加上了，但是感觉实现稍暴力)
+  - `hybridse::node::kPlanTypeCmd` 
+    - `HandleCmd()`  show/desc database, table，use db , create、drop db, table 等语句
+  - ` hybridse::node::kPlanTypeCreate` | ` hybridse::node::kPlanTypeCreateSP` ddl类型
+    - `SQLClusterRouter::ExecuteDDL()`
+      - `src/sdk/sql_cluster_router.cc`
+        - ` NsClient::CreateDatabase()` 等
+        - `NsClient::ExecuteSQL()`  DDL， 包括create，drop等操作
+          - `src/client/ns_client.cc`
+          - `PlanAPI::CreatePlanTreeFromScript()`
+          - `HandleSQLCmd()`
+            - `DropTable()`
+            - `DeleteIndex()`
+            - `DropProcedure()`
+  - ` hybridse::node::kPlanTypeQuery` 查询类型
+    - `SQLClusterRouter::ExecuteSQL()`  DDL， 包括create，drop等操作。
+      - `src/sdk/sql_cluster_router.cc`
+      - `SQLClusterRouter::ExecuteSQLParameterized()`
+        - `GetTabletClient()`  根据请求的行，选择tablet
+        - `TabletClient::Query()` 将sql发送送 tablet server上执行 （看起来只支持单机？）
+          - `src/client/tablet_client.cc`
+        - ` ResultSetSQL::MakeResultSet()`
+    - `PrintResultSet()`
+  - `hybridse::node::kPlanTypeInsert` 插入类型
+    - `ExecuteInsert`
 
 
 
@@ -60,7 +113,21 @@ HybridSE(Hybrid SQL Engine)是基于C++和LLVM实现的高性能混合SQL执行�
 
 
 
-(当前一些文档连接，似乎由于项目名更改，已经无法访问； `zetasql/parser/parser.h` 也暂时未找到定义)
+(当前一些文档连接，似乎由于项目名更改，已经无法访问)
+
+`hybridse/src/planv2/plan_api.cc`
+
+- `PlanAPI::CreatePlanTreeFromScript()`  接收字符串，然后解析成执行计划树
+  - ` zetasql::ParseScript()` 词法，语法解析，sql字符串 -> `zetasql::ASTScript`
+  - `SimplePlannerV2::CreateASTScriptPlan()`  `zetasql::ASTScript` -> `PlanNode`
+    - `hybridse/src/planv2/planner_v2.cc`
+      - `ConvertASTScript()`  `zetasql::ASTScript` -> `SqlNodeList`
+        - `hybridse/src/planv2/ast_node_converter.cc`
+      - `SimplePlanner::CreatePlanTree(()`
+        - `hybridse/src/plan/planner.cc`
+        - `QueryNode` -> `PlanNode`  通过`node::NodeManager` 创建逻辑计划节点
+
+最终逻辑计划节点会被各个后续具体的执行引擎转换为物理执行计划（批，流方式执行）。
 
 
 
