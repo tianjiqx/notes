@@ -72,11 +72,16 @@ func main() {
     - 取出并写入一个`Batch`
     - `DB.Apply()` 应用数据到memtable
       - 并且根据大小，或者是否Sync的参数，作为WAL log flush 到磁盘
+        - `commit.go` `commitEnv`  实际底层也是异步的flush等待完成
     - 执行完成后release  Batch
   - 参数`pebble.Sync` 同步，表示通过操作系统缓冲区缓存将写入同步到实际磁盘。可能导致写入过慢。
-    - （考虑，外层提供一个计数器，缓存key，达到固定大小或者，超时后set值，并且要求写wal。避免每次都要wal。并且需要轻量级机制延迟响应客户端）
+    - （考虑，外层提供一个计数器，缓存key，达到固定大小或者，超时后set值，并且要求写wal。避免每次都要wal。并且需要轻量级机制延迟响应客户端） 适用与多client写的情况，单client只会增加时延
+      - 测试同步写1000 ，单线程，用时720ms
+        - 该数据也怀疑写操作系统缓存？没有调用fsync，虽然是`commitEnv`   异步文件追加，但是是外面还是单线程set。能够支持每秒上千是追加flush吗
+          - todo  fdatasync 优化？
     - `NewBatch` 可以创建一个只写的batch。
   - `pebble.NoSync` 不同步，进程或计算机崩溃，则可能是最近的写入丢失。
+    - 测试非同步写1000 ，单线程，用时3.49ms
 - `Get`
   - `DB.getInternal`
     - `DB.loadReadState`  读引用计数加1，防止文件被删除（GC）
@@ -101,4 +106,6 @@ func main() {
 
 - [github:pebble](https://github.com/cockroachdb/pebble)
 - [Pebble 介绍：一个受 RocksDB 启发的用 Go 编写的键值存储](https://www.cockroachlabs.com/blog/pebble-rocksdb-kv-store/)
+- [Pebble详解：入门介绍](https://iswade.github.io/articles/pebble/)
+- [Pebble VS RocksDB 实现差异](https://www.jianshu.com/p/a7b68f12a03e)
 
