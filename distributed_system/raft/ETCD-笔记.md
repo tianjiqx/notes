@@ -57,7 +57,16 @@
     - `transport *rafthttp.Transport` peers间网络通信服务
     -  raft 状态机
       - `node raft.Node`
+        - `ercd/raft/node.go:StartNode()` 启动raft协议的node
+        - node之间是对等，并且都可以发起提议通过`Propose()`
+          - 看注释提到提议可能被丢失，需要用户重试
+          - `raftexample_test.go:TestProposeOnCommit()` 方法测试3节点的集群，也是三个节点同时写提议
+            - 如何保证每个节点日志index是正确的？
+            - 没有leader？看其他博客提到非leader节点会转发msg，但是自己没看到。`etc/raft/node.go:stepWithWaitOption()` 直接写入`n.propc`通道，后续处理识别了吗？
+              - `node.run()` 方法会接受通道中的数据
+                - `stepLeader()` 似乎会将消息发送到leader
       - `raftStorage *raft.MemoryStorage`
+        - 待被应用实现的存储层，MemoryStorage只是内存中，非持久化。
       - `wal *wal.WAL`
   - 关键方法
     - `startRaft` 启动RaftNode服务
@@ -104,6 +113,11 @@
 
 单raft以物理节点作为同步的单元。multi-raft，同步的单元是region，复制一段顺序范围的key的同步。
 
+region:
+
+- 预先切分，之后分裂
+- 空间大小达到阈值进行分裂
+
 例如tidb 自增key的前5位，作为region键，散列key分片到不同的region，同时避免产生热点region写。
 
 同步单元是region，但是并非为每个region创建一个raft 状态机，因为region数量远大于节点数量。并且region之间同心跳流量，也会随region数量线性增加
@@ -113,6 +127,28 @@
 tidb使用PD，做region的管理，负载均衡。
 
 一个节点上的所有region，是可以共用一个raft状态机的。维持一个regin id与其他的map，如commitC，响应不同的region 已提交日志。
+
+
+
+问题：但是raft node如何管理其peer呢，非为region固定物理机器组成raft group。
+
+4节点，region1 在 0,1,2 region2 在0,2,3 如何做到？
+
+是为每个region启动一个raft 状态机（raft.Node）？但是共用raft.MemoryStorage和rafthttp.Transport？
+
+当分配到一个新的region或者分裂region时，创建一个raft.Node？
+
+因为，共用raft.MemoryStorage ，日志的各种index，也需要共用。
+
+
+
+- tikv  raft log和用户数据 用2个 rockdb实例分别存储。 根据raftexample， 使用了raft 自带的 `raftStorage *raft.MemoryStorage`  差异区别？
+  - MemoryStorage 实际在内存中，无法解决宕机问题，即开篇raft要求实现的存储层
+  - tikv，会真正把日志落盘
+    - `raft_log_engine/src/engine.rs` 日志存储层  `RaftLogEngine`
+    - `raftstore/src/store/transport.rs` 网络层
+  - 另外cockroach 实现的raft.Storage 接口 `replicaRaftStorage`
+    - `pkg/kv/kvserver/replica_raftstorage.go`
 
 
 
@@ -139,4 +175,8 @@ tidb使用PD，做region的管理，负载均衡。
 
 - [etcd-raft示例分析](https://zhuanlan.zhihu.com/p/29180575)
 - [scaling-raft](https://www.cockroachlabs.com/blog/scaling-raft/)
+- [tikv overview](https://docs.pingcap.com/zh/tidb/stable/tikv-overview)
+- [Elasticell-Multi-Raft实现](https://zhuanlan.zhihu.com/p/33047950)
+- [TiKV 源码解析系列 - multi-raft 设计与实现](https://pingcap.com/zh/blog/the-design-and-implementation-of-multi-raft)
+- [CockroachDB 源码闲逛 - I (meta ranges)](https://zhuanlan.zhihu.com/p/75452389)
 
