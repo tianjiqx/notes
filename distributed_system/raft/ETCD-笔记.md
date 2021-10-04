@@ -66,8 +66,9 @@
               - `node.run()` 方法会接受通道中的数据
                 - `stepLeader()` 似乎会将消息发送到leader
       - `raftStorage *raft.MemoryStorage`
-        - 待被应用实现的存储层，MemoryStorage只是内存中，非持久化。
+        - 待被应用实现的存储层，MemoryStorage在内存中，维持部分最近的log entry，但是在WAL 会持久化日志，或者生成快照。
       - `wal *wal.WAL`
+        - 持久化 log，读取快照等
   - 关键方法
     - `startRaft` 启动RaftNode服务
       - `replayWAL` 回放wal日志
@@ -89,13 +90,16 @@
             - Ready 封装了准备读取、保存到稳定存储、提交或发送给其他对等点的条目和消息。
             - Ready 中的所有字段都是只读的。
           - `wal.Save()` 写wal
-          - `raftStorage.Append(rd.Entries)` 追加日志条目到raft内存存储引擎
+          - `raftStorage.Append(rd.Entries)` leader追加日志条目到raft内存存储引擎
+            - followwer 通过`raft.handleAppendEntries()` 方法处理leader的日志。
           - `transport.Send()` 尝试发送到其他peers节点
-            - 可能该日志就是从其他peers发过来的，就不发送了
+            - leader的日志，会发送到其他peers
           - `publishEntries()` 应用commited log，返回通道applyDoneC
           - `maybeTriggerSnapshot(applyDoneC)`  尝试写快照（默认间隔10000条日志），监听阻塞通道applyDoneC等待log 被应用，然后写快照
             - `raftStorage.Compact(compactIndex)`
               - 经过快照后，可以删除旧的wal log
+              - follower的快照是如何触发的？
+                - Leader、Follower独立的创建快照, 还是ready触发
           - `node.Advance()` 通知准备下一个Ready
         - `transport.ErrorC` 错误通道
         - `stopc` 接收到stop消息，关闭raftNode
@@ -148,6 +152,7 @@ tidb使用PD，做region的管理，负载均衡。
     - `raft_log_engine/src/engine.rs` 日志存储层  `RaftLogEngine`
     - `raftstore/src/store/transport.rs` 网络层
   - 另外cockroach 实现的raft.Storage 接口 `replicaRaftStorage`
+    - `pkg/kv/kvserver/replica.go`
     - `pkg/kv/kvserver/replica_raftstorage.go`
 
 
@@ -179,4 +184,5 @@ tidb使用PD，做region的管理，负载均衡。
 - [Elasticell-Multi-Raft实现](https://zhuanlan.zhihu.com/p/33047950)
 - [TiKV 源码解析系列 - multi-raft 设计与实现](https://pingcap.com/zh/blog/the-design-and-implementation-of-multi-raft)
 - [CockroachDB 源码闲逛 - I (meta ranges)](https://zhuanlan.zhihu.com/p/75452389)
+- 《etcd技术内幕》- 百里燊  推荐
 

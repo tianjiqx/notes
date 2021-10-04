@@ -90,7 +90,7 @@ func main() {
 - `Delete`
   - 同样有Sync或NoSync 参数
   - 先写Batch（delete），然后应用。
-  - `DeleteRange` 指定[start,end) 范围删除
+- `DeleteRange` 指定[start,end) 范围删除
 
 
 
@@ -101,6 +101,14 @@ func main() {
 - `Flush` 刷 memtable  到磁盘为 SStable
   - `AsyncFlush` 异步
 - `Compact` 对一段范围的key 做压缩，合并小文件。
+- 迭代器
+  - `iterator.go`
+  - 前缀迭代
+    - `db.NewIter(prefixIterOptions([]byte("hello")))`
+    - `iterator_example_test.go`
+  - 大于等于迭代`SeekGE`
+    - `iter := db.NewIter(nil);iter.SeekGE([]byte("a"));`
+  - `SeekLT` 小于
 
 ## REF
 
