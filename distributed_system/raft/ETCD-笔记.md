@@ -30,14 +30,15 @@
 组件构成
 
 - http api server
-  - 接受 http请求
+  - 接受 http请求，包括用户写数据，手动节点变更
 - kvstore
   - 存储层，内存map实现的kv存储，实现了raftNode需要的一些接口如快照
   - `kvstore.go`
   - 关键方法
     - `Lookup` 根据key，读取value
-    - 创建时启动的独立线程，`readCommits` 从`commitC`通道中获取已经提交raft log，应用到本地的存储引擎，持久化
+    - 创建时启动的独立线程，`readCommits()` 从`commitC`通道中获取已经提交raft log，应用到本地的存储引擎，持久化
       - 其中若从通道中获取到nil值，调用`loadSnapshot()`  根据快照更新整个kv。
+        - 在raftNode写nil到commitC前，已经先保存快照到本地
       - 获取到正常的数据日志时，解析数据，写到map中，然后关闭commit中包含的`applyDoneC`通道
     - `Propose` 提议，即是将kv值，写到 `proposeC` 通道， 作为leader和leaseholder 写raft log。自身的应用raft log 依然通过`readCommits` 获取。
     - `getSnapshot` 根据用户数据map创建快照(map 转json的字节数组)
@@ -73,6 +74,7 @@
     - `startRaft` 启动RaftNode服务
       - `replayWAL` 回放wal日志
       - `serveRaft` 独立线程，select监听`httpstopc` 通道是否有stop消息
+        - 优雅停机
       - `serveChannels`  独立线程处理日志同步，同步状态机更新
     - `serveChannels`  
       - raft状态机raftStorage的快照中获取初始状态（confState，snapshotIndex，appliedIndex）
@@ -89,12 +91,15 @@
           - `Ready` 类型
             - Ready 封装了准备读取、保存到稳定存储、提交或发送给其他对等点的条目和消息。
             - Ready 中的所有字段都是只读的。
-          - `wal.Save()` 写wal
-          - `raftStorage.Append(rd.Entries)` leader追加日志条目到raft内存存储引擎
+          - `wal.Save(rd.HardState, rd.Entries)` 写wal 日志，并且记录HardState 中任期，已经提交位置等信息
+            - 如果是快照日志，先保存快照到本地，然后写nil到commitC，回放时装载快照，然后应用快照数据
+              - 不直接应用快照，一方面避免多写，只接受commitC的日志，进行写存储，另一方面，不知道commitC是否为空，此时应用快照数据，可能导致被commitC中的旧log覆盖，导致数据错误。
+          - `raftStorage.Append(rd.Entries)` leader追加日志条目到raft内存存储引擎（可能存在未提交日志）
             - followwer 通过`raft.handleAppendEntries()` 方法处理leader的日志。
           - `transport.Send()` 尝试发送到其他peers节点
             - leader的日志，会发送到其他peers
-          - `publishEntries()` 应用commited log，返回通道applyDoneC
+          - `publishEntries(rc.entriesToApply(rd.CommittedEntries))` 应用commited log，返回通道applyDoneC
+            - rd中的`CommittedEntries` 队列记录了待应用的已经提交的日志
           - `maybeTriggerSnapshot(applyDoneC)`  尝试写快照（默认间隔10000条日志），监听阻塞通道applyDoneC等待log 被应用，然后写快照
             - `raftStorage.Compact(compactIndex)`
               - 经过快照后，可以删除旧的wal log
