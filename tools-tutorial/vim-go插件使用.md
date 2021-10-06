@@ -5,6 +5,7 @@
 注意：
 
 - 我将vim80 改成了vim82，虽然之前不存在/usr/local/share/vim 目录。
+
 - 第5步没有成功，我的vim 没有在/usr/bin/vim 而是/usr/local/bin/vim， 并且也没有/usr/bin/vi。 需要更新实际路径为/usr/local/bin/vim， 并且增加/usr/bin/vim配置（for git调用编辑器）。 
   ```shell
   sudo update-alternatives --install /usr/bin/editor editor /usr/local/bin/vim 1
@@ -48,3 +49,12 @@ vim中已将leader设置为`,`，`let mapleader=","`。
 
 
 - **:ts 存在多处定义时**  
+- 代码生成
+
+  - 自动实现接口：将光标移动到struct 名字上，`:GoImpl` 回车，然后输入接口名
+
+    - 注意需要先将接口 导入项目，`go mod vendor` 放入vendor目录，才能发现第三方定义的接口
+- 重命名变量
+
+  - 将光标移动到标志符`:GoRename`
+
