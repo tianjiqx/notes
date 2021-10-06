@@ -118,6 +118,10 @@ systemctl restart kubelet
 
 
 
+docker-compose 启动后，容器间无法ping通，ifconfig检查发现没有docker0， 重启docker服务解决
+
+
+
 ### 2. K8S
 
 #查看名字空间
