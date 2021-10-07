@@ -270,7 +270,28 @@ Value: null
 
 （TODO，region非固定行数而是靠大小，region的定位开销，不随数据量增长？region在PD上的管理结构）
 
+可能类似cockroach或者hdfs namenode，2级名字空间，常量时间的定位key所属region
 
+
+
+**单region热点问题**
+
+表按主键顺序进行切分region，使用递增主键时，导致写入时，往往只写最后一个region，产生热点region。
+
+解决方式
+
+- SHARD_ROW_ID_BITS
+  - 对于主键非整数类型或者没有主键的表，隐含一个自增主键
+  - 将PK二进制高位进行位翻转（低位移到高位），产生新key，然后就可以将数据分散写到高位所代表的region中。
+  - SHARD_ROW_ID_BITS=4 即代表分配16个分片
+- AutoRandom ID
+  - bigint 64位
+    - SignBit - 符号位，有符号时占用，长度为 1
+    - ShardBits - 生成随机数对 ID 值域打散，由属性 auto_random(5) 指定，默认为 5
+      - 用于确定所属region
+      - （认为在数据量比较少时，即使该5位生成的值都不同，但是还是在同一个region）
+    - increment_bits - 自增位，用于保证 ID 的唯一性以及单语句 Insert 时，分配的连续性
+      - 单insert 多个value值？
 
 
 
@@ -291,4 +312,6 @@ Value: null
   - TiDB 4.0 OLAP 性能差距明显
 - [bilibili: 【PingCAP Infra Meetup】No.139 TiDB HTAP 专题 Meetup](https://www.bilibili.com/video/BV1Rb4y117Mz)
   - 58同城 刘春雷测试，5.0 版本 优化器 自动决策存在优化空间（代价模型的问题），不如强制全走TiFlash。
+- [TiDB 4.0 为解决热点问题做了哪些改进？](https://pingcap.com/zh/blog/improvements-made-by-tidb-4.0-to-solve-hot-spot-issues) AutoRandom 
+- [tidb 表结构设计最佳实践](https://book.tidb.io/session1/chapter7/tidb-schema-design.html)
 
