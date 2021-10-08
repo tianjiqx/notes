@@ -67,7 +67,7 @@ CockroachDB 将数据存储在键-值对的整体排序映射中。键key，任�
 
 这个键空间描述了集群中的所有数据及其位置，并且被划分为我们称为“ range”的区域，即键空间中的连续块，因此每个键总是可以在单个区域中找到。
 
-实现了一个**有序map**来完成:
+实现了一个**有序map**（似乎不是hashmap， B+树 在内存中的物理数据结构，而是逻辑概念，直接基于range查询和缓存）来完成:
 
 - **Simple lookups 简单的查找**: 因为我们确定了哪些节点负责数据的某些部分，所以查询能够快速定位到它们需要的数据的位置
 - **Efficient scans 高效的扫描**: 通过定义数据的顺序，在扫描过程中很容易找到特定范围内的数据
@@ -105,7 +105,15 @@ key类型
 
 这个两级索引加上用户数据可以可视化为一棵树，根位于 meta1，第二级位于 meta2，树的叶子由保存用户数据的范围组成。
 
+查询key所属range位置
 
+- 首先第二级range元数据缓存（`RangeCache`, pkg/kv/kvclient/rangecache/range_cache.go），命中则返回。
+- 未命中，查询meta2 所在range的位置。（也有缓存）命中，则想meta2的range发起rpc请求，查询key所在的range。
+- 再次未命中，查找第一级range元数据meta1的位置。其位置通过 gossip 协议分布在集群中的所有节点中。然后像该meta1请求，查询key所属的meta2的位置。
+
+（TODO，缓存失效？请求失败，然后淘汰缓存，再次请求位置，缓存新元数据？）
+
+获取range位置之后，通过`DistSender` 发送`Batchrequest`的 kv操作请求到range。
 
 
 
