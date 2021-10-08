@@ -98,8 +98,9 @@
             - followwer 通过`raft.handleAppendEntries()` 方法处理leader的日志。
           - `transport.Send()` 尝试发送到其他peers节点
             - leader的日志，会发送到其他peers
-            - （理论上，如果我们先异步的发送日志到其他peers，然后再持久化日志，应该也不会出错，因为只有持久化之后，才会检查日志写再次更新commitIndex，即使发送去的另2个节点的新日志都因为一下崩溃，而未能保存，也不影响之前已经commit的日志）
-              - 这样的方式，忽略网络开销，理论时间是写单节点日志的2倍时间（max（replic2,replic3）+ replic1）
+              - 这样的方式，理论时间是写单节点日志的2倍时间多（replic1 + send（replic2 + replic3）+ max(replic2 ,replic3)）
+            - （理论上，如果我们先异步的顺序的发送日志到其他peers，然后再持久化日志，应该也不会出错，因为只有持久化之后，才会检查日志写再次更新commitIndex，即使发送去的另2个节点的新日志都因为一下崩溃，而未能保存，也不影响之前已经commit的日志）
+              - 这样的方式，多节点同时写日志的副本，忽略发送时间，理论时间是接近写单节点日志时间（max(relica1, replic2 ,replic3)）
           - `publishEntries(rc.entriesToApply(rd.CommittedEntries))` 应用commited log，返回通道applyDoneC
             - rd中的`CommittedEntries` 队列记录了待应用的已经提交的日志
           - `maybeTriggerSnapshot(applyDoneC)`  尝试写快照（默认间隔10000条日志），监听阻塞通道applyDoneC等待log 被应用，然后写快照
