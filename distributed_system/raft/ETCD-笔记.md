@@ -101,7 +101,7 @@
               - 这样的方式，理论时间是写单节点日志的2倍时间多（replic1 + send（replic2 + replic3）+ max(replic2 ,replic3)）
             - （理论上，如果我们先异步的顺序的发送日志到其他peers，然后再持久化日志，应该也不会出错，因为只有持久化之后，才会检查日志写再次更新commitIndex，即使发送去的另2个节点的新日志都因为一下崩溃，而未能保存，也不影响之前已经commit的日志）
               - 这样的方式，多节点同时写日志的副本，忽略发送时间，理论时间是接近写单节点日志时间（max(relica1, replic2 ,replic3)）
-              - （根据自己改造raftexample的测试，全非同步方式写日志数据+记录了commitedIndex的hardState，使用1000个kv用时不到4ms，同步0.75s的pebbledb存储日志，三副本同步20000条数据依然用了17s，而同步方式持久化日志用时38.3s，`transport.Send()` 虽然是写数据到带缓存的通道，网络通信开销，确认commitIndex似乎存在较大，无法忽略？TODO，确认raft通信提交机制；）
+              - （根据自己改造raftexample的测试，全非同步方式写日志数据+记录了commitedIndex的hardState，使用非同步写1000个kv用时不到4ms，同步写0.75s的pebbledb存储日志，三副本写20000条数据依然用了17s，而同步方式持久化日志用时38.3s，`transport.Send()` 虽然是写数据到带缓存的通道，网络通信开销，确认commitIndex似乎存在较大，无法忽略？TODO，确认raft通信提交机制；）
               - （单副本写20000条甚至可以低于2s，因为`proposeC`是一个无缓冲区通道，并且在通信过程中可能宕机丢失，被读取后，通过`raft.node.Propose()`写，然后反馈给客户端已经写成功，但是实际由可能失败！从日志打印显示，Ready的一次性append的日志一下可以达到9000条以上！）
                 - TODO，需要更加安全的使用etcd raft，raftexample给的`proposeC`方式，实际存在丢失数据的风险！其注释`raft.node.Propose()`写的是block写，可能多副本是如此，会阻塞下条数据的写，但是依然对之前一条回复成功的日志，可能实际并未写入成功。
                   - 可能方式：引擎需要等待select 一个类似commitIndex通道，而不是当前只写proposeC，等待proposeC通道被读取成功后就返回

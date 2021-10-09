@@ -83,11 +83,18 @@ sql执行入口：
         - `TabletClient::Query()` 将sql发送送 tablet server上执行 （看起来只支持单机？）
           - `src/client/tablet_client.cc`
         - ` ResultSetSQL::MakeResultSet()`
+      - `SQLClusterRouter::ExecuteSQLBatchRequest()` 批处理模式执行SQL，依然是单tablet
+      - `SQLClusterRouter::CallSQLBatchRequestProcedure()` 批量（向量化）执行存储过程
+        - `TabletClient::SQLBatchRequestQuery()`
+      - `java/openmldb-jdbc/src/main/java/com/_4paradigm/openmldb/sdk/impl/SqlClusterExecutor.java`
+        - `SqlClusterExecutor` 实现了`SqlExecutor`接口， jdbc 的sdk调用接口
+          - `executeSQL()` 执行sql
+            - `SQLClusterRouter::ExecuteSQL()`
     - `PrintResultSet()`
   - `hybridse::node::kPlanTypeInsert` 插入类型
     - `ExecuteInsert`
 
-（应该有分布计划类型的分支，当前分析的分支Query，直接走到tablet server上了，或者批量，实时的类型查询应该会跳到java目录下）
+（应该有分布计划类型的分支，当前分析的分支Query，直接走到tablet server上了，或许批量，实时的类型查询应该会跳到java目录下）
 
 
 
@@ -188,9 +195,29 @@ tabet server
 
 - `TabletImpl::Query()`  TabletImpl 继承TabletServer
   - `TabletImpl::ProcessQuery()`
-    - `hybridse::vm::BatchRunSession.run()`  执行查询
+    - `hybridse::vm::BatchRunSession.run()`  批量请求，执行查询 
+      - `hybridse/src/vm/engine.cc`
+    - `TabletImpl::RunRequestQuery()`  非批量请求
+      - `RequestRunSession::Run()`
+        - `hybridse/src/vm/engine.cc`
+        - `ClusterJob.GetTask()` 获取`ClusterTask`
+        - `Runner::RunWithCache()` 从根节点执行task
+          - `hybridse/src/vm/runner.cc`
+            - `Runner` 是基类，子类实现由各种算子实现，如实现的LastJoinRunner，LimitRunner，ProjectRunner，WindowAggRunner，并引用之前的Runner，作为输入。类似于spark中RDD，或者物理执行计划的节点。
+            - `TableProjectRunner::Run()` 扫描表，返回`std::shared_ptr<DataHandler> `
+              - 读取所有的输入，然后写到`MemTableHandler` 返回
+                - MemTableHandler 继承对表的抽象类`TableHandler` 
+                  - `hybridse/include/vm/catalog.h`
+                    - `TableHandler`
+                    - `PartitionHandler`
 
-（因其他事情暂停分析，TODO，当前未知，分布式计划如何执行。认为应该还是tablet server之上有一层工作，应该在java目录下（批处理，流处理），tabletserver 应该还是单点上执行子计划。并且使用hybridse 的vm模块。）
+
+
+（TODO，当前未知，分布式计划如何执行。认为应该还是tablet server之上有一层工作，应该在java目录下（批处理，流处理），tabletserver 应该还是单点上执行子计划。并且使用hybridse 的vm模块定义的执行runner等物理执行计划。）
+
+
+
+## 7 元信息管理
 
 
 
