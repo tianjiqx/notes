@@ -32,6 +32,7 @@
 项目依赖：
 
 - [zetasql](https://github.com/google/zetasql)  google 开源的语言 解析器和分析器。openmldb 用来做语法解析
+- [brpc](https://github.com/apache/incubator-brpc) 百度的rpc框架
 
 
 
@@ -42,7 +43,7 @@
 - 执行引擎Hybridse
   - 实时+ 批处理
 - 存储引擎
-  - tablet  server  存储服务
+  - tablet  server  计算执行、数据存储服务
 - 元信息管理
   - nameserver
     - 管理tablet 的元信息，表schema等服务
@@ -140,13 +141,99 @@ HybridSE(Hybrid SQL Engine)是基于C++和LLVM实现的高性能混合SQL执行�
 
 
 
+`hybridse/include/vm/engine.h`
+
+`hybridse/src/vm/engine.cc`
+
+`Engine`
+
+- 负责基于指定catalog编译sql，explain,LRU缓存编译结果
+- 方法
+  - `Get()` 编译SQL，并将结果存储在`RunSession`
+    - `SqlCompiler.Compile()`
+      - `hybridse/src/vm/sql_compiler.cc`
+      - `SqlCompiler::Parse()` string -> logical plan
+        - `::hybridse::plan::PlanAPI::CreatePlanTreeFromScript()`
+      - `SqlCompiler::BuildPhysicalPlan()`   PlanNodeList ->  PhysicalOpNode
+        - `SqlCompiler::BuildBatchModePhysicalPlan()`  传入参数包括`::llvm::LLVMContext>`
+          - `vm::BatchModeTransformer::TransformPhysicalPlan()`
+            - ` BatchModeTransformer::TransformQueryPlan()` select语句
+      - `SqlCompiler::ResolvePlanFnAddress()` 传入物理计划，`HybridSeJitWrapper` 
+        - `HybridSeLlvmJitWrapper::FindFunction()`解析JIT 函数地址？
+    - `RunSession` 
+      - `CompileInfo`
+        - `GetPhysicalPlan()` 返回`hybridse::vm::PhysicalOpNode* `
+      - 存储过程名
+      - `hybridse::vm::EngineMode` 
+        - kBatchMode 批量模式
+        - kRequestMode  请求模式，实时模式？
+        - kBatchRequestMode 批量请求模式？
+        - 
+  - `Explain()`
+
+
+
+`hybridse/java/hybridse-sdk/src/main/java/com/_4paradigm/hybridse/sdk/RequestEngine.java`
+
+`RequestEngine`
+
+- 封装了`Engine` request 模式 ，供hybridse/examples/toydb 使用
+
+
+
+`hybridse/src/vm/runner.cc`
+
+- `Runner` 是基类，子类实现由各种算子实现，如实现的LastJoinRunner，LimitRunner，ProjectRunner，WindowAggRunner，并引用之前的Runner，作为输入。类似于spark中RDD，或者物理执行计划的节点。
+- `TableProjectRunner::Run()` 扫描表，返回`std::shared_ptr<DataHandler> `
+  - 读取所有的输入，然后写到`MemTableHandler` 返回
+    - MemTableHandler 继承对表的抽象类`TableHandler` 
+      - `hybridse/include/vm/catalog.h`
+        - `TableHandler`
+        - `PartitionHandler`
+
+
+
 
 
 ## 4. ApiSever
 
+`src/proto/api_server.proto`
+
+`APIServer` 服务定义
+
+- `Process(HttpRequest) `
+- `Refresh(HttpRequest) `
+
+`src/apiserver/api_server_impl.h`
+
+`APIServerImpl`
+
+ http 请求处理?
+
+`InterfaceProvider`
+
 
 
 ## 5. NameSever
+
+`src/proto/name_server.proto`
+
+service NameServer  定义， DDL操作，例如创建，删除表，索引， ReplicaCluster（raft 组？）
+
+`src/nameserver/name_server_impl.h`
+
+`src/nameserver/name_server_impl.cc`
+
+`NameServerImpl`
+
+- `NameServerImpl::AddIndex()`
+  - 通过遍历`TabletClient`  处理每个table partition的每个endpoint（代表一个副本）。
+
+`src/proto/client.proto`
+
+- `TableInfo`
+  - `TablePartition `repeated
+    - `PartitionMeta`  repeated
 
 
 
@@ -189,7 +276,13 @@ tablet client 接口：
 
 
 
-tabet server
+`src/proto/tablet.proto`
+
+TabletServer proto定义
+
+
+
+**tablet server**
 
 `src/tablet/tablet_impl.cc`
 
@@ -202,24 +295,17 @@ tabet server
         - `hybridse/src/vm/engine.cc`
         - `ClusterJob.GetTask()` 获取`ClusterTask`
         - `Runner::RunWithCache()` 从根节点执行task
-          - `hybridse/src/vm/runner.cc`
-            - `Runner` 是基类，子类实现由各种算子实现，如实现的LastJoinRunner，LimitRunner，ProjectRunner，WindowAggRunner，并引用之前的Runner，作为输入。类似于spark中RDD，或者物理执行计划的节点。
-            - `TableProjectRunner::Run()` 扫描表，返回`std::shared_ptr<DataHandler> `
-              - 读取所有的输入，然后写到`MemTableHandler` 返回
-                - MemTableHandler 继承对表的抽象类`TableHandler` 
-                  - `hybridse/include/vm/catalog.h`
-                    - `TableHandler`
-                    - `PartitionHandler`
 
 
 
 （TODO，当前未知，分布式计划如何执行。认为应该还是tablet server之上有一层工作，应该在java目录下（批处理，流处理），tabletserver 应该还是单点上执行子计划。并且使用hybridse 的vm模块定义的执行runner等物理执行计划。）
 
+会是和TDengine一样，都是只支持单表的分片处理？看是支持join算子的，应该支持分布式计划？
 
+> - High-performance, distributed execution plan generation and codegen[2021H2]
+> - Integrate the optimization passes for Native LastJoin which is used in AI scenarios[2021H2]
 
-## 7 元信息管理
-
-
+看起来还在实现中。
 
 
 
