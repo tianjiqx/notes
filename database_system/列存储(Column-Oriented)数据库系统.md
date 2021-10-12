@@ -233,8 +233,6 @@ postscripr-> file Footer -> stripe footer -> col present + data
 
 
 
-
-
 ### 2.2 Dremel / Apache Parquet
 
 parquet的目标为了让Hadoop 生态系统中的任何项目都可以使用压缩、高效的列式数据表示的优势。（受支持更多）
@@ -243,10 +241,6 @@ parquet的目标为了让Hadoop 生态系统中的任何项目都可以使用压
 
 - 支持多种压缩和编码方案
   - 列级别指定压缩方案
-
-
-
-
 
 
 
@@ -314,6 +308,7 @@ File Metadata
   - 指定在列的路径中定义了多少个可选字段
 - 重复级别
   - 指定路径中的哪个重复字段具有重复值
+    - 完成list这样重复元素
 
 （TODO 理解Dremel ）
 
@@ -368,6 +363,41 @@ Arrow 专注于矢量化处理和和低开销压缩算法（字典压缩等）�
 
 
 
+### 2.4 Schema on Write/Read
+
+Schema-on-Write (RDBMS，OLTP，OLAP):
+
+- 规范数据建模
+  - 创建静态的DB Schema
+  - 将数据转换为RDBMS
+  - 以RDMS格式查询数据
+  - 增加列，需要显式的添加，并传播到整个系统（锁表，新数据插入前）
+- 适合已知schema模式
+- 数据模式验证在写入时
+  - 支持辅助数据结构（索引，bloomfilter，minmax统计信息），加快查询速度和精度，定位数据，过滤不必要的磁盘IO，减少CPU计算过滤开销
+  - 支持压缩，减少存储空间开销
+
+Schema-on-Read (Hadoop)：
+
+- 描述性数据模型
+  - 以原生格式进行拷贝数据（相对于关系数据库的插入）
+  -  动态的创建schema+解析器 （定义外表，serde）
+  - 以原生格式查询数据，（运行时ETL）
+  - 新数据可以随时添加
+- 适合未知schema模式
+  - 版本控制，对schema的变更（apcahe avro）
+  - 读取过程中，更新schema
+- 数据模式验证在读取时
+  - 加载速度很快，不需要读取、解析或序列化，只是拷贝文件
+  - 缺点
+    - 数据的缺失，重复，无效数据等问题，从而导致查询结果不准确或不完整
+
+
+
+可能的结合方式: 先写Schema-on-Read副本，之后异步转Schema-on-Write副本，并删除（或者保留）Schema-on-Read副本。
+
+
+
 ## 3. 编码与压缩
 
 
@@ -413,5 +443,10 @@ Arrow 专注于矢量化处理和和低开销压缩算法（字典压缩等）�
 - [github: apache parquet](https://github.com/apache/parquet-format)
 - [slides:Efficient Data Storage for Analytics with Apache Parquet 2.0](https://www.slideshare.net/cloudera/hadoop-summit-36479635) 2014
 - [再来聊一聊 Parquet 列式存储格式](https://zhuanlan.zhihu.com/p/141908285)  parquet 交互逻辑
+- [Parquet与ORC：高性能列式存储格式(收藏](https://www.huaweicloud.com/articles/76e423ad4ee18b909b7788c8d8004d1a.html)
+  - tpcds测试，parquet与orc性能差距不大，在3层嵌套格式，查询性能也无太大区别
 - [Uber是如何低成本构建开源大数据平台的？](https://www.infoq.cn/article/4SRRiP7ZUhYMoAK7dafQ)
+- [Schema-on-Read vs Schema-on-Write](https://luminousmen.com/post/schema-on-read-vs-schema-on-write)
+- [What is the difference between schema on Read and Schema on Write?](https://data-flair.training/forums/topic/what-is-the-difference-between-schema-on-read-and-schema-on-write/)
+- [什么是 Hadoop 中的 Schema On Read 和 Schema On Write](https://www.geeksforgeeks.org/what-is-schema-on-read-and-schema-on-write-in-hadoop/)
 
