@@ -82,8 +82,7 @@ Apache arrow 能够将原始磁盘的数据（parquet，csv，json格式）转�
 但是，这种想法，这并非万能的银弹。
 
 - 首先，目前支持的格式只是parquet，csv，json等格式，数据模型有限
-- 另外，不同的系统，采用不同的数据模型，是各有其特点的，适配对应的计算引擎的计算优化，例如ES倒排索引，Hbase kv存储，图模型。可以看到arrow 天然的列存格式，适配的也只是列存格式的计算模式如avg，filter，但是对于join类型，对于需要shuffle的操作，列存的内存格式的散列相对于行存具有巨大的劣势。
-- 所以，对于大宽表的单表分析而言，apache arrow具有极大的优势，但是设计复杂join情况下就未必了。
+- 另外，不同的系统，采用不同的数据模型，是各有其特点的，适配对应的计算引擎也会对其进行相应的优化，例如ES倒排索引，Hbase kv存储，图模型。
 
 
 
@@ -457,7 +456,6 @@ Rust实现从arrow项目独立出来了，分别是[arrow-rs](https://github.com
 
 - Ballista：分布式查询执行
 
-  - 
 
 
 
@@ -700,9 +698,49 @@ assert_eq!(unsafe {slice.as_ref()[2]},7)
 
 
 
+## 4.应用
+
+### 4.1 pyspark enable apache arrow
+
+问题：
+
+ Spark 数据帧 API 在spark内部处理很快，但是当其从JVM 中移动到python进程时（spark将数据序列化为pickle格式，在driver端应用程序收集起来，然后python将其构造为Pandas数据帧），跨进程通信的SerDe成为巨大开销。
+
+也即是，在python的进程中的执行UDF，运行很慢。无法将python生态的pandas的算法高性能的直接使用。（todo：pandas分布式执行框架modin；Dask； pandas on ray（基于arrow））
+
+
+
+解决方法：
+
+apache arrow。
+
+在 JVM 中将数据转换为 Arrow 格式，然后发送到Python 进程直接使用。
+
+Arrow 同时提供IPC进程通信机制，允许在套接字上读写，易于使用。
+
+工作过程：
+
+- 在executor端，将数据构造成arrow 的recordbatch格式
+- driver端应用程序，调用arrow的库方法，将其直接转换为pandas数据帧
+
+
+
+pandas数据帧转换为spark 数据帧时，也省去了原来需要遍历所有视为python对象的数据，逐一验证检查数据类型的操作。
+
+
+
+处理免除serde，arrow在UDF使用上的优势：
+
+- 向量化执行pandas定义的函数
+- 分组映射的UDF （groupby  - apply）
+  - 在jvm上分组分批传送到python
+
+
+
 ## REF
 
 - [Apache Arrow官方](https://arrow.apache.org/overview/)
+- [github: arrow](https://github.com/apache/arrow)
 - [Apache Arrow 内存数据](https://www.cnblogs.com/smartloli/p/6367719.html)
 - [Arrow Columnar Format](https://arrow.apache.org/docs/format/Columnar.html)
 - [arrow-rs](https://github.com/apache/arrow-rs)
@@ -719,6 +757,8 @@ assert_eq!(unsafe {slice.as_ref()[2]},7)
 - [slides: InfluxDB IOx Tech Talks: Query Engine Design and the Rust-Based DataFusion in Apache Arrow](https://www.slideshare.net/influxdata/influxdb-iox-tech-talks-query-engine-design-and-the-rustbased-datafusion-in-apache-arrow-244161934?from_action=save)
 - [slides: Ballista: Distributed Compute with Rust and Apache Arrow - Andy Grove](https://nyhackr.blob.core.windows.net/presentations/Ballista-Distributed-Compute-with-Rust-and-Apache-Arrow_Andy-Grove.pdf)
 - [Rust Big Data Benchmarks - Andy Grove - 2019.10](https://andygrove.io/rust_bigdata_benchmarks/)
+- [PySpark + arrow](https://spark.apache.org/docs/latest/api/python/user_guide/arrow_pandas.html)
+- [arrow-integration-with-spark](https://www.dremio.com/webinars/apache-arrow-sf-meetup-may-2018-arrow-integration-with-spark/) 2018
 
 
 
