@@ -105,4 +105,7 @@ PS:
 - [分布式数据库中的一致性与时间戳](https://zhuanlan.zhihu.com/p/360690247) 推荐
 - [PolarDB-X 全局时间戳服务的设计](https://zhuanlan.zhihu.com/p/360160666)
 - [知乎:PolarDB-X](https://www.zhihu.com/org/polardb-x)
+- [云原生演进趋势下传统数据库升级实践](https://zhuanlan.zhihu.com/p/398581530)
+  - PolarDB-X为PolarDB分布式版本，融合分布式SQL引擎与分布式自研存储X-DB，专注解决海量数据存储、超高并发吞吐、复杂计算与分析等问题。
+- [深度干货｜云原生分布式数据库 PolarDB-X 的技术演进](https://zhuanlan.zhihu.com/p/420195295)
 
