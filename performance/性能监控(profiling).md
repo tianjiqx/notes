@@ -12,7 +12,99 @@ profiling用于性能监控，分析查询负载的瓶颈，例如记录数据�
 
 ### 2.1 OceanBase
 
-ObMonitorNode* op_monitor_info_;
+时间统计对象
+
+```C++
+// 算子监控
+ObMonitorNode  
+  int64_t open_time_;
+  int64_t first_row_time_;
+  int64_t last_row_time_;
+  int64_t close_time_;
+  int64_t rescan_times_;
+  int64_t output_row_count_;
+  int64_t memory_used_;
+  int64_t disk_read_count_;
+```
+
+
+
+ObPhyOperator
+
+- 成员
+  - ObMonitorNode
+  -  lib::MemoryContext
+- 方法
+  - get_next_row中设置
+    - op_monitor_info\_.first_row_time_
+    - op_monitor_info\_.output_row_count_
+    - op_monitor_info\_.last_row_time_
+  - close
+    - op_monitor_info\_close_time_
+
+
+
+`ObOpSpec::create_operator_recursive()` 创建算子时，设置open_time_
+
+CREATE_PHY_OPERATOR_CTX 创建算子上下文时，设置open_time_
+
+
+
+ObMergeJoin
+
+- 继承OBJoin
+  - 继承ObDoubleChildrenPhyOperator
+    - 继承ObPhyOperator
+
+
+
+
+
+`ObExecTimestamp` 记录了计划执行过程各个时间戳
+
+- ExecType { InvalidType = 0, MpQuery, InnerSql, RpcProcessor, PLSql }
+- rpc_send_ts_
+- receive_ts_ 接收到请求时间
+- enter_queue_ts_ 
+- run_ts_ 解码后开始执行时间
+- before_process_ts_
+- single_process_ts_ 单独sql的开始执行是回见
+- process_executor_ts_ 开始执行时间
+- executor_end_ts_
+
+`ObReqTimestamp` 
+
+
+
+`ObAuditRecordData` 审计日志
+
+- `ObExecTimestamp`
+- `ObExecRecord`
+
+
+
+`sql/executor/ob_bkgd_dist_task.h`
+
+`ObDistExecuteBaseP`
+
+- RpcProcessor类型
+- process_timestamp_
+  - ` ObExecStatUtils::record_exec_timestamp()`
+- exec_start_timestamp_
+- exec_end_timestamp_
+
+`ObBKGDDistTask` 后台执行的分布式task
+
+- create_time_us_ 任务创建时间
+- ObDistTaskProcessor  继承ObDistExecuteBaseP
+
+
+
+总结：
+
+- 节点算子记录，算子的执行各个时间戳
+- 分布式计划Task，也在Task对象中维持各个时间戳属性
+- 最后基于时间戳，计算各个阶段的执行时间
 
 
 
@@ -25,8 +117,6 @@ ObMonitorNode* op_monitor_info_;
 
 
 ### 2.4 PolarDB
-
-
 
 
 
@@ -49,7 +139,7 @@ create对查询的metrics监控，类似于spark。
 - 跨越analyzer, planner, executor层
 - 成员变量
   - `HashMap<String, Double> durationInMSByTimer` 
-    - Key：阶段，value：用时
+    - Key：阶段名称，value：用时
     - `io.crate.profile.Timer` 对象代表一个节点的用时
   - `List<QueryProfiler> profilers` 记录ES查询执行的profiler信息
     - `QueryProfiler` 继承`org.elasticsearch.search.profile.AbstractProfileBreakdown`
@@ -60,6 +150,22 @@ create对查询的metrics监控，类似于spark。
 `io.crate.execution.jobs.RootTask`
 
 - 创建RootTask时，传入`ProfilingContext ` ，通过事件监听器，监听task开始和完成任务的时间，并放入到`ProfilingContext ` 
+
+
+
+`MemoryManager` 内存管理，分配ByteBuf
+
+- 堆内
+- 堆外
+
+
+
+总结：
+
+- `ProfilingContext `  对象记录整个计划大的阶段时间
+- `io.crate.profile.Timer` 对象记录一个时间区间，开始和结束
+- Task为粒度，记录执行时间
+- 基于Future回调，设置监听器完成时间。
 
 
 
