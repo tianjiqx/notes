@@ -32,6 +32,8 @@
 
   git rebase -i HEAD~3 (管理最近三次commit)
 
+  间隔合并多个commit，只需要将要压制的commit排序到想要保留的commit下面
+
 - 比较
 
   git diff  (临时区)
