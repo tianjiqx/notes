@@ -151,7 +151,7 @@ TiFlash 暂时无法直接接受数据写入，任何数据必须先写入 TiKV 
 
 所以，大规模数据写入需要先写TiKV，若是完全AP负载场景，写入性能应该不是优势。
 
-（一些ETL处理场景，处理原始数据，在大规模写回）
+（一些ETL处理场景，处理原始数据，再大规模写回）
 
 
 
@@ -270,7 +270,7 @@ Value: null
 
 （TODO，region非固定行数而是靠大小，region的定位开销，不随数据量增长？region在PD上的管理结构）
 
-可能类似cockroach或者hdfs namenode，2级名字空间，常量时间的定位key所属region
+可能类似cockroachdb或者hdfs namenode，2级名字空间（避免只一级元信息，整个内存元信息装不下，二级最多支持4EB数据），有序的hashmap（hash表与B+树结合）常量时间的定位key所属region。
 
 
 
@@ -291,7 +291,32 @@ Value: null
       - 用于确定所属region
       - （认为在数据量比较少时，即使该5位生成的值都不同，但是还是在同一个region）
     - increment_bits - 自增位，用于保证 ID 的唯一性以及单语句 Insert 时，分配的连续性
-      - 单insert 多个value值？
+      - 单insert 多个value值？避免插入一条语句，需要与各个不同的region的节点通信。
+
+
+
+## 5. 云原生
+
+TiDB 云原生的目的：降低用户成本
+
+- 足够的弹性
+  - 技术，业务
+- 足够的便宜
+
+
+
+顶层设计：
+
+- 存储
+  - S3
+- 延迟问题
+  - 异步读写，增加Cache模块
+    - 业务解耦，提供不同缓存击穿率的服务（订单，计费 100%不击穿）
+- 日志持久化，保证failover
+- 跨AZ的日志同步
+- 一副本的数据（数据库视角）
+  - 减轻了分布式服务层设计和压力（逃生，扩容）
+    - 实质，将跨AZ问题复制问题推给底层（S3做的优势？）
 
 
 
@@ -314,4 +339,5 @@ Value: null
   - 58同城 刘春雷测试，5.0 版本 优化器 自动决策存在优化空间（代价模型的问题），不如强制全走TiFlash。
 - [TiDB 4.0 为解决热点问题做了哪些改进？](https://pingcap.com/zh/blog/improvements-made-by-tidb-4.0-to-solve-hot-spot-issues) AutoRandom 
 - [tidb 表结构设计最佳实践](https://book.tidb.io/session1/chapter7/tidb-schema-design.html)
+- [PingCAP王鹏飞：返璞归真？如何架构云原生数据库的新范式？](https://zhuanlan.zhihu.com/p/432986358)
 
