@@ -4,13 +4,60 @@
 
 ## 1. 背景
 
-profiling用于性能监控，分析查询负载的瓶颈，例如记录数据库SQL各个算子的用时，大数据系统的Job，Task用时时间。
+profiling（剖析）用于性能，资源的监控，主要用来
+
+- CPUProfiling 分析查询负载的瓶颈
+  - 例如记录数据库SQL各个算子的用时，大数据系统的Job，Task用时时间
+- Headp Profiling 分析内存使用，定位于排查内存泄漏
 
 
 
-## 2. profiling实现
+## 2. Profiling原理
 
-### 2.1 OceanBase
+### 2.1 CPU Profiling
+
+linux 上cpu cpu分析工具
+
+分类：
+
+- **Instrumentation** 检测
+  - 在每个routine的开始和结束处插入特殊代码来记录routine何时开始和结束
+  - 方式
+    - 源代码修改
+    - 二进制
+      - 在内存中将检测插入到可执行代码
+  - 优点
+    - 实际时间
+  - 缺点
+    - 检测代码本身的开销，容易干扰于短和高频的routine
+  - 工具
+    - gprof（检测和采样混合），gperftools（多线程，google）
+- **Sampling** 采样
+  - 记录操作系统定期中断CPU执行进程切换时执行的指令，并将记录的执行点与链接过程中的routine和源代码相关联，显示应用程序运行期间执行routine和源代码行的频率（火焰图）
+    - stack trace + statistics
+  - 优点
+    - 无需修改代码
+    - 运行开销很小
+  - 缺点
+    - 统计近似值而不是实际时间
+  - 工具
+    - perf
+
+
+
+### 2.2 Heap Profiling
+
+内存Profiling与CPU Profiling类似，同样可以根据stack trace + statistics或者统计真实申请的方式来统计各函数的内存分配。
+
+由于内存分配是很频繁的操作，一种方式（Golang）是按一定粒度大小（512K）进行采样。（为了解决采样bais问题，粒度大小可以设置为服从正太分布的随机值）
+
+另一种方式（C/C++），创建内存分配器对象，从更底层的内存分配池获取空闲缓存块（块设置不同大小的粒度，1K，2M等）进行分配和回收，记录每个类或者功能模块，独立申请的内存空间大小，定期或者接受信号时，打印各功能模块的内存使用。
+
+
+
+## 3. 数据库Profiling实现
+
+### 3.1 OceanBase
 
 时间统计对象
 
@@ -108,19 +155,49 @@ ObMergeJoin
 
 
 
-### 2.2 spark
+### 3.2 spark
 
 
 
-### 2.3 TiDB
+### 3.3 TiDB
+
+### 3.3.1 Heap Profiling
+
+TiDB组件
+
+方式：基于采样
+
+工具：
+
+- go pprof
 
 
 
-### 2.4 PolarDB
+sysbench 结果：
+
+- 512k 采样记录的性能损耗基本都在 1% 以内
+- 全记录TPS/QPS 缩水了 20 倍，P95 延迟增加了 30 倍
+
+TiKV组件
+
+方式：基于采样
+
+工具：
+
+- jemalloc （rust）
+
+go-ycsb 结果：
+
+- OPS 相较默认内存分配器下降了 4% 左右，P99 延迟线上升了 10% 左右
+  - tcmalloc与jemalloc性能类似
 
 
 
-### 2.5 crate
+### 3.4 PolarDB
+
+
+
+### 3.5 crate
 
 CrateDB 是一个分布式 SQL 数据库，面向机器数据的存储和分析。（Java）
 
@@ -175,4 +252,14 @@ create对查询的metrics监控，类似于spark。
 - [TiDB in action: 1.5 限制 SQL 内存使用和执行时间](https://book.tidb.io/session3/chapter1/memory-quota-execution-time-limit.html)
 - [TiDB 写入慢流程排查系列（三）— TiDB Server 写入流程](https://asktug.com/t/topic/68070)
 - [github:crate ](git@github.com:crate/crate.git)
+- [CPU Profiling Tools on Linux](http://euccas.github.io/blog/20170827/cpu-profiling-tools-on-linux.html)
+- [内存泄漏的定位与排查：Heap Profiling 原理解析](https://pingcap.com/zh/blog/an-explanation-of-the-heap-profiling-principle?utm_source=wechat&utm_medium=social&utm_campaign=heap-profiling)
+- [Brendan Gregg perf](https://www.brendangregg.com/perf.html) 性能之巅作者博客
+
+
+
+扩展材料：
+
+- [[译] 使用 Linux tracepoint、perf 和 eBPF 跟踪数据包 (2017)](https://arthurchiao.art/blog/trace-packet-with-tracepoint-perf-ebpf-zh/)
+- [[译] Cilium：BPF 和 XDP 参考指南（2021）](https://arthurchiao.art/blog/cilium-bpf-xdp-reference-guide-zh/)
 
