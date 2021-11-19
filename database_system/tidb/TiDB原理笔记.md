@@ -218,6 +218,11 @@ TiDB 最初关心和想要解决的问题是mysql的分库，分表问题。
 - 为了解决，中小规模，并发度更高，低延迟的AP查询，以及解决存储（TiKV）共用，影响OLTP业务的问题，引入了TiFlash节点的MMP架构
   - 物理隔离是最好的资源隔离
   - 关键算子（Hash join）分布式化等提供基础AP需求的计算力
+  - 扩展的raft协议，创建列存副本
+    - 非强一致性写，但确保强一致性读
+  - TiDB-Server  作为统一的入口
+    - CBO 代价选择查询（下推）的执行引擎（MPP）
+    - 配合Flink，Spark
 
 下一步的探索：
 
@@ -295,6 +300,17 @@ Value: null
 
 
 
+### 4.3 可更新列存
+
+放弃LSM-tree多层compaction，查询合并模式，使用B+与LSM-tree的折中Delta-Main。
+
+主要的思想：
+
+- 数据分段
+- 增量数据追加到段后面，为增量数据建立索引，查询时，性能为2路归并，避免了LSM-tree的多路归并
+
+
+
 ## 5. 云原生
 
 TiDB 云原生的目的：降低用户成本
@@ -316,7 +332,7 @@ TiDB 云原生的目的：降低用户成本
 - 跨AZ的日志同步
 - 一副本的数据（数据库视角）
   - 减轻了分布式服务层设计和压力（逃生，扩容）
-    - 实质，将跨AZ问题复制问题推给底层（S3做的优势？）
+    - 实质，将跨AZ问题复制问题推给底层（S3做的优势？还是在解耦计算和存储）
 
 
 
@@ -337,7 +353,7 @@ TiDB 云原生的目的：降低用户成本
   - TiDB 4.0 OLAP 性能差距明显
 - [bilibili: 【PingCAP Infra Meetup】No.139 TiDB HTAP 专题 Meetup](https://www.bilibili.com/video/BV1Rb4y117Mz)
   - 58同城 刘春雷测试，5.0 版本 优化器 自动决策存在优化空间（代价模型的问题），不如强制全走TiFlash。
+- [马晓宇-深入解析HTAP：以TiDB为例的HTAP技术分析和用户案例](https://www.bilibili.com/video/BV1dw411o7To)  2021.07
 - [TiDB 4.0 为解决热点问题做了哪些改进？](https://pingcap.com/zh/blog/improvements-made-by-tidb-4.0-to-solve-hot-spot-issues) AutoRandom 
 - [tidb 表结构设计最佳实践](https://book.tidb.io/session1/chapter7/tidb-schema-design.html)
 - [PingCAP王鹏飞：返璞归真？如何架构云原生数据库的新范式？](https://zhuanlan.zhihu.com/p/432986358)
-
