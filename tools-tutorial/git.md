@@ -131,4 +131,14 @@
   只保留最新一次提交记录，其余历史提交信息抛弃  
 
   git clone --depth 1 
+  
+- 修改git提交时间
+
+  `git commit --ammend --date="23 Nov 2021 14:00:24 +0800"`
+
+- 拉取别人的PR到本地
+
+  `git fetch upstream pull/<ID>/head:<BRANCHNAME>`
+
+  
 
