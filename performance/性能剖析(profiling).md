@@ -465,5 +465,22 @@ mysql> show profile cpu,block io for query 2;
 扩展材料：
 
 - [[译] 使用 Linux tracepoint、perf 和 eBPF 跟踪数据包 (2017)](https://arthurchiao.art/blog/trace-packet-with-tracepoint-perf-ebpf-zh/)
+
 - [[译] Cilium：BPF 和 XDP 参考指南（2021）](https://arthurchiao.art/blog/cilium-bpf-xdp-reference-guide-zh/)
+
+- [Netflix: 一分钟内的 Linux 性能分析](https://netflixtechblog.com/linux-performance-analysis-in-60-000-milliseconds-accc10403c55)
+
+  - ```
+    uptime
+    dmesg | tail
+    vmstat 1
+    mpstat -P ALL 1
+    pidstat 1
+    iostat -xz 1
+    free -m
+    sar -n DEV 1
+    sar -n TCP,ETCP 1
+    top
+    ```
+
 
