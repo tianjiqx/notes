@@ -170,10 +170,11 @@ ObMergeJoin
 
 #### 3.3.1 性能监控 （tracing）
 
-- trace 语法， 函数级别执行时间
-- explain analyze 语法  算子级别的执行时间，行数等统计
-- TiDB Dashboard 提供了 Statements 用来监控和统计 SQL，可视化
+- [trace 语法](https://docs.pingcap.com/zh/tidb/v3.1/sql-statement-trace)， 函数级别执行时间
+- [explain analyze 语法](https://docs.pingcap.com/zh/tidb/stable/sql-statement-explain-analyze)  算子级别的执行时间，行数等统计
+- TiDB Dashboard 提供了 [Statements](https://book.tidb.io/session3/chapter2/statements.html) 用来监控和统计 SQL，可视化
   - SQL 级别，分类性能，采样保存具体sql执行时间
+  - [dashborad sql分析执行详情](https://docs.pingcap.com/zh/tidb/stable/dashboard-statement-details)
 
 SQL 语句实际指的是某一类 SQL 语句。语法一致的 SQL 语句会规一化为一类相同的 SQL 语句。
 
@@ -230,7 +231,95 @@ go-ycsb 结果：
 
 
 
-### 3.4 PolarDB
+### 3.4 PolarDB-X
+
+PolarDB-X 是阿里云开源的一个HTAP数据库，特性：
+
+- 语言：java
+- 支持MPP
+- 支持向量化执行
+
+**CpuProfile**
+
+- `ExplainExecutorUtil`
+  - explain 语法提供多种执行模式，在analze模式可以显示各算子的真实执行时间
+- `RuntimeStatistics`
+  - 实现接口 `CpuCollector` 记录各个task的cpu时间
+  - 继承`RuntimeStat`  提供 一个sql的 cpu和内存统计信息
+  - 被放进执行上下文ExecutionContext在各个阶段进行填充
+  - 各物理执行算子`Executor` 创建时检查`ExecutionContext`是否存在`RuntimeStatistics`, 存在时，通过`RuntimeStatHelper.registerStatForExec()` 注册物理执行算子的统计信息`OperatorStatisticsGroup`到`RuntimeStatistics`
+    - 示例`polardbx-executor/src/main/java/com/alibaba/polardbx/executor/mpp/operator/factory/LimitExecFactory.java`
+    - 另一种方式通过`setPlanTree()` 方法初始化注册算子的统计信息
+      - 例如explain
+  - `collectMppStatistics()` 收集MPP方式执行的task中的算子的统计信息
+    - 每个MPP 执行的的task的统计信息存储在`TaskStatus`中
+      - 一个task中可能包含多个物理算子
+    - `HttpRemoteTask`
+      - 通过注册的监听器到task任务状态fetcher，在task 完成后，触发执行收集动作，将`TaskStatus` 中的信息添加到`RuntimeStatistics`
+        - 粒度：物理执行算子在整个集群机器的cpu时间消耗（累计时间，未像spark独立显示处理每个分区的task执行时间）
+- `OperatorStatisticsGroup` [并行]执行的算子的统计信息（cpu时间，行数）对应一个逻辑的关系表达式节点`RelNode` 如sort，Scan，Join等
+  - `toSketchExt()`
+    - `RuntimeStatisticsSketchExt` 统计信息概览
+- `MemoryStatisticsGroup` 并行执行的task的内存的统计信息， 自包含结构
+  - `TaskMemoryStatisticsGroup` 单个task
+- `CallableWithCpuCollector`
+  - 对执行的线程的任务的cpu时间进行收集，封装
+  - `CallableWithStatHandler`
+  - `CpuCollector` cpu时间计时存储器、span
+- `polardbx-executor/src/main/java/com/alibaba/polardbx/executor/operator/AbstractExecutor.java` 物理执行算子抽象类
+  - 通过`enableCpuProfile` 和 `OperatorStatistics` 来决定是否记录算子的执行时间
+    - 算子的统计信息中包含属性
+      - `rowCount`
+      - `memory`
+      - `startupDuration`  open时间
+        - CPU or network time during opening in nanoseconds
+        - `beforeOpen()` 记录开始时间
+          - ` ThreadMXBean.getCurrentThreadCpuTime();`  java虚拟机实现的支持测量当前线程的cpu时间，ns 
+            - 性能，可能被禁用，[`isThreadCpuTimeEnabled()`](https://docs.oracle.com/javase/8/docs/api/java/lang/management/ThreadMXBean.html#isThreadCpuTimeEnabled--)
+        - `afterOpen()`
+      - `processDuration` next时间
+        - `CPU or network time during execution in nanoseconds`
+      - `closeDuration` close时间
+        - CPU or network time during closing in nanoseconds
+      - `workerDuration` 工作线程时间
+        - 实际未使用,  目前看起来 其他时间都是cpu时间，而非真实时间（wall time）
+      - `spillCnt`  内存撤销计数？
+
+
+
+**内存管理**：
+
+- `MemoryPool`  逻辑的内存分配器树节点，用于管理记录JVM系统的内存使用情况
+  - `allocateReserveMemory()`
+  - `destroy()` 释放
+    - 释放前一般记录该内存池的最大使用大小。如各个物理执行算子通过`collectMemoryUsage()` 方法将其记录到`OperatorStatistics`对象中
+      - `polardbx-executor/src/main/java/com/alibaba/polardbx/executor/operator/AbstractExecutor.java` 物理执行算子抽象类
+
+- `MemoryAllocatorCtx` 接口
+
+  - `polardbx-optimizer/src/main/java/com/alibaba/polardbx/optimizer/memory/OperatorMemoryAllocatorCtx.java`
+
+  - `OperatorMemoryAllocatorCtx`  物理执行算子如`HashGroupJoinExec`根据运行过程中，使用的各种对象如Block，调用其`estimateSize` 方法计算其大小，然后通过内存分配器上下文，记录生气的内存
+    - `allocateReservedMemory()` 记录分配的内存
+      - 调用`MemoryPool.allocateReserveMemory()`
+
+
+
+`polardbx-optimizer/src/main/java/com/alibaba/polardbx/optimizer/chunk/Block.java`
+
+- `Chunk` polardb 的 一批数据的接口（列存格式）
+
+  - `estimateSize`  Estimate the memory usage in bytes of this block
+
+  - `getSizeInBytes `  Returns the logical size of this block in memory (逻辑上，但是可能block中有空闲)
+
+
+
+Java 对象内存大小计算工具类
+
+`polardbx-common/src/main/java/com/alibaba/polardbx/common/utils/memory/ObjectSizeUtils.java`
+
+`polardbx-common/src/main/java/com/alibaba/polardbx/common/utils/memory/SizeOf.java`
 
 
 
@@ -452,13 +541,14 @@ mysql> show profile cpu,block io for query 2;
 - [TiDB Statements](https://book.tidb.io/session3/chapter2/statements.html)
 - [TiKV 高性能追踪的实现解析](https://pingcap.com/zh/blog/implementation-analysis-of-tikv-high-performance-tracking) 
   - tikv 认为开源的opentracing rust实现一次准确时间获取50ns，耗时过多，影响了性能，自己实现的tracing 一个span的开销可以降低到20ns， 总成本从原来的50% 降低到5%以下。
-
 - [github:crate ](git@github.com:crate/crate.git)
 - [crate explain analyze](https://github.com/crate/crate/blob/master/docs/sql/statements/explain.rst)
 - [CPU Profiling Tools on Linux](http://euccas.github.io/blog/20170827/cpu-profiling-tools-on-linux.html)
 - [内存泄漏的定位与排查：Heap Profiling 原理解析](https://pingcap.com/zh/blog/an-explanation-of-the-heap-profiling-principle?utm_source=wechat&utm_medium=social&utm_campaign=heap-profiling)
 - [Brendan Gregg perf](https://www.brendangregg.com/perf.html) 性能之巅作者博客
 - [mysql show-profile](https://dev.mysql.com/doc/refman/8.0/en/show-profile.html)
+- [PolarDB-X](https://github.com/ApsaraDB/galaxysql)  ApsaraDB/galaxysql
+- [Java虚拟机线程系统的管理接口 ThreadMXBean](https://docs.oracle.com/javase/8/docs/api/java/lang/management/ThreadMXBean.html)
 
 
 
