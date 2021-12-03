@@ -112,8 +112,6 @@ ObMergeJoin
 
 
 
-
-
 `ObExecTimestamp` 记录了计划执行过程各个时间戳
 
 - ExecType { InvalidType = 0, MpQuery, InnerSql, RpcProcessor, PLSql }
@@ -170,10 +168,19 @@ ObMergeJoin
 
 #### 3.3.1 性能监控 （tracing）
 
-- [trace 语法](https://docs.pingcap.com/zh/tidb/v3.1/sql-statement-trace)， 函数级别执行时间
+- [trace 语法](https://docs.pingcap.com/zh/tidb/stable/sql-statement-trace)， 函数级别执行时间
+  - 通过opentracing-go 在session文件，和关键算子如tableReader上的关键方法，如next进行埋点。
+
 - [explain analyze 语法](https://docs.pingcap.com/zh/tidb/stable/sql-statement-explain-analyze)  算子级别的执行时间，行数等统计
+  - time 表示从进入算子到离开算子的全部 wall time，包括所有子算子操作的全部执行时间
+    - 实现方式，`time.Since(start))`，直接加到到算子的统计信息
+
+  - loops 是当前算子被父算子调用的次数
+  - 分布式执行计划，各个task 的平均时间
+
 - TiDB Dashboard 提供了 [Statements](https://book.tidb.io/session3/chapter2/statements.html) 用来监控和统计 SQL，可视化
   - SQL 级别，分类性能，采样保存具体sql执行时间
+    - trace + explain analyze 的算子的统计信息
   - [dashborad sql分析执行详情](https://docs.pingcap.com/zh/tidb/stable/dashboard-statement-details)
 
 SQL 语句实际指的是某一类 SQL 语句。语法一致的 SQL 语句会规一化为一类相同的 SQL 语句。
@@ -195,7 +202,27 @@ SQL 语句实际指的是某一类 SQL 语句。语法一致的 SQL 语句会规
 
 
 
-上述功能，都基于 opentracing-go 进行埋点，跟踪，最后使用jaeger的tracer收集和可视化。
+```
+// explain analyze功能实现
+// tidb-> tikv 请求运行时统计信息
+type selectResultRuntimeStats struct {
+	copRespTime      []time.Duration
+	procKeys         []int64
+	backoffSleep     map[string]time.Duration
+	totalProcessTime time.Duration
+	totalWaitTime    time.Duration
+	rpcStat          tikv.RegionRequestRuntimeStats
+	CoprCacheHitNum  int64
+}
+// 算子的统计信息
+executor/index_lookup_join.
+
+每个算子存在一个统计信息,如indexLookUpJoinRuntimeStats，记录各个算子执行的特定的统计信息
+实现接口execdetails.RuntimeStats
+util/execdetails/execdetails.go
+
+统计时间是，直接基于每次next时间add
+```
 
 
 
@@ -208,6 +235,7 @@ TiDB组件
 工具：
 
 - go pprof
+- 执行算子的内存跟踪器成员`	memTracker *memory.Tracker // track memory usage.`
 
 
 
