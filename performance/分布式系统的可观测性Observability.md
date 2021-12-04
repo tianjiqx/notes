@@ -10,6 +10,10 @@
 
 
 
+> Lack of observability is like driving with closed eyes: You can’t tell how close you are to a disaster. The faster you are driving and the busier the road, the more you should watch out.
+
+
+
 ### 1.1 Tracing&Metrics&logging
 
 日志logging、指标merics和跟踪tracing通常被称为可观察性observability的三大支柱。
@@ -252,9 +256,11 @@ Google 创建的 OpenCensus 项目提供 “特定语言库的集合，用于检
 ##  REF
 
 - [wiki: Observability](https://en.wikipedia.org/wiki/Observability)
+- [Metrics, Tracing, and Logging - Peter Bourgon](https://peter.bourgon.org/blog/2017/02/21/metrics-tracing-and-logging.html)
 - [wiki: CNCF](https://en.wikipedia.org/wiki/Cloud_Native_Computing_Foundation) 云原生计算基金会
 - [distributed systems observability](https://www.oreilly.com/library/view/distributed-systems-observability/9781492033431/ch04.html)
   - free e-book
+- [What was observability again?](https://elastisys.com/what-was-observability-again/)
 - [CNCF：可观测性技术雷达](https://radar.cncf.io/2020-09-observability) 2020.09
   - [CNCF 技术雷达概览](https://radar.cncf.io/overview)
 - [做出让人爱不释手的基础软件：可观测性和可交互性](https://pingcap.com/zh/blog/how-to-develop-an-infrasoft-observability-and-interactivity)
@@ -272,4 +278,29 @@ Google 创建的 OpenCensus 项目提供 “特定语言库的集合，用于检
 - [slides: Distributed Tracing](https://www.usenix.org/sites/default/files/conference/protected-files/lisa17_slides_cotton.pdf) 125 pages
 - [github: awesome-observability](https://github.com/adriannovegil/awesome-observability)
 - [microsoft: 监控云应用的最佳实践](https://docs.microsoft.com/en-us/azure/architecture/best-practices/monitoring)
+- [opentracing 中文版翻译-吴晟](https://wu-sheng.gitbooks.io/opentracing-io/content/)
+- [github: apache skywalking](https://github.com/apache/skywalking) 基于opentracing
+- [SkyWalking 极简入门](https://skywalking.apache.org/zh/2020-04-19-skywalking-quick-start/)
+- [Apache SkyWalking：使用分析解决分布式跟踪的盲点](https://skywalking.apache.org/blog/2020-04-13-apache-skywalking-profiling/#the-limitations-of-the-profile-method)
+  - 在发现某个span长于预期之后，应该怎样做？添加更细粒度的span？
+    - profiile
+      - 合并线程转储（thread dumps）以估计线程转储中显示的每个方法的执行时间
+      - 线程转储周期设置10ms
+- [Service Mesh 中的可观察性实践](https://zhuanlan.zhihu.com/p/145524861)
+  - SkyWalking vs OpenTelemetry  
+    - 在agent 埋点差异不大，SkyWalking开启更久，提供对跟踪事件的更多的下游处理组件
+    - profiile 功能，有些用，但是开销问题？
+    - SkyWalking的官方示例， 使用了OpenTelemetry 来将 Istio 控制平面指标，Kubernetes 监控指标导入自身
+    - OpenTelemetry 提供了代码自动注入、其他三方库的集成
+    - 综上，应用内部埋点应该使用OpenTelemetry，外部可视化等可以尝试SkyWalking
+- [可观察性统一方案-SLS兼容OpenTelemetry](https://developer.aliyun.com/article/766070)
+- [Clickhouse OpenTelemtry支持](https://clickhouse.com/docs/zh/operations/opentelemetry/)
+  - Clickhouse接受 HTTP 和本机协议上的跟踪上下文标头，为查询执行的某些阶段添加一些跨度，将它们存储在`system.opentelemetry_span_log`表中，并将跟踪上下文传播到远程 ClickHouse 服务器和 URL 引擎。
+    - [issues#5182](https://github.com/ClickHouse/ClickHouse/issues/5182)
+  - [system-tables/opentelemetry_span_log](https://github.com/ClickHouse/ClickHouse/blob/master/docs/zh/operations/system-tables/opentelemetry_span_log.md)
+- [clickhouse query profilier](https://clickhouse.com/docs/zh/operations/optimizing-performance/sampling-query-profiler/)
+  - 对执行线程执行的方法进行采样
+- [Query-performance-analysis](https://sudonull.com/post/25704-Query-performance-analysis-in-ClickHouse-Yandex-Report-Yandex-Blog)
+  - Query log 查询执行各种各样的指标 - 打开文件的次数、压缩块的数量、衬线缓存中的命中次数等
 
+。
