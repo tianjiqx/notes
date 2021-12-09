@@ -24,7 +24,19 @@
 ## Vim-go
 
 vim-go是一个使用golang语言进行开发的vim插件，将vim搭建为合适golang的IDE环境。
-插件完整名`Plugin 'fatih/vim-go'`,具体配置参考workspace仓库的.vimrc。
+插件完整名`Plugin 'fatih/vim-go'`,具体配置参考[workspace](https://github.com/tianjiqx/workspace)仓库的.vimrc-8。
+
+vim-go 需要结合
+
+
+
+MacOS 环境安装辅助工具
+
+- Vim8 + python3： `brew install vim -vd protobuf `
+- universal-ctags: ` brew install universal-ctags`
+  - 内置go语言的解析
+- gotags: `brew install gotags`
+  - go 分析，个人的.vimrc 配置的tagbar 插件使用了该工具，而非ctags
 
 
 
