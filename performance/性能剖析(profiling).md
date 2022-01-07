@@ -271,6 +271,10 @@ PolarDB-X 是阿里云开源的一个HTAP数据库，特性：
 
 - `ExplainExecutorUtil`
   - explain 语法提供多种执行模式，在analze模式可以显示各算子的真实执行时间
+  - `executePlanForExplainAnalyze()` 具体执行语句
+  - 然后收集context中的统计信息
+    - `RuntimeStatistics.toMppSketch()` 分布式计划
+    - `RuntimeStatistics.toSketch()`
 - `RuntimeStatistics`
   - 实现接口 `CpuCollector` 记录各个task的cpu时间
   - 继承`RuntimeStat`  提供 一个sql的 cpu和内存统计信息
@@ -561,6 +565,75 @@ mysql> show profile cpu,block io for query 2;
 
 
 
+
+
+### 3.8 Presto
+
+
+
+**收集的统计信息指标：**
+
+- `QueryStats`
+  - 查询级别的统计信息
+    - 耗时
+      - `totalScheduledTime`
+      - `totalCpuTime`
+      - `retriedCpuTime`
+      - `totalBlockedTime`
+    - 数据量
+      - `rawInputDataSize`
+      - `rawInputPositions`
+      - `processedInputDataSize`
+      - `processedInputPositions`
+      - `outputDataSize`
+      - `outputPositions`
+      - `writtenOutputLogicalDataSize`
+      - `writtenOutputPhysicalDataSize`
+      - `writtenIntermediatePhysicalDataSize` 
+    - 内存
+      - `cumulativeUserMemory`
+      - `cumulativeTotalMemory`
+      - `userMemoryReservation`
+      - `totalMemoryReservation`
+      - `peakUserMemoryReservation`
+      - `peakTotalMemoryReservation` 
+      - `peakTaskTotalMemory`  task 总共
+      - `peakTaskUserMemory` task 用户
+      - `peakNodeTotalMemory` 节点
+    - `List<StageGcStatistics> stageGcStatistics` stage 的Gc 统计信息
+    - `List<OperatorStats> operatorSummaries` 算子的统计信息
+    - `RuntimeStats runtimeStats` 
+
+- `TaskStats`
+  - 
+
+
+
+**统计信息收集实现：**
+
+- 基于Context 收集单节点上信息，更新 task 状态，取消、终止任务等操作，获取 TaskInfo 时，将创建统计信息并返回给协调者节点，协调者通过 QueryStateMachine 创建 QueryInfo
+  - `QueryInfo`
+    - `Optional<StageInfo> outputStage`
+      - `StageExecutionInfo`
+        - `List<TaskInfo> tasks`
+      - ` List<StageInfo> subStages`
+- `TaskContext` 节点间并行计划 -> TaskInfo
+  - `List<PipelineContext> pipelineContexts` 节点内的并行计划
+    - `List<DriverContext> drivers`  并行执行的线程
+      - `List<OperatorContext> operatorContexts`   线程内依次执行的各算子
+      - `MemoryTrackingContext driverMemoryContext` 内存使用收集
+
+
+
+**JVM记录**：
+
+- Cpu时间
+  - `THREAD_MX_BEAN.getCurrentThreadCpuTime()`
+- 内存分配
+  - `THREAD_MX_BEAN.getThreadAllocatedBytes(Thread.currentThread().getId())`
+
+
+
 ## REF
 
 - [TiDB 重要监控指标详解](https://docs.pingcap.com/zh/tidb/stable/grafana-tidb-dashboard)
@@ -600,5 +673,4 @@ mysql> show profile cpu,block io for query 2;
     sar -n TCP,ETCP 1
     top
     ```
-
 
