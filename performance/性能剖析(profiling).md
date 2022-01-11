@@ -1,3 +1,5 @@
+
+
 # 性能剖析(profiling)
 
 [TOC]
@@ -200,7 +202,7 @@ SQL 语句实际指的是某一类 SQL 语句。语法一致的 SQL 语句会规
 - Explain analyze 只能查看可以复现的问题
 - Profile 只能查看整个实例的瓶颈
 
-
+[statement-summary-tables](https://docs.pingcap.com/zh/tidb/stable/statement-summary-tables)
 
 ```
 // explain analyze功能实现
@@ -221,8 +223,10 @@ executor/index_lookup_join.
 实现接口execdetails.RuntimeStats
 util/execdetails/execdetails.go
 
-统计时间是，直接基于每次next时间add
+统计时间，将每次next时间add
 ```
+
+
 
 
 
@@ -256,6 +260,20 @@ go-ycsb 结果：
 
 - OPS 相较默认内存分配器下降了 4% 左右，P99 延迟线上升了 10% 左右
   - tcmalloc与jemalloc性能类似
+
+
+
+#### 3..3.3 Metrics
+
+工具：
+
+- prometheus
+
+tidb 收集到 prometheus 的 [metrics](https://github.com/pingcap/tidb/blob/master/metrics/metrics.go) 列表。
+
+根据 [TiDB 监控框架概述](https://docs.pingcap.com/zh/tidb/stable/tidb-monitoring-framework/) 介绍，TiDB 4.0 开始引入 prometheus 作为监控和性能指标信息存储方案，grafana 作为可视化组件。
+
+工作逻辑，TiDB 代码中利用 Prometheus client 创建 metrics 并发送到 Prometheus Server 中存储，grafana 从 Prometheus Server 读取 metrics并显示给前端。
 
 
 
@@ -569,13 +587,16 @@ mysql> show profile cpu,block io for query 2;
 
 ### 3.8 Presto
 
-
-
 **收集的统计信息指标：**
 
 - `QueryStats`
   - 查询级别的统计信息
+    - 时间戳
+      - `DateTime createTime` 创建时间
+      - `DateTime executionStartTime` 开始执行时间
+      - `DateTime endTime` 查询结束时间
     - 耗时
+      - `Duration elapsedTime` 查询耗时
       - `totalScheduledTime`
       - `totalCpuTime`
       - `retriedCpuTime`
@@ -602,16 +623,237 @@ mysql> show profile cpu,block io for query 2;
       - `peakNodeTotalMemory` 节点
     - `List<StageGcStatistics> stageGcStatistics` stage 的Gc 统计信息
     - `List<OperatorStats> operatorSummaries` 算子的统计信息
-    - `RuntimeStats runtimeStats` 
+    - `RuntimeStats runtimeStats`  查询级别的每个 task 的每个算子的统计信息的聚合
 
 - `TaskStats`
-  - 
+
+  - 时间戳
+
+    - ```java
+      private final DateTime createTime;
+      private final DateTime firstStartTime;
+      private final DateTime lastStartTime;
+      private final DateTime lastEndTime;
+      private final DateTime endTime;
+      ```
+
+  - 耗时
+
+    - `long elapsedTimeInNanos`
+    - `long queuedTimeInNanos`
+
+  - 数据量
+
+    - ```java
+      private final long rawInputDataSizeInBytes;
+      private final long rawInputPositions;
+      
+      private final long processedInputDataSizeInBytes;
+      private final long processedInputPositions;
+      
+      private final long outputDataSizeInBytes;
+      private final long outputPositions;
+      
+      private final long physicalWrittenDataSizeInBytes;
+      ```
+
+  - 内存
+
+    - ```java
+      private final long totalAllocationInBytes;
+      
+      private final double cumulativeUserMemory;
+      private final double cumulativeTotalMemory;
+      private final long userMemoryReservationInBytes;
+      private final long revocableMemoryReservationInBytes;
+      private final long systemMemoryReservationInBytes;
+      
+      private final long peakUserMemoryInBytes;
+      private final long peakTotalMemoryInBytes;
+      private final long peakNodeTotalMemoryInBytes;
+      
+      private final int fullGcCount;
+      private final long fullGcTimeInMillis;
+      ```
+
+  - `List<PipelineStats> pipelines;` pipeline 统计信息
+
+  - `RuntimeStats runtimeStats;` task 级别每个算子的统计信息聚合 metrics
+
+- `PipelineStats`
+
+  - 时间戳
+
+    - ```java
+      private final DateTime firstStartTime;
+      private final DateTime lastStartTime;
+      private final DateTime lastEndTime;
+      ```
+
+  - 线程，driver
+
+    - ```java
+      private final int totalDrivers;
+      private final int queuedDrivers;
+      private final int queuedPartitionedDrivers;
+      private final int runningDrivers;
+      private final int runningPartitionedDrivers;
+      private final int blockedDrivers;
+      private final int completedDrivers;
+      ```
+
+  - 耗时
+
+    - ```java
+      // com.facebook.airlift.stats.DistributionSnapshot 类似直方图，具有分位数，min,max,avg,count
+      private final DistributionSnapshot queuedTime;
+      private final DistributionSnapshot elapsedTime;
+      
+      private final long totalScheduledTimeInNanos;
+      private final long totalCpuTimeInNanos;
+      private final long totalBlockedTimeInNanos;
+      ```
+
+  - 数据量
+
+    - ```java
+      private final long rawInputDataSizeInBytes;
+      private final long rawInputPositions;
+      
+      private final long processedInputDataSizeInBytes;
+      private final long processedInputPositions;
+      
+      private final long outputDataSizeInBytes;
+      private final long outputPositions;
+      
+      private final long physicalWrittenDataSizeInBytes;
+      ```
+
+  - 内存使用
+
+    - ```java
+      private final long userMemoryReservationInBytes;
+      private final long revocableMemoryReservationInBytes;
+      private final long systemMemoryReservationInBytes;
+      ```
+
+  - `List<OperatorStats> operatorSummaries;`  去除 OperatorInfo 信息
+
+  - `List<DriverStats> drivers;` driver 统计信息
+
+- `DriverStats`
+
+  - 时间戳
+
+    - ```java
+      private final DateTime createTime;
+      private final DateTime startTime;
+      private final DateTime endTime;
+      ```
+
+  - 耗时
+
+    - ```java
+      // driver 从创建到开始执行的时间间隔
+      private final Duration queuedTime;
+      // 从创建到执行结束的时间间隔
+      private final Duration elapsedTime;
+      
+      // driver 线程运行的整个墙上时间
+      private final Duration totalScheduledTime;
+      // driver 线程运行的整个 cpu 时间，包括算子的额外时间（RemoteProjectOperator）
+      private final Duration totalCpuTime;
+      // 线程阻塞时间，墙上时间
+      private final Duration totalBlockedTime;
+      ```
+
+  - 内存
+
+    - ```java
+      // 当前算子，聚合的内存使用
+      private final DataSize userMemoryReservation;
+      private final DataSize revocableMemoryReservation;
+      private final DataSize systemMemoryReservation;
+      
+      // 通过 THREAD_MX_BEAN.getThreadAllocatedBytes 获取的当前线程分配的空间
+      private final DataSize totalAllocation;
+      ```
+
+  - 数据量
+
+    - ```java
+      // 第一个算子 原始输入数据量
+      private final DataSize rawInputDataSize;
+      private final long rawInputPositions;
+      private final Duration rawInputReadTime;
+      
+      // 第一个算子 输入数据量
+      private final DataSize processedInputDataSize;
+      private final long processedInputPositions;
+      
+      // 最后一个算子的输出数据量
+      private final DataSize outputDataSize;
+      private final long outputPositions;
+      
+      private final DataSize physicalWrittenDataSize;
+      ```
+
+  - `private final List<OperatorStats> operatorStats;` 算子级别的统计信息
 
 
+
+- `OperatorStats`
+
+  - 耗时
+
+    - ```java
+      // 
+      private final Duration addInputWall;
+      private final Duration addInputCpu;
+      //
+      private final Duration getOutputWall;
+      private final Duration getOutputCpu;
+      
+      // 
+      private final Duration finishWall;
+      private final Duration finishCpu;
+      ```
+
+  - 数据量
+
+    - ```java
+      private final DataSize rawInputDataSize;
+      private final DataSize outputDataSize;
+      
+      // 溢出内存的数据量
+      private final DataSize spilledDataSize;
+      ```
+
+  - 内存
+
+    - ```java
+      // 当前 算子 内存使用
+      // 用户空间内存，使用的类，HashBuilderOperator，AggregationOperator
+      private final DataSize userMemoryReservation;
+      private final DataSize revocableMemoryReservation;
+      // 系统空间内存
+      private final DataSize systemMemoryReservation;
+      
+      // 峰值内存使用
+      private final DataSize peakUserMemoryReservation;
+      private final DataSize peakSystemMemoryReservation;
+      private final DataSize peakTotalMemoryReservation;
+      ```
+
+  - `OperatorInfo info;` 各算子特定信息
+    - OperatorInfo 为接口，并规范子类同样是可以通过 @JsonCreator 反序列化
+    - 一般可合并，求总和
+  - `RuntimeStats runtimeStats`  metrics 信息，算子自己或者 connector 生成，由具体算子添加
+    - `ConnectorPageSource`  数据源的 metrics
 
 **统计信息收集实现：**
 
-- 基于Context 收集单节点上信息，更新 task 状态，取消、终止任务等操作，获取 TaskInfo 时，将创建统计信息并返回给协调者节点，协调者通过 QueryStateMachine 创建 QueryInfo
+- 基于Context 收集单节点上信息，更新 task 状态，取消、终止任务等操作，获取 TaskInfo 时，将创建统计信息并返回给协调者节点，协调者通过 QueryStateMachine 创建 QueryInfo，逐级收集，部分信息根据下层统计信息汇总，例如`totalCpuTime`, `totalScheduledTime` , `rawInputDataSize` , `outputDataSize`
   - `QueryInfo`
     - `Optional<StageInfo> outputStage`
       - `StageExecutionInfo`
@@ -623,13 +865,53 @@ mysql> show profile cpu,block io for query 2;
       - `List<OperatorContext> operatorContexts`   线程内依次执行的各算子
       - `MemoryTrackingContext driverMemoryContext` 内存使用收集
 
+- `OperationTimer`
+
+  - 记录 driver 的统计信息
+
+  - ```java
+    // 调用次数
+    private final AtomicLong calls = new AtomicLong();
+    // 墙上时间
+    private final AtomicLong wallNanos = new AtomicLong();
+    // cpu 时间
+    private final AtomicLong cpuNanos = new AtomicLong();
+    // 分配的字节数
+    private final AtomicLong allocationBytes = new AtomicLong();
+    ```
+
+- `MemoryTrackingContext`
+
+  - 跟踪所有级别的（算子，driver，pipeline，task）的内存使用情况
+
+  - ```java
+    // 聚合内存上下文，聚合由叶级别和当前级别分配的内存
+    // 用户
+    private final AggregatedMemoryContext userAggregateMemoryContext;
+    // 可撤销, 例如可溢出到磁盘的部分的内存
+    private final AggregatedMemoryContext revocableAggregateMemoryContext;
+    // 系统
+    private final AggregatedMemoryContext systemAggregateMemoryContext;
+    
+    // 本地内存上下文跟踪当前级别的分配
+    private LocalMemoryContext userLocalMemoryContext;
+    private LocalMemoryContext revocableLocalMemoryContext;
+    private LocalMemoryContext systemLocalMemoryContext;
+    ```
+
+  - 峰值内存，根据每次分配内存时，通过监听器（lamda 可运行线程）获取当前使用内存大小，然后max 比较更新
+
+  - 各个执行通过 OperatorContext 获取或者创建新的孩子各类型的内存跟踪器，一般按页粒度(每次处理输输入的page时，重新计算算子使用的对象的内存大小)，更新内存当前大小（`trySetBytes/ setBytes` ）
+
+    - `AggregationOperator` 算子，更新内存通过计算 `Aggregato` 的大小
+
 
 
 **JVM记录**：
 
 - Cpu时间
   - `THREAD_MX_BEAN.getCurrentThreadCpuTime()`
-- 内存分配
+- 线程的总内存分配
   - `THREAD_MX_BEAN.getThreadAllocatedBytes(Thread.currentThread().getId())`
 
 
@@ -650,6 +932,10 @@ mysql> show profile cpu,block io for query 2;
 - [mysql show-profile](https://dev.mysql.com/doc/refman/8.0/en/show-profile.html)
 - [PolarDB-X](https://github.com/ApsaraDB/galaxysql)  ApsaraDB/galaxysql
 - [Java虚拟机线程系统的管理接口 ThreadMXBean](https://docs.oracle.com/javase/8/docs/api/java/lang/management/ThreadMXBean.html)
+
+- [使用 Prometheus + Grafana 打造 TiDB 监控整合方案](https://zhuanlan.zhihu.com/p/378497303)
+  - 通过 label 整合多个 Prometheus 数据，重新拆分，存储，统一 Grafana 显示
+- [如何高效利用 Grafana 监控分析 TiDB 指标](https://zhuanlan.zhihu.com/p/81926744)
 
 
 
