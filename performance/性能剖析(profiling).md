@@ -285,6 +285,19 @@ PolarDB-X 是阿里云开源的一个HTAP数据库，特性：
 - 支持MPP
 - 支持向量化执行
 
+
+
+**PolarDB-X 并行执行框架**
+
+- 协调者根据数据是否需要重分布，拆分并行执行逻辑计划计划各个Fragment 片段子计划
+  - Stage 封装了Fragment，作为调度的逻辑单位
+    - Stage记录了上下游片段的位置信息，以便上下游之间建立网络通道(DTL)
+    - 每个 Stage 可以具有不同的并发度
+      - Stage 根据并发度拆分为多个逻辑执行的 Task， 分别调度到不同的节点上执行
+        - Task内部根据算子间数据交换的特性，切分成不同Pipeline
+          - 不同的Pipeline并发度可以不同，根据并发度，创建相应数量的执行单元 Driver
+            - 对应一个执行线程，可以有多个算子
+
 **CpuProfile**
 
 - `ExplainExecutorUtil`
@@ -294,7 +307,7 @@ PolarDB-X 是阿里云开源的一个HTAP数据库，特性：
     - `RuntimeStatistics.toMppSketch()` 分布式计划
     - `RuntimeStatistics.toSketch()`
 - `RuntimeStatistics`
-  - 实现接口 `CpuCollector` 记录各个task的cpu时间
+  - 实现接口 `CpuCollector` 记录各个任务（可执行的线程）的cpu时间
   - 继承`RuntimeStat`  提供 一个sql的 cpu和内存统计信息
   - 被放进执行上下文ExecutionContext在各个阶段进行填充
   - 各物理执行算子`Executor` 创建时检查`ExecutionContext`是否存在`RuntimeStatistics`, 存在时，通过`RuntimeStatHelper.registerStatForExec()` 注册物理执行算子的统计信息`OperatorStatisticsGroup`到`RuntimeStatistics`
@@ -316,6 +329,17 @@ PolarDB-X 是阿里云开源的一个HTAP数据库，特性：
   - 对执行的线程的任务的cpu时间进行收集，封装
   - `CallableWithStatHandler`
   - `CpuCollector` cpu时间计时存储器、span
+
+
+
+- `TaskContext` 各节点上执行的Stage下的并行粒度
+  - 根据 pipeline 创建StageInfo 然后合并出节点的 local  StageInfo
+  - `PipelineContext`  Task 根据计划的交换关系内部拆分成多个 pipline
+    - `DriverContext` pipeline 的一个执行单元
+    - 根据 driverContext 创建 TaskInfo，然后合并出pipeline 的 统计信息
+
+
+
 - `polardbx-executor/src/main/java/com/alibaba/polardbx/executor/operator/AbstractExecutor.java` 物理执行算子抽象类
   - 通过`enableCpuProfile` 和 `OperatorStatistics` 来决定是否记录算子的执行时间
     - 算子的统计信息中包含属性
@@ -333,7 +357,203 @@ PolarDB-X 是阿里云开源的一个HTAP数据库，特性：
         - CPU or network time during closing in nanoseconds
       - `workerDuration` 工作线程时间
         - 实际未使用,  目前看起来 其他时间都是cpu时间，而非真实时间（wall time）
-      - `spillCnt`  内存撤销计数？
+      - `spillCnt`  内存溢出计数
+
+```java
+/*
+ * How to measure CPU time via our statistics? We define the CPU time as
+ * the processDuration consumed by all the server or worker threads,
+ * excluding any waiting (blocking and IO) time, so we sum up all the
+ * time cost of each thread and subtract the blocking time caused by
+ * Parallel Gather and IO time of LogicalView
+ */
+// Cpu 时间时所有服务节点的线程的累计 cpu 时间
+public static class Metrics {
+
+  // How much rows was processed in total
+  public long affectedPhyRows;
+
+  // How much rows was fetched in total
+  public long fetchedRows;
+
+  // the total phy sql count of a logical sql, included all lv of tables
+  public long phySqlCount;
+
+  // =========================
+  // the percent(PCT) of the max memory usage during this query
+  public double queryMemPct;
+
+  // the max memory usage during the query
+  public long queryMem;
+
+  // the max memory usage of a plan after sharding during the query
+  public long planShardMem;
+
+  // the max memory usage sum of operator temp table during the query
+  public long planTmpTbMem;
+
+  // the total time cost of finishing sql
+  public long totalTc;
+
+  // 逻辑计划部分，Cpu 时间 一个累计时间，累计所有的
+  // =========================
+  // logCpu = sqlToPlanTc + execPlanTc
+  public long logCpuTc;
+
+  // the time cost of converting a sql to a final plan
+  public long sqlToPlanTc;
+
+  // the time cost sum of executing all operators of the plan build by
+  // drds
+  public long execPlanTc;
+
+  // 物理计划部分
+  // =========================
+  // the time cost sum of executing all phy sql of a plan in mysql and
+  // reading all its resultset,
+  // phyCpuTc = execSqlTc + fetchRsTc
+  public long phyCpuTc;
+
+  // the timecost sum of executing all phy sql of a plan in mysql
+  public long execSqlTc;
+
+  // the timecost sum of fetching all result set from mysql of the plan
+  public long fetchRsTc;
+
+  // =========================
+  // the time cost sum of all create & wait & init phy jdbc conn for a
+  // plan
+  public long phyConnTc;
+
+  // the sql template id of planCache key
+  public String sqlTemplateId = "-";
+
+  public int memBlockedFlag = 0;
+
+  public long spillCnt;
+}
+
+// SQL级别 cpu & 内存 统计信息
+// Runtime Statistics of stat all cpu time & mem for a sql
+public class RuntimeStatistics extends RuntimeStat implements CpuCollector {
+  // 算子统计信息，<relationId, OperatorStatisticsGroup>
+  private final Map<Integer, OperatorStatisticsGroup> relationToStatistics = new ConcurrentHashMap<>();
+  // 内存统计信息, key 为 nodeServerde name(host:port的字符串)
+  private final Map<String, MemoryStatisticsGroup> memoryToStatistics = new ConcurrentHashMap<>();
+  // 执行计划，key 为 relationId
+  private final Map<Integer, RelNode> relationIdToNode = new HashMap<>();
+  // 并行执行计划，key 为 relationId
+  private final WeakHashMap<Integer, RuntimeStatisticsSketch> mppOperatorStats = new WeakHashMap<>();
+  
+    // Metrics for sql.log
+    private AtomicLong sqlLogCpuTime = new AtomicLong(0L);
+    private AtomicLong totalPhySqlCount = new AtomicLong(0L);
+    private AtomicLong totalPhyAffectedRows = new AtomicLong(0L);
+    private AtomicLong totalPhyFetchRows = new AtomicLong(0L);
+    private AtomicLong totalPhySqlTimecost = new AtomicLong(0L);
+    private AtomicLong totalPhyConnTimecost = new AtomicLong(0L);
+    private AtomicLong spillCnt = new AtomicLong(0L);
+  
+  // 返回 metrics 格式
+  public Metrics toMetrics();
+}
+
+// 内存嵌套定义接口
+public class MemoryStatisticsGroup {
+
+    protected long memoryUsage;
+    protected long maxMemoryUsage;
+    protected long maxDiskUsage;
+  	// 对于节点的内存统计信息group 而言， key 为 task id
+    protected Map<String, MemoryStatisticsGroup> memoryStatistics;
+}
+
+
+public static class OperatorStatisticsGroup {
+	@JsonIgnore
+  public RuntimeStatistics runtimeStat;
+  /**
+    * operator stats for parallel query
+    */
+  @JsonProperty
+  public Set<OperatorStatistics> statistics = new HashSet<>();
+}
+
+
+// 并行执行计划的统计信息收集，从 TaskInfo 的 TaskStatus
+public class TaskStatus {
+  //算子视角的统计
+    private final Map<Integer, RuntimeStatistics.OperatorStatisticsGroup> runtimeStatistics;
+
+    //memoryPool视角的统计
+    private final TaskMemoryStatisticsGroup memoryStatistics;
+}
+
+
+public class TaskStats {
+  // 时间戳
+  private final DateTime createTime;
+  private final DateTime firstStartTime;
+  private final DateTime endTime;
+
+  // 耗时
+  private final long elapsedTime;
+  private final long queuedTime;
+  private final long deliveryTime;
+
+  // Task 状态
+  private final int totalPipelineExecs;
+  private final int queuedPipelineExecs;
+  private final int runningPipelineExecs;
+  private final int completedPipelineExecs;
+
+  // 内存使用
+  private final double cumulativeMemory;
+  private final long memoryReservation;
+  private final long peakMemory;
+
+  // 耗时
+  private final long totalScheduledTime;
+  private final long totalCpuTime;
+  private final long totalUserTime;
+  private final long totalBlockedTime;
+  private final boolean fullyBlocked;
+  private final Set<BlockedReason> blockedReasons;
+
+  // 数据量, 行数
+  private final long processedInputDataSize;
+  private final long processedInputPositions;
+
+  private final long outputDataSize;
+  private final long outputPositions;
+
+  // 算子的统计信息
+  private final List<OperatorStats> operatorStats;
+
+}
+
+// 算子级别统计信息
+public class OperatorStats {
+  private final Optional<StageId> stageId;
+  private final int pipelineId;
+  private final Optional<String> operatorType;
+  private final int operatorId;
+
+  // 行数和数据量
+  private final long outputRowCount;
+  private final long outputBytes;
+  
+  // 耗时
+  private final double startupDuration;
+  private final double duration;
+  // 内存使用大小
+  private final long memory;
+  // 对象数
+  private final int instances;
+  // 内存溢出数
+  private final int spillCnt;
+}
+```
 
 
 
@@ -349,7 +569,7 @@ PolarDB-X 是阿里云开源的一个HTAP数据库，特性：
 
   - `polardbx-optimizer/src/main/java/com/alibaba/polardbx/optimizer/memory/OperatorMemoryAllocatorCtx.java`
 
-  - `OperatorMemoryAllocatorCtx`  物理执行算子如`HashGroupJoinExec`根据运行过程中，使用的各种对象如Block，调用其`estimateSize` 方法计算其大小，然后通过内存分配器上下文，记录生气的内存
+  - `OperatorMemoryAllocatorCtx`  物理执行算子如`HashGroupJoinExec`根据运行过程中，使用的各种对象如Block，调用其`estimateSize` 方法计算其大小，然后通过内存分配器上下文，记录申请的内存
     - `allocateReservedMemory()` 记录分配的内存
       - 调用`MemoryPool.allocateReserveMemory()`
 
@@ -438,6 +658,12 @@ crate将select 分成3个大的阶段，Analyze（语法分析）,Plan（生成�
 
 - 堆内
 - 堆外
+
+
+
+**JVM 监控**
+
+- 基于ES 的代码，引用 `org.elasticsearch.monitor.jvm` 包，做节点级别的内存监控
 
 
 
@@ -583,8 +809,6 @@ mysql> show profile cpu,block io for query 2;
 
 
 
-
-
 ### 3.8 Presto
 
 **收集的统计信息指标：**
@@ -645,6 +869,7 @@ mysql> show profile cpu,block io for query 2;
   - 数据量
 
     - ```java
+      // Task 中 pipeline 同名统信息的累计
       private final long rawInputDataSizeInBytes;
       private final long rawInputPositions;
       
@@ -678,7 +903,7 @@ mysql> show profile cpu,block io for query 2;
 
   - `List<PipelineStats> pipelines;` pipeline 统计信息
 
-  - `RuntimeStats runtimeStats;` task 级别每个算子的统计信息聚合 metrics
+  - `RuntimeStats runtimeStats;` task 级别每个算子的统计信息聚合 metrics ，由所有的pipelineStats 的 RuntimeStats summaries 聚合而成
 
 - `PipelineStats`
 
@@ -763,7 +988,7 @@ mysql> show profile cpu,block io for query 2;
       private final Duration totalScheduledTime;
       // driver 线程运行的整个 cpu 时间，包括算子的额外时间（RemoteProjectOperator）
       private final Duration totalCpuTime;
-      // 线程阻塞时间，墙上时间
+      // 线程阻塞时间，墙上时间， 线程可能由于内存不足等待资源而阻塞，等待数据源响应（下推到数据源的执行算子执行）而阻塞
       private final Duration totalBlockedTime;
       ```
 
@@ -799,8 +1024,6 @@ mysql> show profile cpu,block io for query 2;
       ```
 
   - `private final List<OperatorStats> operatorStats;` 算子级别的统计信息
-
-
 
 - `OperatorStats`
 
@@ -905,7 +1128,9 @@ mysql> show profile cpu,block io for query 2;
 
     - `AggregationOperator` 算子，更新内存通过计算 `Aggregato` 的大小
 
-
+- `GcMonitor`
+  - Task 粒度的 GC 次数和时间的监控
+    - 访问 jvm gc 次数和 gc 时间，计算间隔
 
 **JVM记录**：
 
@@ -931,6 +1156,8 @@ mysql> show profile cpu,block io for query 2;
 - [Brendan Gregg perf](https://www.brendangregg.com/perf.html) 性能之巅作者博客
 - [mysql show-profile](https://dev.mysql.com/doc/refman/8.0/en/show-profile.html)
 - [PolarDB-X](https://github.com/ApsaraDB/galaxysql)  ApsaraDB/galaxysql
+  - [纵观 PolarDB-X 并行计算框架](https://developer.aliyun.com/article/782922)
+
 - [Java虚拟机线程系统的管理接口 ThreadMXBean](https://docs.oracle.com/javase/8/docs/api/java/lang/management/ThreadMXBean.html)
 
 - [使用 Prometheus + Grafana 打造 TiDB 监控整合方案](https://zhuanlan.zhihu.com/p/378497303)
@@ -960,3 +1187,4 @@ mysql> show profile cpu,block io for query 2;
     top
     ```
 
+- [presto 生成查询计划](https://mumu-presto.readthedocs.io/zh/latest/core/createqueryplan.html)
