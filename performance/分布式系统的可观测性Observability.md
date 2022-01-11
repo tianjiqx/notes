@@ -202,32 +202,104 @@ Service Meshes 服务网格。服务网格的数据平面Data planes在代理层
 
 ## 2. 分布式系统实践
 
-### 2.1 Prometheus 
+### 2.1 Prometheus
 
 开源的metrics（指标）和 alerting（告警） 监控解决方案。
 
-特性：
+#### 特性
 
-- 高纬度数据模型
-  - 时间序列，指标名称和一组键值对
+- 高纬度数据模型-时间序列
+  - 时间戳，指标名称和一组字符串键值对标签，样本值float64
+  
+  - ```
+    <--------------- metric ---------------------><-timestamp -><-value->
+    http_request_total{status="200", method="GET"}@1434417560938 => 94355
+    ```
+  
 - 查询
   - PromQL 对收集的时间序列数据进行切片和切块，生成临时图表和警告alerts
+    - `rate(http_requests_total[5m])` HTTP请求量的增长率
+    - `topk(10, http_requests_total)` 当前系统中，访问量前10的HTTP地址
+  
 - 可视化数据模式
   - 浏览器
-  - grafana
+  - [grafana](https://grafana.com/docs/grafana/latest/getting-started/getting-started/)
   - 控制台
+  
 - 存储
-  - 时间序列存储在内存和本地磁盘
+  - 样本数据以时间序列形式存储在内存和本地磁盘
   - 功能分片shard，联邦federation进行扩展
+  
 - 部署
   - 每个server独立，单机
+  
 - 告警
   - 通知用户
+  
 - 集成
   - 支持第三方数据桥接到Prometheus显示
     - 系统统计信息，Docker,HAproxy,StatD, JMX指标
 
 [thanos](https://thanos.io/) 高可用，长期存储的Prometheus，支持全局查询视图和指标的无限保留（基于对象存储）。
+
+
+
+#### 组件
+
+- Prometheus Server
+  - 负责实现对监控数据的获取，存储以及查询
+    - 静态配置管理监控目标
+    - 使用Service Discovery方式动态管理监控目标，并获取数据
+  - 提供了自定义的PromQL语言，实现对数据的查询以及分析
+  - 内置的Express Browser UI，可以直接通过PromQL实现数据的查询以及可视化
+- Exporter
+  - 将监控数据采集的端点通过HTTP服务的形式暴露给Prometheus Server
+  - 分类
+    - 直接采集，Exporter 内置对Prometheus监控的支持，如cAdvisor，Kubernetes，Etcd，Gokit，TiDB等
+    - 间接采集
+
+
+
+Prometheus metrics类型：
+
+- Counter（计数器）
+  - 只增不减（除非系统发生重置）
+  - 示例，http_requests_total，node_cpu，通常以_total 作为后缀
+- Gauge（仪表盘）
+  - Gauge类型的指标侧重于反应系统的当前状态， 样本数据可增可减
+  - 示例，node_memory_MemFree（主机当前空闲的内容大小）、node_memory_MemAvailable（可用内存大小）
+  - `delta(cpu_temp_celsius{host="zeus"}[2h])`   CPU温度在两个小时内的差异
+  - `predict_linear(node_filesystem_free{job="node"}[1h], 4 * 3600)`  预测系统磁盘空间在4个小时之后的剩余情况
+- Histogram（直方图）
+  - 用于统计和分析样本的分布情况
+  - 弥补CPU的平均使用率，页面的平均响应时间等长尾样本的影响
+  - 显示不同区间内样本的个数，区间通过标签len进行定义，以及count，sum
+  - 也可以通过histogram_quantile()函数 计算分位数
+- Summary（摘要）
+  - 用于统计和分析样本的分布情况
+  - 百分位数，0.5，0.9，0.99，以及count，sum
+
+
+
+[prometheus client-java](git@github.com:prometheus/client_java.git) 提供 jvm  版本 Prometheus metrics 的定义，相对于OpenTelemetry，提供了对 metrics的值的可访问性，OpenTelemetry-java 提供其 OpenTelemetry 的metrics 到 Prometheus metrics 的转换。
+
+
+
+#### [常见的可观察性策略](https://grafana.com/docs/grafana/latest/best-practices/common-observability-strategies/)
+
+- USE， 适合基础架构中的硬件资源，例如 CPU、内存和网络设备。
+  - **利用率 -**资源繁忙的时间百分比，例如节点 CPU 使用率
+  - **饱和度 -**资源必须完成的工作量，通常是队列长度或节点负载
+  - **错误 -**错误事件的计数
+- RED，适用于服务，尤其是微服务环境。对于每项服务，通过检测代码公开每个组件的这些指标。
+  - **速率 -**每秒请求数
+  - **错误 -**失败的请求数
+  - **持续时间 -**这些请求所花费的时间，延迟测量的分布
+- Google SRE 四个系统指标
+  - **延迟 - 处理**请求所花费的时间
+  - **流量 -**对您的系统有多少需求
+  - **错误 -**失败的请求率
+  - **饱和度——**你的系统有多“满”
 
 
 
@@ -273,7 +345,6 @@ Google 创建的 OpenCensus 项目提供 “特定语言库的集合，用于检
 - ["Everything You Wanted to Know About Distributed Tracing" ](https://github.com/keyvanakbary/learning-notes/blob/master/talks/everything-you-wanted-to-know-about-distributed-tracing.md) by Hungai Kevin Amuhinda 笔记，标题夸张了，不如直接看open telemetry 官网介绍
   - [youtube](https://www.youtube.com/watch?v=HSgb7gOO1Ig)
   - [slides](https://www.slideshare.net/KevinHungai/everything-you-wanted-to-know-about-distributed-tracing)
-
 - [slides: introduction_to_distributed_tracing](https://qconsp.com/sp2018/system/files/presentation-slides/introduction_to_distributed_tracing.pdf) 微服务，ziplin
 - [slides: Distributed Tracing](https://www.usenix.org/sites/default/files/conference/protected-files/lisa17_slides_cotton.pdf) 125 pages
 - [github: awesome-observability](https://github.com/adriannovegil/awesome-observability)
@@ -302,5 +373,9 @@ Google 创建的 OpenCensus 项目提供 “特定语言库的集合，用于检
   - 对执行线程执行的方法进行采样
 - [Query-performance-analysis](https://sudonull.com/post/25704-Query-performance-analysis-in-ClickHouse-Yandex-Report-Yandex-Blog)
   - Query log 查询执行各种各样的指标 - 打开文件的次数、压缩块的数量、衬线缓存中的命中次数等
+- [prometheus-book](https://yunlzheng.gitbook.io/prometheus-book/)
+- [TiDB 监控框架概述](https://docs.pingcap.com/zh/tidb/stable/tidb-monitoring-framework)
+- [Google SRE book](https://sre.google/sre-book/table-of-contents/)
+- [spark monitoring](https://spark.apache.org/docs/latest/monitoring.html)
+  - 基于[Dropwizard 指标库](http://metrics.dropwizard.io/4.2.0)  收集内存，jvm信息
 
-。
