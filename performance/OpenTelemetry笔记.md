@@ -265,7 +265,7 @@ OpenTelemetryBenchmark.perfCreateSpanWithCurrentTimeNanos  1000000  avgt    5   
 - `BatchSpanProcessor`
   - Sdk 实现的 `SpanProcessor` ，用于将批量的 span 发送到 Exporter  
 - `OtlpGrpcSpanExporter` 
-  - sdk 实现的的 `SpanExporter`，通过 gRPC 使用 OpenTelemetry's protobuf 
+  - sdk 实现的的 `SpanExporter`，通过 gRPC 使用 OpenTelemetry's protobuf （OTLP）导出 span 
 - `W3CTraceContextPropagator`
   - sdk 实现的`ContextPropagators` 用于从context 中提取或注入 Span
 
@@ -507,6 +507,17 @@ http://localhost:16686/trace/736941d6a5b4fa973942e1a5d0026ca9
 
 
 (TODO: more prometheus 通过 Grafana 展示)
+
+
+
+#### 6.5 HBase
+
+[HBASE-22120](https://issues.apache.org/jira/browse/HBASE-22120) 使用 OpenTelemetry 替换 HTrace  跟踪系统。
+
+- RPC 系统添加了 OpenTelemtry 支持，所有 rpc 方法都将在客户端和服务器端进行跟踪
+- 除了扫描和协处理器相关的方法外，Table 接口中的大多数方法也被跟踪
+  - 由于现在扫描实现始终是“异步预取”，我们还没有找到合适的方法来表示前台和后台跨度之间的这种关系。
+  - 服务器端，由于同样的原因，我们只使用一个 span 来记录 WAL 同步操作的时间，而没有跟踪到后台同步线程。
 
 
 
