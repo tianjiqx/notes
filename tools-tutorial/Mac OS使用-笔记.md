@@ -17,4 +17,7 @@
 - 终端zsh / oh-my-zsh
   - `command + T` 新标签页
   - `command + N` 新窗口
+  - `Shfit + Home` 跳到行首
+  - `Shfit + End` 跳到行尾
+  - `Alt + <- / ->` 按词组跳
 
