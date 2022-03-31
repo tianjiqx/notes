@@ -109,7 +109,7 @@ Perf events:
 profiler status
 
 # 停止火焰图
-profiler stop --format html --file result.html
+profiler stop --format html --file /tmp/result.html
 ```
 
 

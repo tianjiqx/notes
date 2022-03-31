@@ -140,5 +140,9 @@
 
   `git fetch upstream pull/<ID>/head:<BRANCHNAME>`
 
+- 查看提交变更文件
+
+  
+  - git log --stat
   
 

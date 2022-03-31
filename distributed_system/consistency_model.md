@@ -1,5 +1,5 @@
 
-## 一致性模型(草稿)
+## 一致性模型
 
 
 
@@ -18,8 +18,6 @@
 
   "If no new updates to the object, **eventually** all reads will return the last updated value."，优势在于可以快速读写本地的副本，难题：“Conflicting writes”。由于最终一致性允许不读到最新数据，怎么保证不同进程的写不会冲突。
 
-  
-  
 - 顺序一致性(Sequential Consistency))：
 
   严格一致性的弱化，不必立即看到对变量的写入，但是，所有处理器必须以相同的顺序看待不同处理器对变量的写入。线性化linearizability（也称为原子一致性atomic consistency）可以定义为有真实时间约束的顺序一致性。
@@ -48,7 +46,9 @@
 - 《大数据日知录》2.2节
 - [线性一致性：什么是线性一致性？](https://zhuanlan.zhihu.com/p/42239873)
 - [分布式线性一致性：理论&验证](https://zhuanlan.zhihu.com/p/43949695)
-### 待续..
+- [distributed-consensus-reading-list](https://github.com/heidihoward/distributed-consensus-reading-list)
 
-看了这么多一致性，希望你的脑子还好：)
+
+
+
 
