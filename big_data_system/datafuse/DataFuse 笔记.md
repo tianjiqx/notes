@@ -215,6 +215,8 @@ Datafuse 对传统数仓架构的批评：
 
 ###  3.2 查询引擎
 
+[data-shuffle](https://databend.rs/doc/contributing/rfcs/data-shuffle)
+
 - `query/src/bin/datafuse-query.rs` 入口
   - `mian()` 
     - `Config::load_from_args();` 加载配置参数
@@ -441,6 +443,13 @@ Datafuse 对传统数仓架构的批评：
       - 根据`StreamTicket` 查询数据流数据Receiver端
         - `query_id`,`stage_id`,`stream` name
       - 根据通道的Receiver 端构建读取数据流
+- Client 接口
+  - `fetch_stream`  do_get
+    - `query/src/pipelines/transforms/transform_remote.rs`
+    - `RemoteTransform` 
+
+  - `execute_action` do_action
+
 
 使用的是arrow flight rpc 框架，观察其实现，构建通道，异步io，通过 do_action 写数据到 flight  服务器，do_get 从服务下载数据。数据流临时存储在通道中，并不落盘。每个数据流具有`query_id`,`stage_id`,`stream`  构成的名字唯一标识。相对的，另一个分布式执行框架[Ballista](https://github.com/apache/arrow-datafusion) 是spark 风格，通过磁盘文件进行数据共享（详细，可参考arrow笔记，tensorbase笔记）。
 
@@ -518,6 +527,7 @@ DatafuseQuery(client) ---->(rpc)  DatafuseStore{flightServer ---> ActionHandler 
 - [doc:datafuse](https://datafuse.rs/overview/architecture/)
 - [Rust, Datafuse and the Cloud Warehouse（1）云时代数仓架构设计](https://zhuanlan.zhihu.com/p/402092313) 设计理念
 - [Rust, Datafuse and the Cloud Warehouse（2）Datafuse 架构概览](https://zhuanlan.zhihu.com/p/402093492)
+- [Databend 设计概述 | 白皮书](https://segmentfault.com/a/1190000040965859)
 - [Best Software to Build a Data Warehouse in the Cloud: Features, Benefits, Costs](https://www.scnsoft.com/analytics/data-warehouse/cloud)
 - [未来数据库应具备什么核心能力？](https://pingcap.com/zh/blog/core-competence-of-future-database)
 - [云原生数据库设计新思路](https://pingcap.com/zh/blog/new-ideas-for-designing-cloud-native-database)

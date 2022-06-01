@@ -388,4 +388,5 @@ ProtoBuf应用开发：
 扩展阅读材料：
 
 - [gRPC（1）：入门及简单使用（go）](https://www.cnblogs.com/Hui4401/p/14941137.html)
+- [book:grpc-up-amp-running-building-cloud-native-applications-with-go-and-java-for-docker-and-kubernetes](https://dokumen.pub/download/grpc-up-amp-running-building-cloud-native-applications-with-go-and-java-for-docker-and-kubernetes-9781492058335.html) 推荐
 

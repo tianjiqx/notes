@@ -745,7 +745,7 @@ pandas数据帧转换为spark 数据帧时，也省去了原来需要遍历所�
 - [Arrow Columnar Format](https://arrow.apache.org/docs/format/Columnar.html)
 - [arrow-rs](https://github.com/apache/arrow-rs)
 - [arrow-datafusion](https://github.com/apache/arrow-datafusion)
-- [Ballista](https://github.com/apache/arrow-datafusion/blob/master/ballista/README.md)
+- [Ballista](https://github.com/apache/arrow-ballista)
 - [arrow博客汇总](https://arrow.apache.org/blog/)
 - [Apache Arrow Flight 简介：快速数据传输框架](https://arrow.apache.org/blog/2019/10/13/introducing-arrow-flight/)
 - [Ballista：Apache Arrow 的分布式调度器](https://arrow.apache.org/blog/2021/04/12/ballista-donation/)

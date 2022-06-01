@@ -634,7 +634,7 @@ TensorBase的SQL 查询语句的执行引擎，绝大部分工作的承担者是
     - `crates/datafusion/src/physical_plan/parquet.rs` 文件定义了 `ParquetExec`  查询本地目录下所有的parquet格式文件，这里暂时不支持如hadoop等存储引擎上的文件。（也无副本可以用）
       - 已经有一个rust访问hdfs集群的包https://github.com/hyunsik/hdfs-rs.git 不过已经是2015 年，很久未更新。另一个近期的是https://github.com/frqc/rust-hdfs  2020 年
       - hadoop官方另外了一种访问方式是webHDFS
-      - path是简单的一个字符串类型，在`ParquetExec.try_from_path` 方法中创建读取本地目录路径下的parquet文件的物理执行计划。（若在ballista的分不会是计划情况下，需要executor路径一致？）
+      - path是简单的一个字符串类型，在`ParquetExec.try_from_path` 方法中创建读取本地目录路径下的parquet文件的物理执行计划。（若在ballista的分布式计划情况下，需要executor路径一致？）
   - `register_udaf` 和`register_udf` 注册聚集UDF和标量UDF
   - `register_catalog` 注册catlog信息，包含一系列schema。
     - `CatalogProvider`
@@ -711,7 +711,7 @@ Ballista是DataFusion的分布式扩展，类Spark的执行引擎，已经合并
 
 #### 4.4.1 调度器Scheduler
 
-调度器实现了rRPC接口，提供以下方法
+调度器实现了gRPC接口，提供以下方法
 
 - ExecuteQuery 
   - 提交逻辑执行计划，或SQL，用于执行
