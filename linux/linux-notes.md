@@ -23,7 +23,7 @@
 - [判断Linux进程在哪个CPU核运行的方法](https://blog.csdn.net/ibless/article/details/82431101)
 
   命令1：taskset -c -p <pid>  #找出被固定的CPU内核
- 
+
   命令2：ps -o pid,psr,comm -p <pid>   #当前分配到的cpu内核
 
   命令3：top 后按 1 查看cpu各核使用使用比例 
@@ -42,7 +42,6 @@
 
 - [ifstat命令_统计网络接口活动状态的工具](https://www.cnblogs.com/friday0502/p/9450562.html)
   
-
 - [使用jstack命令查看CPU高占用的问题记录](https://www.cnblogs.com/xujanus/p/11275413.html)
 
   命令1：top -Hp <pid>  #高cpu使用进程线程使用情况
@@ -53,9 +52,13 @@
 
 - 使用nmon,sar,dstat分析磁盘、网络IO情况，是否达到瓶颈
 
+- `Dmesg -T` : 检查内核输出信息（OOM kill 等）
+
+- `top -H -p  <pid> ` 查看进程的孩子线程，进程
+
 
   ## linux 工具blog 链接
   - [木子的搬砖工具](https://blog.k8s.li/My-brick-lifting-tools.html)
+
   
-  
-  
+
