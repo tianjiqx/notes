@@ -131,10 +131,12 @@
   只保留最新一次提交记录，其余历史提交信息抛弃  
 
   git clone --depth 1 
-  
-- 修改git提交时间
+
+- 修改最近一次git提交时间,用户
 
   `git commit --ammend --date="23 Nov 2021 14:00:24 +0800"`
+
+  `git commit --amend --author="xx <xx@xx.com>"`
 
 - 拉取别人的PR到本地
 
@@ -142,7 +144,16 @@
 
 - 查看提交变更文件
 
-  
-  - git log --stat
-  
 
+  - git log --stat
+
+- git stash 暂存修改
+
+
+  - Git stash apply 应用最近的暂存
+  - git stash list 查看暂存
+  - git stash show -p stash@{0} 查看暂时内容
+
+- git config [--global] user.name "Full Name"`
+- git config [--global] user.email "email@address.com"
+- git config --list

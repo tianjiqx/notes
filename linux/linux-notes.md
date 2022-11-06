@@ -56,6 +56,9 @@
 
 - `top -H -p  <pid> ` 查看进程的孩子线程，进程
 
+  - macOS  `top -pid `  `htop -H -p`
+
+
 
   ## linux 工具blog 链接
   - [木子的搬砖工具](https://blog.k8s.li/My-brick-lifting-tools.html)

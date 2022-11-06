@@ -21,3 +21,4 @@
   - `Shfit + End` 跳到行尾
   - `Alt + <- / ->` 按词组跳
 
+- 前往文件夹，允许访问根目录(Go to the folder)：command+shift+g，然后直接输入目录

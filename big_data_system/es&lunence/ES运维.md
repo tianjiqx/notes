@@ -25,12 +25,12 @@ GET /_cat/indices?v&health=red
 
 
 // 查看集群 unassigned 原因
-GET _cluster/allocation/explain
+GET _cluster/allocation/explain?pretty
 
 
 // 分片
 // 名字降序
-_cat/shards?v&s=index:desc"
+_cat/shards?v&s=index:desc
 // UNASSIGNED 原因
 _cat/shards?h=index,shard,prirep,state,unassigned.reason | grep UNASSIGNED
 
@@ -63,6 +63,11 @@ curl -X POST "localhost:9200/_tasks/oTUltX4IQMOUUVeiohTt8A:12345/_cancel?pretty"
 
 
 // setting
+GET /_cluster/settings?pretty
+
+GET /*/_settings?pretty
+
+GET /my-index-000001/_settings?pretty
 
 
 // mapping
@@ -76,7 +81,7 @@ GET /_cat/thread_pool/<thread_pool>
 GET /_cat/thread_pool
 
 // 查看写线程状态，活跃数据量，完成任务数
-_cat/thread_pool/write?v=true&h=h=node_name,name,active,queue,rejected,completed
+_cat/thread_pool/write?v=true&h=node_name,name,active,queue,rejected,completed
 
 
 // 节点下线
@@ -86,6 +91,31 @@ PUT /_cluster/settings
     "cluster.routing.allocation.exclude._ip": "122.5.3.55"
   }
 }
+
+
+// 滚动重启
+// 1.可能的话，停止索引新的数据。虽然不是每次都能真的做到，但是这一步可以帮助提高恢复速度。
+// 2.禁止分片分配。这一步阻止 Elasticsearch 再平衡缺失的分片。
+PUT /_cluster/settings
+{
+    "transient" : {
+        "cluster.routing.allocation.enable" : "none"
+    }
+}
+// 3.关闭单个节点。
+// 4.执行维护/升级。
+// 5.重启节点，然后确认它加入到集群了。
+// 6.用如下命令重启分片分配：
+PUT /_cluster/settings
+{
+    "transient" : {
+        "cluster.routing.allocation.enable" : "all"
+    }
+}
+// 分片再平衡会花一些时间。一直等到集群变成 绿色 状态后再继续。
+// 7.重复第 2 到 6 步操作剩余节点。
+// 8.恢复索引数据。
+
 
 ```
 
