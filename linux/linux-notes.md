@@ -41,13 +41,13 @@
   ssd: stat2.0 r:225MB/S  w:71MB/S stat3.0 r: 311MB/S
 
 - [ifstat命令_统计网络接口活动状态的工具](https://www.cnblogs.com/friday0502/p/9450562.html)
-  
+
 - [使用jstack命令查看CPU高占用的问题记录](https://www.cnblogs.com/xujanus/p/11275413.html)
 
   命令1：top -Hp <pid>  #高cpu使用进程线程使用情况
-  
+
   命令2：printf "%x\n" thread_id  # 线程号 进行换算成16
-  
+
   命令3：sudo -u hive jstack <pid> |grep "nid=0x十六进制线程号" -A 30  # -A 30 打印后30行，-C 10 打印关键字前后10行
 
 - 使用nmon,sar,dstat分析磁盘、网络IO情况，是否达到瓶颈
@@ -57,6 +57,16 @@
 - `top -H -p  <pid> ` 查看进程的孩子线程，进程
 
   - macOS  `top -pid `  `htop -H -p`
+
+- tar包
+
+  - 打包并压缩 `tar -czvf xxx.tar.gz xxx/`
+    - 打包不带有xxx目录  ` tar -czvf xxx.tar.gz -C /parent/xxx * ` 
+    - 打包带有xxx目录  ` tar -czvf xxx.tar.gz -C /parent/xxx . ` 
+
+  - 解压 `tar -zxvf xxx.tar.gz -C /tmp/`
+  - 查看压缩包 `tar -tvf  xxx.tar.gz`
+
 
 
 

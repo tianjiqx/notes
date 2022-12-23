@@ -55,6 +55,9 @@ watch io.tianjiqx.ClassName methodName  "{params,returnObj}" -x 4
 # trace 命令, 查看子调用用时，同时知道在哪一步抛出了异常
 trace class-pattern method-pattern
 
+# getstatic 命令获取静态成员值
+getstatic 类名 属性名
+
 # jvm相关
   dashboard——当前系统的实时数据面板
   thread——查看当前 JVM 的线程堆栈信息
@@ -134,3 +137,4 @@ echo 1 > /proc/sys/kernel/perf_event_paranoid
 
 - [arthas](https://arthas.aliyun.com/doc/download.html)
 - [看看我给Arthas官方提供的容器中生成火焰图问题解决方案](https://my.oschina.net/u/1760791/blog/4773494)
+- [Arthas使用教程(8大分类)](https://www.cnblogs.com/lydms/p/16549145.html)

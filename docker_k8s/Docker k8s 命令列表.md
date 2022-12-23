@@ -22,6 +22,12 @@ docker ps -a -q
 // 进入容器
 sudo docker exec -it 775c7c9ee1e1 /bin/bash 
 
+// 暴露特定端口到主机的特定端口
+docker run -p 80:80
+// 暴露容器的所有端口（exposed 端口）到主机的随机端口
+docker run -P
+// 查看容器暴露的端口
+docker port CONTAINER [PRIVATE_PORT[/PROTO]]
 
 ===============
 查看已退出容器的log
@@ -35,6 +41,10 @@ docker inspect 0fc0ce8eded4（容器id）
 
 构建镜像，本地Dockerfile
 docker build -t tx-node7:5000/transwarp/inceptor:serdeperformance429 .
+
+// 基于容器构建镜像
+docker commit <container_id> <image_name>:<image_tag>
+
 
 ===============
 //拷贝 (文件，目录相同，不需要参数-r)
