@@ -18,7 +18,10 @@ GET _cluster/stats/nodes/node1,node*,master:false?pretty"
 
 // 索引恢复
 GET /my-index-000001/_recovery?active_only=true&detailed=true
-GET /_recovery
+GET /_recovery?human&active_only=true
+
+
+
 
 GET /_cat/indices?v&health=yellow
 GET /_cat/indices?v&health=red
@@ -27,12 +30,45 @@ GET /_cat/indices?v&health=red
 // 查看集群 unassigned 原因
 GET _cluster/allocation/explain?pretty
 
+curl -X GET "localhost:9200/_cluster/allocation/explain?pretty" -H 'Content-Type: application/json' -d'
+{
+  "index": "my-index-000001", 
+  "shard": 0, 
+  "primary": true 
+}
+'
+
 
 // 分片
 // 名字降序
 _cat/shards?v&s=index:desc
 // UNASSIGNED 原因
 _cat/shards?h=index,shard,prirep,state,unassigned.reason | grep UNASSIGNED
+
+// 常见处理：
+// 1. 检查 cluster.routing.allocation.enable 是否禁止了分片
+// 2. 磁盘损坏，丢失数据，手动创建空shard
+curl -X POST 'https://loclhost.com:9200/_cluster/reroute?pretty'-H 'Content-Type: application/json' -d'
+{
+  "commands": [
+     {
+     	"allocate_empty_primary" : {
+            "index" : "xxx
+            "shard" :17,
+            "node" : "xs4018_1",
+            "accept_data_loss" : true
+        }
+     }   
+  ]
+}
+'
+// 3. 重试，分配失败
+curl -XPOST <ip>:<port>/_cluster/reroute?retry_failed=true 
+curl -XGET http://localhost:9200/_cluster/allocation/explain
+
+// 4. 检查磁盘水位
+curl -s 'localhost:9200/_cat/allocation?v'
+
 
 // 返回有关正在进行和已完成的分片恢复的信息（恢复任务数，进度）
 /_cat/recovery?active_only&v=true
@@ -117,6 +153,7 @@ PUT /_cluster/settings
 // 8.恢复索引数据。
 
 
+
 ```
 
 
@@ -124,7 +161,14 @@ PUT /_cluster/settings
 ### REF
 
 - [rest-apis](https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-apis.html)
-- 
+- [彻底解决 es 的 unassigned shards 症状](https://toutiao.io/posts/na8zgp/preview)
+  - 检查 cluster.routing.allocation.enable 是否禁止了分片
+
+- [索引某个shard无法恢复的问题](https://elasticsearch.cn/question/3998) failed to obtain in-memory shard lock
+  - /_cluster/reroute?retry_failed=true 依然失败
+  - 重启一下该节点
+
 - [干货 | Elasticsearch 运维实战常用命令清单](https://mp.weixin.qq.com/s?__biz=MzI2NDY1MTA3OQ==&mid=2247485141&idx=1&sn=c785d6c128761c33f9744bf1454a472a)
 - [Elasitcsearch 开发运维常用命令集锦](https://mp.weixin.qq.com/s?__biz=MzI2NDY1MTA3OQ==&mid=2247487406&idx=1&sn=7f4d62b2710af7a833a66371c873d8af)
+- https://www.elastic.co/guide/en/elasticsearch/reference/current/diagnose-unassigned-shards.html
 
