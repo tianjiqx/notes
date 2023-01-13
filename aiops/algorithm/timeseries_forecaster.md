@@ -182,12 +182,40 @@ MA
 - 时间序列笔记-专栏目录 - 冷泉望海遥的文章 - 知乎 https://zhuanlan.zhihu.com/p/374081618
 - https://machinelearningmastery.com/start-here/#timeseries
 - [机器学习笔记： 时间序列 分解 STL](https://blog.csdn.net/qq_40206371/article/details/122953379)
-- [离群值检测](https://paperswithcode.com/task/outlier-detection) 信息汇总，论文最新sota，数据集
-
-  - [Outlier Detection DataSets (ODDS)](http://odds.cs.stonybrook.edu/)
-
-    - [Yahoo - TSAD 的基准数据集](https://yahooresearch.tumblr.com/post/114590420346/a-benchmark-dataset-for-time-series-anomaly)
-    - [Numenta 异常基准 (NAB)](https://github.com/numenta/NAB/tree/master/data)
 
 - [标准化和归一化什么区别？]( https://www.zhihu.com/question/20467170)
   - 标准化和归一化什么区别？ - 本空的回答 - 知乎 https://www.zhihu.com/question/20467170/answer/839255695
+- [智能运维 | 故障诊断与根因分析论文一览](https://mp.weixin.qq.com/s/ILXnXQulDVFwmHdNtEcXng)
+
+- [智能运维系列（二）| 智能化监控领域探索](https://mp.weixin.qq.com/s?__biz=MzIyOTYyNjMyNg==&mid=2247486650&idx=1&sn=7fef017e6a018eec6e72c890f85b683f)
+
+- [alibi dectect](https://docs.seldon.io/projects/alibi-detect/en/latest/)
+  - 开源 Python 库，专注于**异常值**、**对抗性**和**漂移**检测。
+
+
+
+## 数据集
+
+
+- [离群值检测](https://paperswithcode.com/task/outlier-detection) 信息汇总，论文最新sota，数据集
+  - [Outlier Detection DataSets (ODDS)](http://odds.cs.stonybrook.edu/)
+    - [Yahoo - TSAD 的基准数据集](https://yahooresearch.tumblr.com/post/114590420346/a-benchmark-dataset-for-time-series-anomaly)
+    - [Numenta 异常基准 (NAB)](https://github.com/numenta/NAB/tree/master/data)
+- [M5 预测 - 准确性](https://www.kaggle.com/competitions/m5-forecasting-accuracy/data) 估计沃尔玛零售商品的单位销售额
+
+  - [一些过去的时间序列比赛](https://www.kaggle.com/competitions/m5-forecasting-accuracy/discussion/133463)
+
+    - [网络流量时间序列预测](https://www.kaggle.com/competitions/web-traffic-time-series-forecasting/data)  预测维基百科页面的未来流量
+- [AIOps-挑战-2020-数据](https://github.com/NetManAIOps/AIOps-Challenge-2020-Data)
+
+  - CCF国际AIOps挑战赛 似乎需要参赛才能获取
+
+- [时间序列分类](http://www.timeseriesclassification.com/) 数据集
+  - [数据集](https://timeseriesclassification.com/dataset.php)
+  - [sktime 加载数据](https://github.com/alan-turing-institute/sktime/blob/master/examples/loading_data.ipynb)
+  - [sktime 提供的数据集](https://www.sktime.org/en/stable/api_reference/datasets.html)
+
+- [Monash Time Series Forecasting Archive](https://forecastingdata.org/) 莫纳什时间序列预测库
+  - 我们的存储库包含 30 个数据集，包括公开可用的时间序列数据集（不同格式）和我们策划的数据集。许多数据集根据频率和缺失值的包含情况有不同的版本，使数据集变体总数达到 58。此外，它包括涵盖不同领域的真实世界和竞争时间序列数据集。
+  - 使用方式，下载.tsf格式文件，然后借助[python/R](https://github.com/rakshitha123/TSForecasting/tree/master/utils) 脚本进行加载
+
