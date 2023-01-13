@@ -18,7 +18,6 @@ sudo apt install vim-gtk
 - ctags - 生成源码标签。完成自动补全、识别函数，变量，函数跳转。
 
   - universal-ctags
-
 - NERDTree - 文件树
 
   - `F10` 显示和折叠
@@ -32,11 +31,9 @@ sudo apt install vim-gtk
   - `U`  设置上级目录为根目录,并维持当前目录打卡状态
   - `C` 将当前光标目录设置为根目录 (很卡)
   - `:NERDTreeFind<cr>`   打开文件所在目录
-
 - TagbarToggle - Structure窗口，展示类的各个函数和变量
 
   - `F8` 显示和折叠
-
 - LeaderF 模糊搜索
 
   - `Ctrl + P` 搜索文件名
@@ -50,7 +47,6 @@ sudo apt install vim-gtk
     - 可支持多个词
 
   - `ESC` 从leaderf 模式退出
-
 - Ack 
 
   - `:Ack [options] {pattern} [{directories}]`配置在vim 中进行ag 搜索
@@ -59,7 +55,7 @@ sudo apt install vim-gtk
     - `,+A` 快捷键
 
 
-  
+
 
 ## 快捷键（根据自己vimrc配置后）
 
@@ -68,11 +64,13 @@ sudo apt install vim-gtk
 - F8 - 显示/隐藏 TagbarToggle界面
   - 点击函数，变量可跳转到定义处
 - **Ctrl+] - 跳转到定义处**
+  - ctags 能力
+  - 查找子类建议在控制台ag "extrends xxx" 等方式插值。
+
 - **Ctrl+o - 后退（回到之前的文件鼠标位置）**
 - **Ctrl+i  - 前进/Ctrl+t**
 - :ts <关键字>- 列出匹配关键字的函数、变量 （other 技巧：直接使用ag 搜索关键字，ag -g 搜索文件名）
   - 或者鼠标移动到函数，类名字上，`:ts!<CR>`
-
 - :ta <关键字> - 直接跳转到第一个匹配关键字的函数、变量
 - , + y - 复制选中内容
 - , + v - 粘贴选中内容
