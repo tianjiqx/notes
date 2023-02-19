@@ -3,62 +3,76 @@
 ## 1.术语
 
 - **期望（expected）**，又称均值。E(X)。
+
 - **残差（residual）**指实际观察值与估计值（拟合值）之间的差。
 
 - **离差（deviation）**即标志变动度，是观测值或估计量的平均值与真实值之间的差。
 
 - **方差（variance）**衡量的是当我们对 *x* 依据它的概率分布进行采样时，随机变
-
+  
   量 x 的函数值会呈现多大的差异。随机变量X与其均值的偏离程度。E[(X-E(X))^2]
-
+  
   - D(X)=E(X^2)-[E(X)]^2。
 
 - **标准差（standard deviation）** 方差（variance）的平方根。
 
 - **协方差（covariance）** 在某种意义上给出了两个变量线性相关性的强度以及这些
-
+  
   变量的尺度。
-
+  
   - Cov（f(x),g(y)）=E[ f(x) -E(f(x)g(y)) -E(g(y))]
-
+  
   - 如果协方差是正的，那么两个变量都倾向于同时取得相对较大的值。如果协方
-
+    
     差是负的，那么其中一个变量倾向于取得相对较大的值的同时，另一个变量倾向于
-
+    
     取得相对较小的值。
 
 - **均方根（root mean square /rms）**
 
-
-
-
-
-
-
 ## 2.ML分类评估指标
 
 - 混淆矩阵：
+  
   - 四象限：TN,FP,FN,TP
-    - T,F true，false 预测
-    - N,P, negative，passive 实际
-- 精确率 = TP / (TP + FP)
+    - T,F true，false 预测正确或者错误
+    - N,P, negative，passive 实际负例或者正例
+
+- 准确率Accuracy  ACC= (TP + TN) / 总样本（TN+FP+FN+TP）
+  
+  - 用来评估在预测正确的结果，占样本实际比例的多少。
+  - 错误率 Error = 1 -  Accuracy
+
+- 精确率Precision = TP / (TP + FP)
+  
   - 用来评估在分类器所得正例结果中，真正正确的正例占该结果的多少。
-- 召回率 = TP / (TP + FN) 
+  
+  - 过杀率 FDR = FP / (TP + FP) = 1 - Precision 
+
+- 召回率Recall = TP / (TP + FN) 
+  
   - 召回率表示分类器正确找出来的正例，占样本实际正例的多少。
-- F1 score  精确率和召回率的调和平均
-  - 准确度和召唤率往往是不可兼得的关系，不能既提高精确度又提高召回率。
-  - F1-score = 2(P*R)/(R+R) ，  P准确度，R 召回率
+  - 也叫灵敏度Sensitivity，查全率，真正率。
+  - 假负率FNR = FN / (TP + FN) = 1 - Recall ，漏检率，把正样本判断为负样本的在正样本中的比例。
 
+- 特异度Specificity=TN / (TN+FP)
+  
+  - 表示分类器正确找出来的负例，占样本实际负例的多少。
+  
+  - 也叫真负率。
 
-
-
-
-
-
-
+- F1-score = 2(P*R)/(R+R) ， P精确率，R 召回率
+  
+  - F1-score 精确率和召回率的调和平均
+  
+  - 精确率和召唤率往往是不可兼得的关系，不能既提高精确率又提高召回率。
 
 ## REF
 
 - [线性回归（Linear Regression）和最小二乘法（ordinary least squares）](https://www.cnblogs.com/BlueBlue-Sky/p/9307220.html)
 
-- 
+- [Practical Machine Learning](https://c.d2l.ai/stanford-cs329p/)
+
+- [4.4.2分类模型评判指标（一） - 混淆矩阵(Confusion Matrix)_](https://blog.csdn.net/Orange_Spotty_Cat/article/details/80520839)
+
+- [机器学习-基础知识 - Precision, Recall, Sensitivity, Specificity, Accuracy, FNR, FPR, TPR, TNR, F1 Score, Bal](https://cloud.tencent.com/developer/article/2066696)
