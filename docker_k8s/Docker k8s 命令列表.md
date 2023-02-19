@@ -45,6 +45,8 @@ docker build -t tx-node7:5000/transwarp/inceptor:serdeperformance429 .
 // 基于容器构建镜像
 docker commit <container_id> <image_name>:<image_tag>
 
+// 获取构建信息
+docker history --format {{.CreatedBy}} --no-trunc=true <imagesid>
 
 ===============
 //拷贝 (文件，目录相同，不需要参数-r)
@@ -85,8 +87,6 @@ systemctl restart kubelet
 
 docker-compose 启动后，容器间无法ping通，ifconfig检查发现没有docker0， 重启docker服务解决
 ```
-
-
 
 ### 2. K8S
 
@@ -153,4 +153,3 @@ kubectl get pods -o wide | grep hdfs
 kubectl get events --sort-by=.metadata.creationTimestamp | grep hdfs
 kubectl get events --sort-by=.metadata.creationTimestamp | grep inceptor
 ```
-
