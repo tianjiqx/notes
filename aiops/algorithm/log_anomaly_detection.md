@@ -1,7 +1,5 @@
 ## 日志异常检测Log Anomaly Detection
 
-
-
 ## drain 模式识别算法
 
 日志解析结果：
@@ -56,10 +54,6 @@
    
    5. 然后，DRAIN将使用新的日志组更新解析树。
 
-
-
-
-
 ## REF
 
 - [面向跨语言的操作系统日志异常检测技术研究与实现-51CTO.COM](https://www.51cto.com/article/714875.html)
@@ -73,3 +67,13 @@
   - [Drain算法：日志解析_就叫昵称吧的博客-CSDN博客_drain算法](https://blog.csdn.net/qq_39378221/article/details/121212682)
   
   - [知乎-日志解析算法总结](https://zhuanlan.zhihu.com/p/448098972) （drain + spell）
+
+- logpai
+  
+  - https://github.com/logpai/awesome-log-analysis
+  
+  - https://github.com/logpai/loglizer
+  
+  - [GitHub - logpai/logparser: A toolkit for automated log parsing](https://github.com/logpai/logparser)
+    
+    - [benchmark](https://github.com/logpai/logparser/blob/master/docs/benchmark.rst) 日志解析器准确度基准

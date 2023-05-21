@@ -1,7 +1,5 @@
 # Arthas使用
 
-
-
 ## 1.安装
 
 从 [arthas](https://arthas.aliyun.com/doc/download.html) release 下载。  
@@ -33,8 +31,6 @@ java -jar arthas-boot.jar
 sudo -u hive -EH java -jar arthas-boot.jar
 sudo -u hive  java -jar /home/hive/arthas-boot.jar 
 ```
-
-
 
 ## 2. 常用命令
 
@@ -71,10 +67,9 @@ getstatic 类名 属性名
 # class相关
   sc——查看JVM已加载的类信息
   sm——查看已加载类的方法信息
-  
+
 # 根据前缀，搜索 
   sc io.tianjiqx.ClassPrefix* 
-  
 ```
 
 ### 2.2 火焰图
@@ -115,8 +110,6 @@ profiler status
 profiler stop --format html --file /tmp/result.html
 ```
 
-
-
 ## 3.问题
 
 ### 3.1 K8S 环境生成火焰图报错 “Perf events unavailble. See stderr of the target process”
@@ -130,8 +123,6 @@ sysctl kernel.perf_event_paranoid=1
 # 或者
 echo 1 > /proc/sys/kernel/perf_event_paranoid
 ```
-
-
 
 ## REF
 

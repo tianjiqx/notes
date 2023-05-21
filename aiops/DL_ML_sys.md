@@ -12,6 +12,22 @@
 
 ### Spark
 
+spark mllib
+
+### Flink
+
+- [flink-ml](https://github.com/apache/flink-ml)
+- [docs](https://nightlies.apache.org/flink/flink-ml-docs-master/)
+- [blog: Apache Flink ML 2.0.0 发布公告](https://developer.aliyun.com/article/851353)
+  Checkpoint 机制, Exactly-Once 的容错
+- [blog: Flink ML API，为实时机器学习设计的算法接口与迭代引擎](https://flink-learning.org.cn/article/detail/a0f69045967f9ca68736b518bd40a12a)
+
+### ml on rust
+
+- [GitHub - rust-ml/linfa: A Rust machine learning framework.](https://github.com/rust-ml/linfa)
+- [eto-ai / lance](https://github.com/eto-ai/lance)
+- 
+
 ### TensorFlow
 
 ### [分布式方法](https://openmlsys.github.io/chapter_distributed_training/methods.html)
@@ -90,4 +106,6 @@
   
   - 算法可解释性（参数权重）
 
+- [Kaggle如何入门？ - 知乎](https://www.zhihu.com/question/23987009)
 
+- [ML system 入坑指南 - Fazzie的文章 - 知乎](https://zhuanlan.zhihu.com/p/608318764)

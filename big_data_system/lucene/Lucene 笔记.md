@@ -39,8 +39,6 @@ Term Dictionary即Term词典，根据条件查找Term的基本索引。
 
 Lucene中的数据写入会先写内存的一个Buffer（类似LSM的MemTable，但是不可读），当Buffer内数据到一定量后会被flush成一个Segment，每个Segment有自己独立的索引，可独立被查询，但数据永远不能被更改。
 
-
-
 ### 1.6 DocValues
 
 DocValues 提供了对一系列docId所对应的一个filed的一组值（一列数据），根据field类型()可以使用不同类型的DocValues。不分词，正排索引结构，面向列式存储格式。
@@ -54,14 +52,12 @@ DocValues 提供了对一系列docId所对应的一个filed的一组值（一列
 - [NumericDocValues](https://www.amazingkoala.com.cn/Lucene/DocValues/2019/0409/46.html)
   - 单个数值类型的docvalue主要包括（int，long，float，double）
 - [SortedNumericDocValues](https://www.amazingkoala.com.cn/Lucene/DocValues/2019/0410/47.html)
-  -  存储数值类型的有序数组列表   数值或日期或枚举字段+多值
+  - 存储数值类型的有序数组列表   数值或日期或枚举字段+多值
 - [BinaryDocValues-8.7.0](https://www.amazingkoala.com.cn/Lucene/DocValues/2020/1121/179.html)
 
 缩略词dvd(DocValueData)，dvm(DocValueMeta)
 
 StoreValues 提供行存格式。 比如`_source` 字段存储原始数据。
-
-
 
 ## 2. 原理
 
@@ -77,16 +73,12 @@ StoreValues 提供行存格式。 比如`_source` 字段存储原始数据。
 - 通过给定的Term的条件找到所有Doc的DocId列表
 - 根据DocId查找Doc
 
-
-
 ## REF
 
 - [Apache lucene](https://lucene.apache.org/)
 - [Lucene解析 - 基本概念](https://zhuanlan.zhihu.com/p/35469104)
 - [基于Lucene查询原理分析Elasticsearch的性能](https://zhuanlan.zhihu.com/p/47951652)
 - [Lucene底层架构-dvm-dvm构建过程](https://kkewwei.github.io/elasticsearch_learning/2019/11/15/Lucene%E5%BA%95%E5%B1%82%E6%9E%B6%E6%9E%84-dvm-dvm%E6%9E%84%E5%BB%BA%E8%BF%87%E7%A8%8B/)
-
-
 
 扩展材料：
 

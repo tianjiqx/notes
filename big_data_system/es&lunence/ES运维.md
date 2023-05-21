@@ -1,5 +1,3 @@
-
-
 ## 1. API 命令
 
 ```
@@ -52,7 +50,7 @@ curl -X POST 'https://loclhost.com:9200/_cluster/reroute?pretty'-H 'Content-Type
 {
   "commands": [
      {
-     	"allocate_empty_primary" : {
+         "allocate_empty_primary" : {
             "index" : "xxx
             "shard" :17,
             "node" : "xs4018_1",
@@ -151,24 +149,23 @@ PUT /_cluster/settings
 // 分片再平衡会花一些时间。一直等到集群变成 绿色 状态后再继续。
 // 7.重复第 2 到 6 步操作剩余节点。
 // 8.恢复索引数据。
-
-
-
 ```
-
-
 
 ### REF
 
 - [rest-apis](https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-apis.html)
+
 - [彻底解决 es 的 unassigned shards 症状](https://toutiao.io/posts/na8zgp/preview)
+  
   - 检查 cluster.routing.allocation.enable 是否禁止了分片
 
 - [索引某个shard无法恢复的问题](https://elasticsearch.cn/question/3998) failed to obtain in-memory shard lock
+  
   - /_cluster/reroute?retry_failed=true 依然失败
   - 重启一下该节点
 
 - [干货 | Elasticsearch 运维实战常用命令清单](https://mp.weixin.qq.com/s?__biz=MzI2NDY1MTA3OQ==&mid=2247485141&idx=1&sn=c785d6c128761c33f9744bf1454a472a)
-- [Elasitcsearch 开发运维常用命令集锦](https://mp.weixin.qq.com/s?__biz=MzI2NDY1MTA3OQ==&mid=2247487406&idx=1&sn=7f4d62b2710af7a833a66371c873d8af)
-- https://www.elastic.co/guide/en/elasticsearch/reference/current/diagnose-unassigned-shards.html
 
+- [Elasitcsearch 开发运维常用命令集锦](https://mp.weixin.qq.com/s?__biz=MzI2NDY1MTA3OQ==&mid=2247487406&idx=1&sn=7f4d62b2710af7a833a66371c873d8af)
+
+- https://www.elastic.co/guide/en/elasticsearch/reference/current/diagnose-unassigned-shards.html

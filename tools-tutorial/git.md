@@ -105,7 +105,6 @@
   
   标记解决/ 继续 完成应用
    git am --resolved / git am --continue
-                                       
   ```
 
 - 信息调整

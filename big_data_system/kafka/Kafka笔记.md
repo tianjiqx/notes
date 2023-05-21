@@ -6,8 +6,6 @@
 
 参考笔记[大数据系统鉴赏](https://github.com/tianjiqx/notes/blob/master/big_data_system/大数据系统-鉴赏.md) kafka 小节。
 
-
-
 接下来的内容，将从外围介绍，然后抵达kafka核心，数据存储broker。
 
 ## 2. 生产者Producer
@@ -37,8 +35,6 @@
 - 服务器收到消息后，写入成功，返回RecordMetaData 对象，包含主题，分区，消息在分区的偏移量offset。
   - 失败，生产者会尝试重试，超过重试次数，抛出异常。
 
-
-
 生产者的api send方法发送给支持同步和异步两种。
 
 - 同步：等待消息返回成功，发送下一条
@@ -61,8 +57,6 @@ Selector ---(SelectKey)-- SocketChannel (多)
 ![](kafka笔记图片/Snipaste_2021-06-26_16-05-23.png)
 
 （星环BAR client连接master请求的改进，master备份，恢复，查询请求的处理分开）
-
-
 
 ### 2.2 无消息丢失配置
 
@@ -91,8 +85,6 @@ replication.factor > min.insync.replicas
 enable.auto.commit=false
 ```
 
-
-
 ### 2.3 消息压缩
 
 用CPU资源换取IO性能（磁盘和网络带宽）。
@@ -105,13 +97,9 @@ enable.auto.commit=false
 
 （星环导入导出时，是使用gzip很好，数据量原因？）
 
-
-
 性能提升：
 
 多线程处理，推荐多线程多kafkaProducer实例，分区少可以单KafkaProducer。
-
-
 
 ## 3. 消费者Consumer
 
@@ -131,8 +119,6 @@ group.id唯一标识一个consumer group。
 - 提升性能，加快消费速度，横向扩展
 
 (一定程度(分区级别，单个分区内)保证消息处理的顺序性)
-
-
 
 ![](kafka笔记图片/Snipaste_2021-06-26_15-08-13.png)
 
@@ -164,8 +150,6 @@ group.id唯一标识一个consumer group。
 
 消费者的工作流程，是在一个无限循环中，处理群组协调，分区再平衡，发送心跳和获取数据。
 
-
-
 **消费消息**
 
 ![](kafka笔记图片/Snipaste_2021-06-26_18-05-34.png)
@@ -182,8 +166,6 @@ group.id唯一标识一个consumer group。
 
 （TODO 新旧API实现考量）
 
-
-
 多消费者实现：
 
 - 一个线程一个消费者kafkaConsumer
@@ -192,10 +174,6 @@ group.id唯一标识一个consumer group。
 - 单consumer，多worker(线程池)
   - 消息获取与处理解耦；扩展性好
   - 分区内消息顺序处理问题难；线程异常导致消费数据丢失；offset管理问题
-
-
-
-
 
 #### 提交
 
@@ -239,11 +217,7 @@ commitASync() 不等待broker响应。无阻塞。支持回调方法。
 
 批次中每处理n条(1000)就提交一次。
 
-
-
 独立消费者，无需分区、再平衡。
-
-
 
 ## 4. 消息代理Broker
 
@@ -290,8 +264,6 @@ kafka将消息按主题topic进行组织，主题有多个分区（线性扩展�
   - 非本地的，无日志引用
 - 最近提交消息的偏移量
 - 日志文件结束位置偏移量
-
-
 
 分区逻辑概念下面（一个副本，对应一个日志Log），还有多个日志分段LogSegment（避免log文件越来越大，分段条件：超过1GB/超过滚动创建时间/索引文件满）
 
@@ -342,21 +314,15 @@ kafka读写的日志都是主副本的日志。
 
 根据startPosition，开始读数据，最多读取到maxPosition。
 
-
-
 TODO：日志压缩compaction
 
 ISR机制
-
-
 
 #### 4.3 请求处理
 
 同样使用reactor模式，一个主线程监听请求，发送到任务队列。处理线程池，处理，处理的结果放入响应队列。
 
 TODO：more
-
-
 
 ## 5. 高可用设计
 
@@ -366,18 +332,18 @@ zookeeper版本：
 
 每个broker启动时，会自己注册到ZK上(/brokers)，json格式存储。
 
->/brokers：里面保存了 Kafka 集群的所有信息，包括每台 broker 的注册信息，集群上所
->有 topic 的信息等
->
->/controller：保存了 Kafka controller 组件的注册信息，同时也负责 controller 的动态选举。
->/admin ：保存管理脚本的输出结果，比如删除 topic ，对分区进行重分配等操作。
->/isr_change_notification：保存 ISR 列表发生变化的分区列表。 controller 会注册一个监
->听器实时监控该节点下子节点的变更。
->/config ：保存了 Kafka 集群下各种资源的定制化配置信息，比如每个 topic 可能有自己
->专属的一组配置，那么就保存在／config/topics/<topic＞下。
->/cluster：保存了 Kafka 集群的简要信息，包括集群的 ID 信息和集群版本号。
->/controller_epoch：保存了 controller 组件的版本号 。 Kafka 使用该版本号来隔离无效的
->controller 请求。  
+> /brokers：里面保存了 Kafka 集群的所有信息，包括每台 broker 的注册信息，集群上所
+> 有 topic 的信息等
+> 
+> /controller：保存了 Kafka controller 组件的注册信息，同时也负责 controller 的动态选举。
+> /admin ：保存管理脚本的输出结果，比如删除 topic ，对分区进行重分配等操作。
+> /isr_change_notification：保存 ISR 列表发生变化的分区列表。 controller 会注册一个监
+> 听器实时监控该节点下子节点的变更。
+> /config ：保存了 Kafka 集群下各种资源的定制化配置信息，比如每个 topic 可能有自己
+> 专属的一组配置，那么就保存在／config/topics/<topic＞下。
+> /cluster：保存了 Kafka 集群的简要信息，包括集群的 ID 信息和集群版本号。
+> /controller_epoch：保存了 controller 组件的版本号 。 Kafka 使用该版本号来隔离无效的
+> controller 请求。  
 
 注册的节点是一个临时节点，临时节点的生命周期与客户端会话绑定。broker崩溃，会话失效，临时节点被删除。创建临时节点时，还创建了一个监听器，监听到节点的状态。临时节点被创建/删除，触发监听器，处理broker上下线事务。
 
@@ -386,8 +352,6 @@ zookeeper版本：
 TODO
 
 kraft版本：
-
-
 
 ### 5.2 副本管理
 
@@ -417,8 +381,6 @@ kafka节点具备成为所有角色的功能，只看是否开启。
 
 或许系统的设计，也可以参考，保留一部分具备所有功能的节点以保障容错性，另一些节点是具体分化的节点，无法再分化为其他类型的节点。
 
-
-
 #### 5.2.2 分区状态机和副本状态机
 
 分区状态机和副本状态机，分别管理集群的所有分区和副本状态。
@@ -426,8 +388,6 @@ kafka节点具备成为所有角色的功能，只看是否开启。
 状态：新建new，在线online，下线offline，不存在。
 
 ![](kafka笔记图片/Snipaste_2021-06-28_03-57-21.png)
-
-
 
 #### 5.2.3 副本leader选举
 
@@ -447,8 +407,6 @@ kafka节点具备成为所有角色的功能，只看是否开启。
 - kafka保证所有主题优先副本在集群均匀分布，就可以保证所有分区的leader分布均衡
 
 分区平衡，不意味着负载均衡，可能分区在集群的分配不均衡，分区leader副本的负载也可能不同，导致负载不均和。
-
-
 
 触发2：
 
@@ -472,8 +430,6 @@ kafka节点具备成为所有角色的功能，只看是否开启。
 
 （TODO：副本选举，还需要更进一步了解，AR变化，执行过程时机；这一套选举流程，也是所有多副本存储系统选举都需要处理的问题）
 
-
-
 #### 5.2.3 follower副本同步
 
 ![](kafka笔记图片/Snipaste_2021-06-28_04-49-02.png)
@@ -487,8 +443,6 @@ kafka节点具备成为所有角色的功能，只看是否开启。
   - ISR中所有副本更新对应LEO后，leader副本才右移HW。
 
 ![](kafka笔记图片/Snipaste_2021-06-28_04-56-41.png)
-
-
 
 基于HW同步机制的缺陷
 
@@ -504,8 +458,6 @@ leader A HW2，follower B HW1，同时挂掉，然后 B重启成为leader，接�
 
 详细见apache kafka实战-胡夕 6.1.4.4 节。
 
-
-
 ## 6. 高性能设计
 
 ### 6.1 顺序读写磁盘批量消息追加日志文件。
@@ -517,33 +469,37 @@ leader A HW2，follower B HW1，同时挂掉，然后 B重启成为leader，接�
 ![](kafka笔记图片/图片1.png)
 
 - page cache & buffer cache
+  
   - page cache用于缓存文件的页数据，buffer cache用于缓存块设备（如磁盘）的块数据
   - Linux2.4后合并（free -m）
 
 - block size大小为1KB
+
 - page size大小为4KB
 
 ![](kafka笔记图片/图片2.png)
 
 - Pwrite
+  
   - FileChannel.write()
 
 - 写message
+  
   - 消息从java堆转入page cache(即物理内存)。
   - 由异步线程刷盘，消息从page cache刷入磁盘。（linux刷盘未成功前，不应该提交消息）
 
 - 读message
+  
   - 消息直接从page cache转入socket发送出去。
   - 当从page cache没有找到相应数据时，此时会产生磁盘IO，从磁盘Load消息到page cache，然后直接从socket发出去
 
 - PageCahe优势
+  
   - 减少java对象包装开销
   - 减轻jvm GC
   - Kafka崩溃，不影响pagecahe，不丢缓存
 
 生成和消费速度合适时，消息的接受与发送，全在pagecache中，达到内存交换的速度。
-
-
 
 ### 6.3 零拷贝
 
@@ -566,8 +522,6 @@ Socket.send(buffer)  => FileChannel.transferTo()/transferFrom()
 
 ![](kafka笔记图片/65356fa75307e91faffc6ce6ff23cea9.png)
 
-
-
 零拷贝（无CPU拷贝，2次上下文切换）：
 
 - 数据通过DMA拷贝到内核态Buffer （DMA 拷贝）
@@ -575,11 +529,7 @@ Socket.send(buffer)  => FileChannel.transferTo()/transferFrom()
 
 整个读文件-网络发送由一个 sendfile 调用完成。
 
-
-
 REF: [Kafka 设计解析（六）：Kafka 高性能关键技术解析](https://www.infoq.cn/article/kafka-analysis-part-6)
-
-
 
 ### 6.4 减少网络开销
 
@@ -594,8 +544,6 @@ REF: [Kafka 设计解析（六）：Kafka 高性能关键技术解析](https://w
 #### 6.4.3 序列化
 
 自定义消息kv的SerDe，使用快速，更紧凑格式。
-
-
 
 ## 7.运维
 
@@ -625,8 +573,6 @@ broker崩溃、资源不足，硬件问题(disk，network)。
     - 磁盘平均等待时间
     - 磁盘使用百分比
 
-
-
 主机问题。单个broker。
 
 - 硬件问题
@@ -636,8 +582,6 @@ broker崩溃、资源不足，硬件问题(disk，network)。
   - 网络配置，路由问题
 - 进程冲突
 - 本地配置不一致
-
-
 
 **活跃控制器数量**
 
@@ -668,15 +612,11 @@ broker崩溃、资源不足，硬件问题(disk，network)。
 
 各类请求的指标，如整个事件，队列事件，每秒请求数等。
 
-
-
 ### 7.2 主题和分区的度量指标
 
 **主题、分区实例的度量指标**
 
 集群整体的情况。
-
-
 
 ### 7.3 JVM指标
 
@@ -690,8 +630,6 @@ Full GC、Yong GC 次数，时间
 
 网络连接未正常关闭，导致FD消耗光。
 
-
-
 ### 7.4 操作系统指标
 
 CPU 的使用 、 内存的使用、磁盘的使用、磁盘 IO 和网络的使用。
@@ -701,8 +639,6 @@ CPU 的使用 、 内存的使用、磁盘的使用、磁盘 IO 和网络的使�
 主要关心的是磁盘。监控磁盘的每秒种读写速度、读写平均队列大小、平均等待时间和磁盘的使用百分比 。  
 
 网络IO，由于副本复制关系，流入流量很容易比输出流量高出一个数量级 。
-
-
 
 ### 7.5 日志
 
@@ -715,8 +651,6 @@ kafka.log.LogCleaner,kafka.log.Cleaner,kafka.log.LogCleanerManager, 可以默认
 调试时：
 
 kafka.request.logger,DEBUG/TRACE，发送给broker的每个请求详细信息。
-
-
 
 ### 7.6 客户端监控
 
@@ -751,8 +685,6 @@ record-queue-time-avg：消息发送给broker前，在生产者端平均等待�
 
 request-latency-avg
 
-
-
 #### 7.6.1 消费者
 
 **Fetch Manager度量指标**
@@ -779,8 +711,6 @@ commit-latency-avg:提交偏移量平均时间
 
 assigned-partitions: 分配给消费者客户端的分区数量。识别负载不均衡。
 
-
-
 ### 7.7 管理工具
 
 - **[Kafka Manager](https://github.com/yahoo/kafka-manager)** - A tool for managing Apache Kafka.
@@ -796,8 +726,6 @@ assigned-partitions: 分配给消费者客户端的分区数量。识别负载�
 
 REF: https://cwiki.apache.org/confluence/display/KAFKA/Ecosystem
 
-
-
 集群同步工具MirrorMaker
 
 ```mermaid
@@ -808,15 +736,11 @@ A[生产者] --> B[(broker)] --> C[消费者-生产者] --> D[(Other kafka集群
 
 uReplicator
 
-
-
 ### 7.8 性能调优
 
 选择合适的分区数
 
 TODO
-
-
 
 ## 8. 流处理
 
@@ -834,8 +758,6 @@ kafka自己处理processor节点在Kafka集群上的部署和管理，高可用�
   - 事件一旦发生，不可改变。交易取消，实际是发生交易事件，再增加取消交易事件。
 - 可重播
   - 业务需要重新分析（审计）历史事件流。
-
-
 
 **流式处理**是指实时地处理一个或多个事件流。 编程范式。
 
@@ -865,8 +787,6 @@ kafka自己处理processor节点在Kafka集群上的部署和管理，高可用�
 - 处理时间
   - 指应用程序在收到事件之后要对其进行处理的时间
 
-
-
 **状态**
 
 事件与事件之间的信息。（每小时各类型事件个数，需要合并的事件。）
@@ -880,19 +800,17 @@ kafka自己处理processor节点在Kafka集群上的部署和管理，高可用�
   - 优点：无大小限制，可被多个应用程序访问
   - 缺点：增加延迟。复杂性。
 
-
-
 **流与表的二元性**
 
 流包含了变更。
 
 - 表转化为流
+  
   - 将insert，update，delete事件写到流中。数据库捕捉变更CDC（change data capture）。kafka连接器将这些变更发送到kafka，产生流。
 
 - 流转化为表
+  
   - “应用”流中的所有变更，“物化”。先在 内存里 、 内部状态存储或外部数据库里创建一个表，然后从头到尾遍历流里的所有事件，逐个地改变状态。  
-
-
 
 **时间窗口**
 
@@ -904,8 +822,6 @@ kafka自己处理processor节点在Kafka集群上的部署和管理，高可用�
 - 窗口移动频率，“移动间隔”
 - 可更新时间
   - 晚到事件的处理
-
-
 
 ### 8.2 流式处理的设计模式
 
@@ -932,8 +848,6 @@ kafka自己处理processor节点在Kafka集群上的部署和管理，高可用�
 
 信用卡欺诈，异常行为检测，网络入侵检测。
 
-
-
 ### 8.3 连接器
 
 为了解决不同系统之间的数据同步（**数据导入/导出**）， Kafka连接器用一个标准框架来解决这些问题。
@@ -943,8 +857,6 @@ kafka自己处理processor节点在Kafka集群上的部署和管理，高可用�
 ![](kafka笔记图片/v2-ba669dcf6dead07200f6ba2bf95515b5_1440w.jpg)
 
 TODO：架构模型，实现，单机模式，分布式模式
-
-
 
 ### 8.4 流处理框架
 
@@ -965,15 +877,11 @@ TODO：架构模型，实现，单机模式，分布式模式
 - 区分记录流record stream，变更流changelog stream
   - 对应Kstream，KTable
 
-
-
 **Kafka流处理线程模型**
 
 - 流实例KafkaStrreams：一个节点一个实例
   - 流线程StreamThread：一个流实例可以配置多个流线程
     - 流任务StreamTask：一个流线程可以处理多个流任务，主题的分区数为任务数。
-
-
 
 ### 8.5 Kafka流的起源
 
@@ -992,8 +900,6 @@ TODO：架构模型，实现，单机模式，分布式模式
 - 短时间趋势
 - 数据处理跟上数据生产的速度
 
-
-
 流处理：数据到达时立即报告或采取行动
 
 （推荐系统，及时响应事件，反馈新的推荐）
@@ -1008,15 +914,10 @@ TODO：
 
 事务，幂等性
 
-
-
-
-
 ## REF
 
--  Kafka权威指南 （设计动机，如何推导出设计的）
--  Kafka stream实战-(英) （如何用kafka stream 设计Zmark 用户购买系统）
--  Kafka 技术内幕-郑奇煌 （源码分析，完整架构细节实现）
--  Kafka源码解析与实战-王亮 (源码分析比例最重，分析源码时再看，与内幕相互补充)
--  Apache Kafka 实战-胡夕 (kafka1.0.0，带有一定使用上的介绍) 
-
+- Kafka权威指南 （设计动机，如何推导出设计的）
+- Kafka stream实战-(英) （如何用kafka stream 设计Zmark 用户购买系统）
+- Kafka 技术内幕-郑奇煌 （源码分析，完整架构细节实现）
+- Kafka源码解析与实战-王亮 (源码分析比例最重，分析源码时再看，与内幕相互补充)
+- Apache Kafka 实战-胡夕 (kafka1.0.0，带有一定使用上的介绍) 

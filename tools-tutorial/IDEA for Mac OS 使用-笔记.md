@@ -6,8 +6,6 @@
 - `⌥` Option 选项 = Windows 的`Alt`键
 - `⌃` Control 控制
 
-
-
 ## 快捷键命令
 
 - 搜索 文件，类 `shift + shift`
@@ -38,11 +36,6 @@
 - 注释
   - 行或者选中块 `command + /`
 
-
-
-
-
 ## REF
 
 - [IDEA快捷键 For Mac](https://www.jianshu.com/p/e1f7deef3ec2)
-

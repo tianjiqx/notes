@@ -1,6 +1,6 @@
 # Kubernetes-笔记
 
-[toc]
+[TOC]
 
 ## 1. 背景
 
@@ -16,8 +16,6 @@
 - 开发人员希望每天可以多次发布部署新版本的应用程序
 
 容器化改进了这些问题，但是大规模的容器集群运维成为难题，k8s即用来管理容器集群的工具。
-
-
 
 针对大规模尺度（星际尺度）
 
@@ -59,8 +57,6 @@
 - ipv4/ipv6支持
   - 为 Pod 和 Service 分配 IPv4 和 IPv6 地址
 
-
-
 服务部署的发展：
 
 物理机部署->虚拟化部署（虚拟机VM）-> 容器化部署（应用共享操作系统，但是有独立的文件系统、CPU、内存、进程空间）
@@ -86,17 +82,11 @@ Kubernetes非传统意义上的编排系统，实际上它消除了编排的需�
 
 Kubernetes 包含一组独立的、可组合的控制过程， 这些过程连续地将当前状态驱动到所提供的所需状态。 
 
-
-
 **关于DevOps、无运维:**
 
 K8S对硬件做抽象，将自身暴露为平台，用于部署和运行应用程序。
 
 **“Kubernetes is the new Linux”**
-
-
-
-
 
 ## 2.架构
 
@@ -130,27 +120,37 @@ Kubernetes集群：由一组被称作**节点**的机器（可以是虚拟机）
 **控制平面Control Plane：**
 
 - **kube-apiserver** API服务器
+  
   - 负责提供 HTTP API，以供用户、集群中的不同部分和集群外部组件相互通信。
+    
     - 用户请求及其他系统组件与集群交互的**唯一入口**
+  
   - 查询和操纵 Kubernetes API 中对象（例如：Pod、Namespace、ConfigMap 和 Event）的状态。
+    
     - 提供etcd的封装接口API
     - 集群访问控制
       - 客户端身份验证（Authentication）和授权（Authorization）
       - 资源准入控制（Admission Control）
+  
   - 无状态，可横向扩展
-    - 通过Haproxy或负载均衡器 进行协同工作（负载均衡器也可以配置使用多个，避免单点故障）
     
+    - 通过Haproxy或负载均衡器 进行协同工作（负载均衡器也可以配置使用多个，避免单点故障）
+      
       ![](k8s笔记图片/Snipaste_2021-08-12_20-54-39.png)
-- etcd
 
+- etcd
+  
   - etcd 是兼具一致性和高可用性的键值数据库
   - 保存 Kubernetes 所有集群数据（状态）
     - Node、Service、Pod 的状态和元数据，以及配置数据等
+
 - **kube-scheduler**
+  
   - 监视新创建的、未指定运行节点的Pods（用户要求运行的一组容器），选择节点让Pod在上面运行
   - 调度Pod的过程
     - 调度周期，选择最优节点
     - 绑定周期，通知API Server
+
 - **kube-controller-manager** (cm)
   
   - 统一管理各个控制器的进程
@@ -160,7 +160,9 @@ Kubernetes集群：由一组被称作**节点**的机器（可以是虚拟机）
     - 任务控制器（Job controller）: 监测代表一次性任务的 Job 对象，然后创建 Pods 来运行这些任务直至完成
     - 端点控制器（Endpoints Controller）: 填充端点(Endpoints)对象(即加入 Service 与 Pod)
     - 服务帐户和令牌控制器（Service Account & Token Controllers）: 为新的命名空间创建默认帐户和 API 访问令牌
+
 - cloud-controller-manager（ccm）
+  
   - 云平台交互控制器管理
   - 控制器
     - 节点控制器（Node Controller）: 用于在节点终止响应后检查云提供商以确定节点是否已被删除
@@ -170,18 +172,22 @@ Kubernetes集群：由一组被称作**节点**的机器（可以是虚拟机）
 **节点代理组件：**
 
 - **kubelet**
-
+  
   - 节点的代理，负责维护容器的生命周期，同时也负责 Volume（CSI）和网络（CNI）的管理
   - 容器执行层，Pod和Node API的主要实现者
     - 接收PodSpecs，确保这些PodSpecs中描述的容器处于运行状态且健康。
     - 负责启动容器的守护进程
       - 启动时，向API Server 处创建一个Node 对象来注册自身的节点信息
+
 - kube-proxy
+  
   - 网络代理
   - 为Service 提供 cluster 内部的服务发现和负载均衡
   - DNS查找服务，服务使用静态IP，保证即使容器被迁移，客户端依然能够连接到容器服务。
     - 负载均衡，宕机等情况导致迁移
+
 - Container Runtime
+  
   - 负责运行容器，镜像管理。
   - 支持
     - docker
@@ -196,8 +202,6 @@ Kubernetes集群：由一组被称作**节点**的机器（可以是虚拟机）
 ![](k8s笔记图片/Snipaste_2021-08-12_21-37-57.png)
 
 ![](k8s笔记图片/kubernetes-high-level-component-archtecture.jpg)
-
-
 
 ### 2.2 概念
 
@@ -223,8 +227,6 @@ Kubernetes集群：由一组被称作**节点**的机器（可以是虚拟机）
     - blkio
       - 对块设备访问控制I/O
 
-
-
 **docker 容器平台：**
 
 Docker是一个打包、分发和运行应用程序的平台。
@@ -234,15 +236,18 @@ Docker是一个打包、分发和运行应用程序的平台。
 使容器能在不同机器之 间移植的系统。
 
 - 镜像images
+  
   - 打包的应用程序及其所依赖的环境
     - 文件系统，元数据（可执行文件路径）
   - 可共享镜像层，但是只读
   - 镜像层之上的可写层，写拷贝
 
 - 镜像仓库Registries
+  
   - 共享镜像
 
 - 容器Containers
+  
   - 基于镜像创建的进程，只能访问和使用分配给它的资源
 
 ![](k8s笔记图片/Snipaste_2021-08-12_17-04-21.png)
@@ -252,8 +257,6 @@ Docker是一个打包、分发和运行应用程序的平台。
 - 解决不同应用对环境的需求（操作系统，依赖库、各个版本）
 
 ![](k8s笔记图片/Snipaste_2021-08-12_17-06-14.png)
-
-
 
 #### **2.2.2 API对象（Kubernetes Objects）**
 
@@ -293,17 +296,17 @@ Deployment，ReplicaSet，Service，Job，DaemonSet，StatefulSet，这些都是
 ```yaml
 apiVersion: apps/v1  #必须，创建该对象所使用的 Kubernetes API 的版本
 kind: Deployment     #必须，想要创建的对象的类别
-metadata: 			 #必须，唯一性标识
+metadata:              #必须，唯一性标识
   name: nginx-deployment
-spec:				 #必须，嵌套结构
-  selector:			 # 如何查找要管理的Pods
+spec:                 #必须，嵌套结构
+  selector:             # 如何查找要管理的Pods
     matchLabels:
       app: nginx
   replicas: 2 # tells deployment to run 2 pods matching the template
   template:
-  	# Pod 模板 - start
+      # Pod 模板 - start
     metadata:
-      labels:		# 标签 app: nginx 
+      labels:        # 标签 app: nginx 
         app: nginx
     spec:
       containers:
@@ -319,8 +322,6 @@ spec:				 #必须，嵌套结构
 ```shell
 kubectl apply -f https://k8s.io/examples/controllers/nginx-deployment.yaml
 ```
-
-
 
 #### 2.2.3 Pod
 
@@ -358,8 +359,6 @@ Pod是最重要的**API对象**。
 - Job和CronJob。 定义一些一直运行到结束并停止的任务。Job用来表达的是一次性的任务，而 CronJob会根据其时间规划反复运行。
 - 定制资源定义（CRD），用户（第三方）扩展的负载资源（如TiDB Operator定义的CRD），完成原本不是 Kubernetes 核心功能的工作。
 
-
-
 ![](k8s笔记图片/module_03_nodes.svg)
 
 每个Pod 都有一个唯一的ip地址，即使在同一个node上。
@@ -376,8 +375,6 @@ RS是新并版本的RC。
 
 一般不直接使用该对象，而是使用Deployment来完成副本管理。
 
-
-
 #### 2.2.5 Deployment
 
 表示运行在集群中的应用。在 Pod 这个抽象上更为上层的一个抽象。
@@ -386,8 +383,6 @@ RS是新并版本的RC。
 - Pod 的版本控制（更新、回滚）
 
 Deployment管理ReplicaSet，ReplicaSet管理Pod。
-
-
 
 滚动升级：
 
@@ -400,8 +395,6 @@ Deployment管理ReplicaSet，ReplicaSet管理Pod。
   - 每次Kubernetes增加新ReplicaSet（新版镜像）中的Pod数量的时候，都会相应地减少旧ReplicaSet（旧版镜像）中的Pod数量
 - 旧版的ReplicaSet暂停，并且不再管理任何Pod，但是仍然保留了所有的配置信息（可以用于回滚）
   - 回滚，逆过程，旧版的ReplicaSet增加pod，新ReplicaSet减少pod
-
-
 
 #### 2.2.6 Service
 
@@ -416,13 +409,7 @@ Service 提供了一个或者多个 Pod 实例的稳定访问地址。
 
 ![](k8s笔记图片/Snipaste_2021-08-19_21-41-36.png)
 
-
-
-
-
 ![](k8s笔记图片/module_04_labels.svg)
-
-
 
 服务类型：
 
@@ -435,8 +422,6 @@ Service 提供了一个或者多个 Pod 实例的稳定访问地址。
   - 在ClusterIP的基础上增加了从集群外部访问能力
     - 增加从集群外部访问到Service的端口NodePort
 
-
-
 创建Kubernetes Service的命令: `kubectl expose`
 
 每一个Service都有一个与其同名的Endpoint对象。
@@ -447,15 +432,11 @@ Endpoint对象，维护着所有与该Service匹配的动态的Pod列表。
 
 `kubectl  describe ep <serviceName> `
 
-
-
 #### 2.2.7 Job
 
 Job 是 Kubernetes ⽤来控制批处理型任务的 API 对象。
 
 运行一次性任务，Pod内的任务成功结束时，不重启容器。
-
-
 
 #### 2.2.8 DaemonSet & StatefulSet
 
@@ -531,8 +512,6 @@ spec:
           storage: 1Gi
 ```
 
-
-
 #### 2.2.9 Volumne
 
 **Volume（卷）** 是Pod中能够被多个容器访问的共享目录。  
@@ -542,9 +521,11 @@ spec:
 - 声明Pod中的容器可以访问文件目录
 
 - 可以被挂载在 Pod 中一个或者多个容器的指定路径下面。
+  
   - 每个Pod需要独立指定卷的挂载位置
 
 - 支持多种类型的Volume，
+  
   - 例如GlusterFS、 Ceph等先进的分布式文件系统 。
 
 指定AWS EBS卷的Pod实例
@@ -569,8 +550,6 @@ spec:
       volumeID: "<volume-id>"
       fsType: ext4
 ```
-
-
 
 **configMap**卷
 
@@ -644,11 +623,7 @@ spec:
       type: Directory
 ```
 
-
-
 容器存储接口CSI，容器编排系统定义的标准接口，用来将任意存储系统暴露给它们的容器工作负载。
-
-
 
 **持久卷（Persistent Volume）**是集群中的一块存储，可以由管理员事先提供，或者使用存储类（Storage Class）来动态提供。
 
@@ -678,7 +653,7 @@ kind: PersistentVolume  # PV
 metadata:
   name: pv0003
 spec:
-  capacity:	# 容量
+  capacity:    # 容量
     storage: 5Gi
   volumeMode: Filesystem # 卷模式Filesystem，会挂载到Pod的某个目录，另外一种Block，原始块设备
   accessModes: # 访问模式
@@ -693,16 +668,12 @@ spec:
     server: 172.17.0.2
 ```
 
-
-
 卷的阶段：
 
 - Available（可用）-- 卷是一个空闲资源，尚未绑定到任何PVC；
 - Bound（已绑定）-- 该卷已经绑定到某PVC；
 - Released（已释放）-- 所绑定的PVC已被删除，但是资源尚未被集群回收
 - Failed（失败）-- 卷的自动回收操作失败
-
-
 
 ```yaml
 apiVersion: v1
@@ -711,7 +682,7 @@ metadata:
   name: myclaim
 spec:
   accessModes:
-    - ReadWriteOnce		# 访问模式，与PV相同
+    - ReadWriteOnce        # 访问模式，与PV相同
   volumeMode: Filesystem # 卷模式，与PV相同
   resources:  # 资源
     requests:
@@ -723,8 +694,6 @@ spec:
     matchExpressions:
       - {key: environment, operator: In, values: [dev]}
 ```
-
-
 
 StorageClass存储类
 
@@ -756,16 +725,12 @@ mountOptions:
 volumeBindingMode: Immediate
 ```
 
-
-
 使用存储卷的过程：
 
 - 创建PV
 - 创建PVC
 - 在PodSpec中定义使用的卷（pvc）
 - 挂载到一个容器的路径上
-
-
 
 #### 2.2.10 Kubectl
 
@@ -783,8 +748,6 @@ volumeBindingMode: Immediate
 - **kubectl logs** - 打印 pod 和其中容器的日志
 - **kubectl exec** - 在 pod 中的容器上执行命令
 
-
-
 相应的，Kubernetes Dashboard是一个基于Web的K8S集群信息可视化组件。
 
 功能：
@@ -795,13 +758,9 @@ volumeBindingMode: Immediate
 - 管理Kubernetes的各种资源
   - Node、Pod、Deployment、Job、DaemonSet等
 
-
-
 #### 2.2.11 Ingress & Egress
 
 进入 Kubernetes pod 的流量称为 Ingress，而从 pod 到集群外的出站流量称为 egress。
-
-
 
 #### 2.2.12 Namespace
 
@@ -813,18 +772,13 @@ volumeBindingMode: Immediate
 
 - 系统命名空间 kube-system
 
-
-
 #### 2.2.13 服务网格Service Mesh
 
 用于管理服务之间的网络流量，云原生的网络基础设施层。
 
-
-
-
 ## 3.部署应用
 
-### 3.1 在Kubernetes中运行应用  
+### 3.1 在Kubernetes中运行应用
 
 - 将应用打包进一个或多个容器镜像
 - 镜像推送到镜像仓库
@@ -833,18 +787,14 @@ volumeBindingMode: Immediate
     - 容器（组件）镜像，应用组件关联
     - 哪些组件需要同时运行在同一个节点上和哪些组件不需要同时运行
     - 哪个暴露IP地址，对外提供服务的组件
--  Kubemetes API 服务器根据描述，创建Pods
+- Kubemetes API 服务器根据描述，创建Pods
 - 调度器kube-scheduler，调度pod到可用的工作节点上
   - 基于每组需要的资源、节点存在的未分配的资源
 - 工作节点上的Kubelet 将从镜像仓库拉取镜像并运行容器
 
 ![](k8s笔记图片/Snipaste_2021-08-12_17-42-52.png)
 
-
-
 三组pod，pod的数字是副本数，pod可以包含多个容器。
-
-
 
 ### 3.2 在K8S中开发部署应用
 
@@ -877,8 +827,6 @@ Spark on YARN  迁移步骤示例
 - ConfigMaps
   - 配置文件挂载
 
-
-
 ### 3.3 Kubernetes的包管理器Helm
 
 应用包管理器Helm，类似linux操作系统的包管理器，apt，yum。
@@ -895,8 +843,6 @@ Spark on YARN  迁移步骤示例
 - release
   - 是chart的运行实例，代表了一个正在运行的应用。
   - chart能够多次安装到同一个集群，每次安装都是一个release。
-
-
 
 Helm组件：
 
@@ -915,8 +861,6 @@ Helm组件：
     - 通过API Server升级或卸载已有的release
   - 作为容器化应用运行在Kubernetes Cluster中
 
-
-
 基本使用：
 
 - 搜索（查找charts）
@@ -931,8 +875,6 @@ Helm组件：
 - 卸载（release）
   - `helm uninstall <releasename>`
 
-
-
 ## 4.组件详细
 
 ### 4.1 API Server
@@ -942,8 +884,6 @@ API Server是控制平面的核心。
 API 服务器负责提供 HTTP API，以供用户、集群中的不同部分和集群外部组件相互通信。
 
 通过`kubectl` 命令行接口、`kubeadmin`工具，执行查询、操作 API对象。
-
-
 
 #### RESTFul
 
@@ -958,8 +898,6 @@ Kubernetes使用go语言实现一种RESTFul框架go-restful。
 - Container：HTTPServer
   - WebService：一组不同服务
     - Router ：根据HTTP请求的URL路由到对应的处理函数
-
-
 
 #### gRPC
 
@@ -976,8 +914,6 @@ kube-apiserver架构设计:
 
 ![](k8s笔记图片/Snipaste_2021-08-21_19-42-05.png)
 
-
-
 - APIExtensionsServer API扩展服务
   - 提供CRD自定义资源服务
   - CustomResourceDefinitions
@@ -989,37 +925,15 @@ kube-apiserver架构设计:
 - GenericAPIServer 底层服务
   - 将Kubernetes资源与REST API进行映射
 
-
-
 ### 4.2 Controllers
-
-
-
-
 
 ### 4.3 Kubelt
 
-
-
 ### 4.4 Scheduler
-
-
-
-
-
-
-
-
-
-
 
 **Pod创建流程：**
 
 ![](k8s笔记图片/Snipaste_2021-08-12_21-04-58.png)
-
-
-
-
 
 ## 5.设计哲学
 
@@ -1052,9 +966,7 @@ API：
 - 假设任何错误的可能，并做容错处理
 - 模块在出错后，可以自动恢复
 
-
-
-### 5.2 声明式设计Declarative  
+### 5.2 声明式设计Declarative
 
 一种软件设计理念和做法：
 
@@ -1064,18 +976,12 @@ API：
 
 在 Kubernetes 中，使用YAML文件定义对象，服务的拓扑结构、状态。
 
-
-
 好处：
 
 - 简单，使用者无需关心过程细节。
 - 自我描述的文档
 
-
-
 相对比的是过程式、命令式，描述动作。
-
-
 
 ### 5.3 分层架构
 
@@ -1095,19 +1001,9 @@ API：
   - Kubernetes 外部：日志、监控、配置管理、CI、CD、Workflow、FaaS、OTS 应用、ChatOps 等
   - Kubernetes 内部：CRI、CNI、CVI、镜像仓库、Cloud Provider、集群自身的配置和管理等
 
-
-
 ### 5.4 模型设计
 
-
-
 ### 5.5 控制器模式
-
-
-
-
-
-
 
 ### 5.6 高可用
 
@@ -1119,13 +1015,9 @@ API：
 - Cluster
   - Federation 机制
 
-
-
 ## 6.Kubernetes Operator
 
  Kubernetes Operator是由CoreOS开发的Kubernetes扩展特性，目标是通过定义一系列CRD(自定义资源)和实现控制器，将特定领域的应用程序运维技术和知识(如部署方法、监控、故障恢复等)通过代码的方式固化下来。
-
-
 
 数据库系统通过Operator进行自动运维管理的例子：[TiDB Operator](https://docs.pingcap.com/zh/tidb-in-kubernetes/stable/tidb-operator-overview)。
 
@@ -1146,11 +1038,7 @@ API：
   - Dashboard
 - 查看 TiDB 日志
 
-
-
 容器环境性能与host环境，QPS，网络latency 差距微弱，容器开销成本极低。
-
-
 
 系统上K8S优缺点：
 
@@ -1177,17 +1065,11 @@ API：
 
 对于小规模集群环境，系统的机器资源是专用的情况下，额外上K8S，收益下降。
 
-
-
 官方[operator hub ](https://operatorhub.io/)
-
-
 
 ### 6.1 TiDB Operator
 
 ![](k8s笔记图片/tidb_operator_overview_984f8dc0d4.png)
-
-
 
 - 自定义资源CRD（Helm Chart）
   - TidbCluster 用于描述用户期望的 TiDB 集群
@@ -1204,13 +1086,11 @@ API：
   - 完成TiDB集群拓扑特有的调度逻辑
     - 为保证高可用，任一Node 不能调度超过 TiDB 集群半数以上的 TiKV 实例
   - 物理部署的一个Pod内包含两个容器
-    -  原生kube-scheduler
+    - 原生kube-scheduler
     - 扩展tidb-scheduler
       - 调度过程，实际是先经过tidb-scheduler根据规则对节点过滤，最后经kube-scheduler调度。
 - tidb-admission-webhook 动态准入控制器
   - 完成Pod、StatefulSet 等相关资源的修改、验证与运维
-
-
 
 工作流程：
 
@@ -1221,15 +1101,11 @@ API：
 - Kubernetes 的原生控制器根据 `StatefulSet`、`Deployment`、`Job` 等对象创建更新或删除对应的 `Pod`；
 - PD、TiKV、TiDB 的 `Pod` 声明中会指定使用 `tidb-scheduler` 调度器，`tidb-scheduler` 会在调度对应 `Pod` 时应用TiDB 的特定调度逻辑。
 
-
-
 功能：
 
 基于这样的声明式控制流程，TiDB Operator 能够自动进行集群节点健康检查和故障恢复。
 
 部署、升级、扩缩容等操作，可以通过修改 `TidbCluster` 对象声明完成。
-
-
 
 ### 6.2 基于K8S的系统设计（Serverless）
 
@@ -1252,10 +1128,6 @@ API：
 不过，也需要注意，微服务架构的缺点：网络IO延迟，分布式事务一致性。
 
 需要合理的抽取出服务。
-
-
-
-
 
 ## 7. Play on K8S
 
@@ -1331,10 +1203,6 @@ kubectl rollout status deployments/kubernetes-bootcamp
 kubectl rollout undo deployments/kubernetes-bootcamp
 ```
 
-
-
-
-
 ## REF
 
 - [kubernetes 官网](https://kubernetes.io/)
@@ -1356,4 +1224,3 @@ kubectl rollout undo deployments/kubernetes-bootcamp
 - [分布式计算引擎 Flink/Spark on k8s 的实现对比以及实践](https://zhuanlan.zhihu.com/p/404171594)
 - [使用Golang构建一个高可用的Kubernetes Operator](https://zhuanlan.zhihu.com/p/400890229)
 - [Helm 官网](https://helm.sh/zh/) helm 概念与教材
-

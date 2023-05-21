@@ -32,7 +32,7 @@
 ### 时序预处理
 
 - 推断时间间隔频率freq
-  - 计算时间列最小的时间间隔作为时间频率
+  - 计算时间列最小的时间间隔作为时间频率(但是可以真实按M，Y设置频率)
     - 间隔28-31 day的时间转为'M'
     - 间隔365-366 day的时间转为'Y'
 - 异常值处理
@@ -61,7 +61,51 @@
       - 前提是数据服从正态分布
       - 反例，线性递增。
 
-### ARIMA
+#### 标准化处理
+
+- MinMaxScaler() 缩放到0和1之间
+  
+  - **Min-Max** **(Minimum and Maximum normalisation)** 
+  
+  - min-max归一化
+  
+  - 所有值等重要性，但测量误差膨胀，对异常值敏感
+
+- StandardScaler() 缩放到均值为0，方差为1  **Mean-Std (Mean and standard deviation normalisation)**:
+  
+  - z-score归一化
+  - 所有值等重要性，但测量误差膨胀
+
+- MaxAbsScaler() 缩放到-1和1之间
+
+- Normalizer() 缩放到0和1之间，保留原始数据的分布
+  
+  - 关注方向而忽略数值上的差异
+
+影响：
+
+- 基于距离的算法，量纲影响
+
+- 剃度下降，收敛性
+
+##### REF
+
+- [标准化和归一化什么区别？](https://www.zhihu.com/question/20467170)
+  
+  - [标准化和归一化什么区别？ - 本空的回答](https://www.zhihu.com/question/20467170/answer/839255695)
+  - [标准化和归一化什么区别？ - 夏洛克江沪川的回答 - 知乎](https://www.zhihu.com/question/20467170/answer/866038654)
+
+- [异常检测：为什么要进行数据标准化? - 林德博格的文章 - 知乎](https://zhuanlan.zhihu.com/p/373562721)
+
+- [scikit-learn数据预处理之特征缩放 - 迷路的文章 - 知乎](https://zhuanlan.zhihu.com/p/454711078)
+
+- [API 参考-scikit-learn中文社区](https://scikit-learn.org.cn/lists/3.html)
+  
+  - RobustScaler() 基于四分位数的范围放缩数据，不保证范围[-1,1]
+
+### 算法
+
+#### ARIMA
 
 AR
 
@@ -75,7 +119,7 @@ MA
 - PDQ: 周期内季节性
   - s：周期样本数
 
-### Exponential smoothing
+#### Exponential smoothing
 
 20世纪50年代末提出了指数平滑法（Brown，1959;霍尔特，1957年; Winters，1960），并激发了一些最成功的预测方法。使用指数平滑法生成的预测是过去观测值的加权平均值，权重随着观测值的老化而呈指数衰减。换句话说，观察越近，关联的权重越高。该框架可以快速生成可靠的预测，并且适用于广泛的时间序列，这是一个很大的优势，对于工业应用具有重要意义。
 
@@ -87,6 +131,32 @@ MA
   - 缺点：PMDARIMA 第一个周期预测不准，上下界也很高
 - StatsForecastAutoARIMA
   - 缺点：耗时相对较高  1s以上
+
+## 时间序列异常检测
+
+- 单变量时间序列
+  
+  - 估计
+  
+  - 预测（不使用当前数据）
+
+- 多变量时间序列
+  
+  - 单变量（包括预处理，pca类似降维，再独立应用单指标异常检测）
+  
+  - 多变量
+
+### REF
+
+- Blázquez-García, Ane, et al. “A Review on Outlier/Anomaly Detection in Time Series Data.” ACM Computing Surveys, Apr. 2021, pp. 1–33, https://doi.org/10.1145/3444690.
+
+- ADBench：[异常检测--ADBench (NeurIPS'22) is ALL You Need](https://zhuanlan.zhihu.com/p/565458918)
+  
+  - LOF在检测局部异常上遥遥领先其他算法，kNN在检测全局异常是显著的最强
+
+- [论文分享：Revisiting Time Series Outlier Detection: Definitions and Benchmarks](https://zhuanlan.zhihu.com/p/602477997)
+  
+  - AR在检测上下文和形状异常值方面优于所有其他算法；OCSVM和iForest在多变量设置下的全局异常值和多个异常值方面优于REST；不和谐分析算法在季节性和趋势性异常值任务中表现最好。
 
 ## Q&A
 
@@ -160,6 +230,8 @@ MA
   - [SLS机器学习介绍（03）：时序异常检测建模](https://developer.aliyun.com/article/669164)
   
   - [在R中使用异常化检测异常](https://www.srcmini.com/45906.html)
+  
+  - [异常检测：数据异常的类型(Types of Anomalies) - 林德博格的文章 - 知乎](https://zhuanlan.zhihu.com/p/340129272)
 
 - 时序预处理
   
@@ -195,10 +267,6 @@ MA
 
 - [机器学习笔记： 时间序列 分解 STL](https://blog.csdn.net/qq_40206371/article/details/122953379)
 
-- [标准化和归一化什么区别？]( https://www.zhihu.com/question/20467170)
-  
-  - 标准化和归一化什么区别？ - 本空的回答 - 知乎 https://www.zhihu.com/question/20467170/answer/839255695
-
 - [智能运维 | 故障诊断与根因分析论文一览](https://mp.weixin.qq.com/s/ILXnXQulDVFwmHdNtEcXng)
 
 - [智能运维系列（二）| 智能化监控领域探索](https://mp.weixin.qq.com/s?__biz=MzIyOTYyNjMyNg==&mid=2247486650&idx=1&sn=7fef017e6a018eec6e72c890f85b683f)
@@ -209,6 +277,14 @@ MA
   - 大多数返回是否异常，以及异常分数， 基于正常，离群的比例，设置阈值。
   - 支持动态区间预测算法：仅prophet
 
+- [时间序列发现周期的3种方式](https://medium.com/@shashindra3/three-ways-to-find-the-period-of-a-timeseries-251a6c8c4a3e)
+
+- [如何处理类别型特征？](https://zhuanlan.zhihu.com/p/90782025)
+  
+  - One-hot 编码
+
+- [【时间序列】时间序列预测算法总结](https://zhuanlan.zhihu.com/p/421710621)
+
 ## 数据集
 
 - [离群值检测](https://paperswithcode.com/task/outlier-detection) 信息汇总，论文最新sota，数据集
@@ -216,6 +292,8 @@ MA
   - [Outlier Detection DataSets (ODDS)](http://odds.cs.stonybrook.edu/)
     - [Yahoo - TSAD 的基准数据集](https://yahooresearch.tumblr.com/post/114590420346/a-benchmark-dataset-for-time-series-anomaly)
     - [Numenta 异常基准 (NAB)](https://github.com/numenta/NAB/tree/master/data)
+  - [NeurIPS 2022 ADBench](https://hub.baai.ac.cn/view/20597) 作者概述
+  - [当[异常检测]遇到[不完美标签]：首篇弱监督异常检测综述](https://zhuanlan.zhihu.com/p/607352435)
 
 - [tods](https://github.com/datamllab/tods/blob/master/README.zh-CN.md)
 
@@ -236,6 +314,8 @@ MA
   - [数据集](https://timeseriesclassification.com/dataset.php)
   - [sktime 加载数据](https://github.com/alan-turing-institute/sktime/blob/master/examples/loading_data.ipynb)
   - [sktime 提供的数据集](https://www.sktime.org/en/stable/api_reference/datasets.html)
+
+- [时间序列异常数据集](https://wu.renjie.im/research/anomaly-benchmarks-are-flawed/#ucr-time-series-anomaly-archive) 
 
 - [Monash Time Series Forecasting Archive](https://forecastingdata.org/) 莫纳什时间序列预测库
   
@@ -264,6 +344,8 @@ MA
 
 - [data reader]([Remote Data Access &#8212; pandas-datareader v0.10.0 documentation](https://pydata.github.io/pandas-datareader/remote_data.html)) 访问金融相关数据集
 
+- [datasets-iot23](https://www.stratosphereips.org/datasets-iot23)
+
 - 异常检测 blog：
   
   - https://towardsdatascience.com/well-log-data-outlier-detection-with-machine-learning-a19cafc5ea37 异常检测方法的一些范例
@@ -275,5 +357,3 @@ MA
   - [aiops 异常检测demo](https://sls4service.console.aliyun.com/lognext/project/dashboard-demo/dashboard/dashboard-1539675149912-481923?isShare=true&hideTopbar=true&hideSidebar=true)
 
 - [Getting started with anomaly detection | Machine Learning in the Elastic Stack [8.6] | Elastic](https://www.elastic.co/guide/en/machine-learning/current/ml-getting-started.html)
-
-
