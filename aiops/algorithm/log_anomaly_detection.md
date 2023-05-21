@@ -1,6 +1,6 @@
 ## 日志异常检测Log Anomaly Detection
 
-## drain 模式识别算法
+### drain 模式识别算法
 
 日志解析结果：
 
@@ -54,6 +54,90 @@
    
    5. 然后，DRAIN将使用新的日志组更新解析树。
 
+### ULP (An Effective Approach for Parsing Large Log Files)
+
+非流式算法，只能用于离线方式的聚类
+
+
+
+ULP利用这样idea，即如果我们对属于同一组的日志事件实例而不是整个日志文件本地使用频率分析，则可以更好地识别日志事件的静态和动态令牌。
+
+该方法通过字符串匹配相似度建立相似的日志事件组，并对同一组实例进行局部频率分析来区分静态和动态令牌，从而区分静态和动态令牌。
+
+我们的技术的平均准确率为89.2%，而次佳的排水法的平均准确率为73.7%。此外，ULP可以在3分钟内解析包含多达400万个日志事件的大文件。
+
+对相似的日志事件进行预处理、分组，并使用局部频率分析生成日志模板。
+
+- 第一步是预处理步骤，其中标识诸如时间戳、日志级别和日志记录功能之类的报头。我们还根据常见的正则表达式检测不重要的动态令牌，如IP和MAC地址。
+
+- ULP的第二步是识别相似的日志事件并将它们分组在一起。为此，我们使用文本相似性度量。
+
+- 一旦形成了相似的日志事件组，我们就对每个组的实例进行频率分析，以确定静态和动态token，并导出各种日志模板，然后将这些模板映射回每个日志事件。算法1显示了ULP的步骤。
+
+- 将发生频率低于最大频率的任何事情视为动态token。
+
+
+
+在某些方面，我们的方法在原则上更接近AEL的方法。可以使用AEL方法基于语言共性对日志事件进行分类。然而，从简单的动态模式开始，AEL使用基于系统信息(例如，IP地址、编号和存储位置)的硬编码算法来识别更复杂的模式。然后，生成的日志事件被标记化，并根据它们包含的字数入库。在将日志消息抽象为模板以供系统中其他地方使用之前，该分类会评估每个bin中的日志消息。
+
+AEL的困难在于，它假设具有相同字数的事件属于同一组，从而导致在分析日志事件时出现许多误报。ULP利用字符串匹配相似性，将静态token和日志事件中的token数量相结合，以克服这一问题。
+
+DRAIN的作者做出的另一个假设是，长度相似的日志事件属于同一组，而不必检查事件的内容，这会导致将非常不同的日志事件归入同一组。ULP通过应用严格的字符串匹配技术来克服这一问题，以确保只有当日志事件共享相同的静态token时，才能将它们分组在一起。（批评的不合理？长度只是初步分组，还有前缀字符是否一致）
+
+至于Logram，它的主要限制之一在于它处理只出现一次的日志事件的方式。对于这些事件，Logram认为整个日志模板仅由动态变量组成。LOGRAM的另一个限制与n元语法的使用有关，这导致如果n元语法序列不像其他序列那样频繁出现，则它们可以被视为动态变量的情况。
+
+For example, in the log event "Resolved 04DN8IQ.fareast.corp.microsoft.com to /default-rack", the 2-gram "Resolved 04DN8IQ.fareast.corp.microsoft.com" appears only twice in the log file as opposed to the 2-gram "to /default-rack" which appears more frequently, the template generated for this log event is "<*> <*> to /default-rack", which is not valid ("Revolved"should be detected as a static token).
+
+优点：
+
+与其他日志解析器不同，ULP不假设静态或动态令牌的位置。例如，DRAIN假定出现在日志消息开头的令牌是静态令牌，这并不总是有效的。
+
+此外，ULP能够从各种未知日志文件中检测动态令牌和日志模板，而无需在预处理阶段使用领域知识正则表达式，例如对于DRAIN[26]和Logram[27]的情况。ULP仅利用泛型正则表达式。
+
+缺点：
+
+如果同一动态令牌的重复次数与静态令牌相同，则ULP将对其进行错误分类。解决这一问题的一种方法是通过针对这些变量来改进预处理步骤。
+
+
+
+**优点：**
+
+- **速度快**
+- **无调参**
+
+**缺点：**
+
+- **offline**
+
+
+
+### Logram
+
+基本原理：
+
+- 基于日志生成 3-grams，2-grams 字典
+
+- 对字典根据设置阈值，阈值根据automated approach （自动化，但是代码中是直接给出的各个测试集的3，2元语法阈值），对日志划分为静态和动态索引
+
+- 先检查3元，然后检测2元
+
+- 对非静态，常量token，使用<*>代替
+
+Logram 使用字典来存储日志中 n-grams 的频率，并利用 n-gram 字典来提取日志中的静态模板和动态变量。我们的直觉是，频繁的 n-grams 更可能代表静态模板，而罕见的 n-grams 更可能是动态变量。n-gram 字典可以有效地构建和查询，即复杂度分别为 O(n) 和 O(1)。
+
+
+
+支持在线解析，因为当不断添加更多日志时(例如，在日志流场景中)，可以高效地更新n元语法词典。在我们的Logram在线实施中，我们以流的方式馈送日志(即每次馈送一条日志消息)。当读取第一条日志消息时，词典为空(即，所有n元语法都为零)，因此Logram将所有令牌解析为动态变量。然后，Logram使用从第一个日志消息中提取的n元语法创建词典。在此之后，当读取随后的每个日志消息时，Logram使用现有的ngram词典来解析日志消息。
+
+
+
+**缺点：**
+
+- **准确性未到达论文声称的水平，调n-gram阈值参数很影响结果，但是未给出具体自动化方法**
+- **词典构建空间开销，online模式，初始部分日志，模板全处理成<*>**
+
+
+
 ## REF
 
 - [面向跨语言的操作系统日志异常检测技术研究与实现-51CTO.COM](https://www.51cto.com/article/714875.html)
@@ -77,3 +161,43 @@
   - [GitHub - logpai/logparser: A toolkit for automated log parsing](https://github.com/logpai/logparser)
     
     - [benchmark](https://github.com/logpai/logparser/blob/master/docs/benchmark.rst) 日志解析器准确度基准
+    - [GitHub - tianjiqx/logparser: A toolkit for automated log parsing ](https://github.com/tianjiqx/logparser) （python3 调整）
+
+
+
+- [快速了解日志概貌，详细解读13种日志模式解析算法 - 云智慧技术社区 - OSCHINA - 中文开源技术交流社区](https://my.oschina.net/yunzhihui/blog/5514043)
+
+- 来自logpai 论文 Tools and Benchmarks for Automated Log Parsing
+
+- [日志自动分析和解析开源工具_logpai_lovelife110的博客-CSDN博客](https://blog.csdn.net/qq_33873431/article/details/103600782)
+  
+  - 目前，在所研究的 13 个日志解析器中，Drain 的性能最好。该方法不仅平均精度最高，而且方差最小。
+  
+  - 与其他日志解析器相比，Drain 实现了相对稳定的精度，并且在改变日志量时表现出了鲁棒性。
+  
+  - Drain 和 IPLoM 具有较好的效率，随日志大小线性增长。
+  
+  - 当日志数据简单且事件模板数量有限时，日志解析通常是一个有效的过程。例如，HDFS 日志只包含 30 个事件模板，因此所有的日志解析器都可以在一个小时内处理 1GB 的数据。但是，对于具有大量事件模板 (例如，Android) 的日志，解析过程会变得很慢。
+
+- https://pdfs.semanticscholar.org/b35c/38c6f4194e1b0617fc96899e7b4f6f2c846f.pdf logpai slides
+
+- [LogCluster算法_张欣-男的博客-CSDN博客](https://blog.csdn.net/sdlypyzq/article/details/123880720)
+
+- [日志解析LogMine方法 - 简书](https://www.jianshu.com/p/c59570aacb94)
+
+- [**ACM Computing Survey**] [A Survey on Automated Log Analysis for Reliability Engineering](https://arxiv.org/abs/2009.07237)  
+  [ACM Computing Survey] 可靠性工程自动化日志分析调查
+
+- Tools and Benchmarks for Automated Log Parsing
+
+- [**IST'20**] [A Systematic Literature Review on Automated Log Abstraction Techniques](https://www.sciencedirect.com/science/article/pii/S0950584920300264)  
+  
+  - [IST'20] 自动日志抽象技术的系统文献综述
+
+
+
+- https://github.com/BlueLionLogram/Logram
+  
+  - [GitHub - tianjiqx/Logram: Efficient Log Parsing Using n-Gram Dictionaries](https://github.com/tianjiqx/Logram)  支持logpai的基准测试
+
+- https://zenodo.org/record/6425919#.ZEE8L-xBz0p ULP 
