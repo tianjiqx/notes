@@ -13,8 +13,6 @@
   cat /proc/version      # 查看内核/操作系统/CPU信息
   head -n 1 /etc/issue   # 查看 操作系统版本 
   ```
-  
-  
 
 - 磁盘命令lsblk，查看分区，逻辑卷物理磁盘位置
 

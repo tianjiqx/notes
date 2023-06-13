@@ -4,8 +4,6 @@
 
 [TensorBase](https://github.com/tensorbase/tensorbase)用开源的文化和方式，重新构建一个Rust编写的实时数据仓库，用于海量数据的存储和分析。
 
-
-
 优点：
 
 - All in Rust
@@ -18,16 +16,10 @@
   - 数据交换Copy-free，Rust语言机制带来的Lock-free，Async-free，Dyn-free
   - 项目外依赖减少，以减少开发者重新编译时间
 
-
-
 缺点：
 
 - 还是起步的demo原型概念验证的阶段
   - 目前只是对于单表的聚合操作，相比clickhouse有明显的优势3X（并且数据完全加载进内存了，如果涉及磁盘读取，CH由于数据压缩，反而具有更好的性能，TB当前是原始数据）。
-
-    
-
-
 
 ## 2. 基本架构
 
@@ -50,29 +42,25 @@
   - lightjit
     - 类表达式JIT引擎
 
-
-
 [计划 issue114](https://github.com/tensorbase/tensorbase/issues/141)  和 [2021 夏季开源推广计划](https://github.com/tianjiqx/tensorbase/blob/main/docs/summer_2021_ospp.md)：
 
 - 分布式集群。 
-
+  
   - 基于DataFusion的Ballista，类ClickHouse的简易（半人工）分布式集群方案。
 
 - 存储层增强
-
+  
   - 引入主键
 
 - 查询引擎
-
+  
   - Arrow和Data Fusion查询内核性能改进
   - TPC-H其他性能
 
 - Server
-
+  
   - MySQL协议支持
   - Clickhouse http协议增强
-
-  
 
 ## 3. 使用
 
@@ -91,7 +79,6 @@ clickhouse-client --port 9528
 
 # 推荐支持使用multi statement的参数
 clickhouse-client --port 9528 -n
-
 ```
 
 测试sql：
@@ -232,21 +219,15 @@ select avg(salary) from employees;
 -- git commit --amend --no-edit --signoff
 ```
 
-
-
 ## 4.  源码分析
 
 环境配置：
 
 IDEA2021.1 + rust 插件 
 
-
-
 代码版本2021.07.15：
 
 commit id ：`c39cc0adc2ce46474f6addbc7f4bf2e16788df7d`
-
-
 
 - 1） RUN/DEBUG配置:
 
@@ -256,13 +237,9 @@ run --bin server -- -c qxbase.conf
 
 ![](tensorbase笔记图片/Snipaste_2021-07-15_02-24-25.png)
 
-
-
 建议现在本地 cargo build完成编译，避免idea 执行build，导致内存不足而卡死。
 
 注意，社区版不支持debug方式运行！
-
-
 
 - 2) 使用 [GDBUI](https://github.com/cs01/gdbgui)  进行调试 
 
@@ -304,8 +281,6 @@ b crates/runtime/src/ch/messages.rs:139
 
 ![](tensorbase笔记图片/Snipaste_2021-07-15_17-43-34.png)
 
-
-
 ### 4.1 SQL执行流程
 
 - `crates/server/src/server.rs` 
@@ -314,28 +289,28 @@ b crates/runtime/src/ch/messages.rs:139
   - 初始化读`    READ.get_or_init(|| query);` 和写`WRITE.get_or_init(|| write_block);` 数据的方法
     - SyncOnceCell::new() 保证是全局唯一函数对象？
   - 启动http服务器
-  
-- `crates/server/src/lib.rs` 
 
+- `crates/server/src/lib.rs` 
+  
   - `runtime::ch::messages::response_to;` 消息处理，读取read_buf，写查询结果到write_buf
   - response_to处理完毕，检查write_buf不为空时，将数据（例如查询结果）flush到目标流
 
 - `runtime/src/ch/messages.rs` client消息处理逻辑
-
+  
   - `response_to`  
-
+    
     - `ClientCodes::Query`  查询类型消息，进入`response_query`处理逻辑
-
+      
       - 核心进入`crates/runtime/src/mgmt.rs` 的`run_commands` 方法执行查询
-
+        
         - `run_commands`  当前只处理一条语句，返回一个`BaseCommandKind`
-
-          虽然语法解析器本身`BqlParser::parse(Rule::cmd_list, cmds)`支持解析出多条语句。
           
+          虽然语法解析器本身`BqlParser::parse(Rule::cmd_list, cmds)`支持解析出多条语句。
+        
         - clickhouse client 通过-n参数可以支持多条sql语句执行，并且会自动切分query，最后输入到`run_commands`  的sql还是只有一条。（其他连接器，如jdbc？可能需要手动切分）
 
 - `crates/runtime/src/mgmt.rs`
-
+  
   - 读取配置文件，创建`BaseMgmtSys`服务
   - `BaseMgmtSys`实现了各种命令的在`run_commands` 方法处理
     - 创建、显示、删除数据库、表，desc 表，truncate 表
@@ -441,8 +416,6 @@ b crates/runtime/src/ch/messages.rs:139
   - 持有`MetaStore`  和`PartStore`，分区表达式函数指针的映射？(tid -  :SyncPointer<u8>)，时区信息
     - 这块涉及到分区表达式的计算，用到ligthjit模块
 
-
-
 #### 4.2.2 写数据
 
  `crates/runtime/src/write.rs`
@@ -493,8 +466,6 @@ b crates/runtime/src/ch/messages.rs:139
 
 TB写数据的文件组织设计，目前非压缩，最大的级别单位是Block，Block下面分成Part，分区可以根据配置，写到不同的目录（不同磁盘ok，节点？如下图的tb_data），分区下面是表级目录（id，如2000000），表级目录下面是一个个该分区的列文件（2000001_0，构成tid，列id，下划线，分区键（或者id）ptk，如果在同一个目录下，不同分区的分区列文件应该形如`2000001_1`）。om文件目前是String列的数据。
 
-
-
 ![](tensorbase笔记图片/Snipaste_2021-07-20_16-53-08.png)
 
 插入数据的时候，未设置分区键，将只有一个分区，一直追加分区列文件。
@@ -536,8 +507,6 @@ TB当前的这一个存储引擎`BaseStorage`不维持主键顺序，也没有�
 
 （但是我认为对于使用字典压缩，和一些其他高级压缩，如前缀编码，运行长度编码 (RLE)，位图编码，解压速度应该不会是一个瓶颈，反而应该是能更快的提高计算性能，因为部分甚至是支持直接压缩读，已经直接通过压缩数据进行计算，如join等操作，详见[slide](https://github.com/tianjiqx/slides/blob/master/column-store-tutorial.pdf)；[SAP HANA 支持增量合并时进行压缩优化](https://help.sap.com/viewer/6a504812672d48ba865f4f4b268a881e/Cloud/en-US/bd9017c8bb571014ae79efaeb46940f3.html)）
 
-
-
 `BaseStorage` 在磁盘上的格式，也是加载进内存后的格式（内存中的表示`CoPaInfo`）。（使用内存映射mmp加载数据）
 
 TB利用的Apache Arrow格式，实际上支持字典编码，压缩数据。
@@ -545,8 +514,6 @@ TB利用的Apache Arrow格式，实际上支持字典编码，压缩数据。
 不过，考虑未来可以增加其他更复杂引擎，适应其他负载。（存储引擎层都还未成为独立的模块），
 
 或者支持直接读写CH的存储文件能够扩展更多的应用场景。
-
-
 
 #### 4.2.3 读数据
 
@@ -563,7 +530,7 @@ TB利用的Apache Arrow格式，实际上支持字典编码，压缩数据。
           - 使用mmap技术，虚拟内存地址到物理内存映射
             - `crates/meta/src/store/parts.rs`  `fill_copainfos_int_by_ptk` 方法获取内存地址
       - `crates/datafusion/src/execution/context.rs` 的`sql()`方法，执行原始SQL然后创建数据帧
-        -  `create_logical_plan` 创建逻辑计划
+        - `create_logical_plan` 创建逻辑计划
           - `DFParser::parse_sql(sql)` 解析sql成DFStatement
           - `SqlToRel.statement_to_plan(&statements[0])`  处理DFStatement，转成逻辑计划
             - `DFStatement::CreateExternalTable` 外表
@@ -571,7 +538,7 @@ TB利用的Apache Arrow格式，实际上支持字典编码，压缩数据。
               - `Statement::Query` ->  `query_to_plan()` 
                 - `crates/datafusion/src/sql/planner.rs`
                   - `crates/datafusion/src/sql/planner.rs` `create_relation` 创建relation 算子 LogicalPlan::TableScan
-        -  `optimze`方法 做逻辑优化
+        - `optimze`方法 做逻辑优化
           - 逐一应用逻辑优化规则`OptimizerRule`
         - 创建`DataFrame` 结构df，封装了逻辑计划
           - `DataFrame`  本身还是一个逻辑计划
@@ -589,8 +556,6 @@ TB利用的Apache Arrow格式，实际上支持字典编码，压缩数据。
   - 将查询的结果放进Vec<Block> 中返回。
     - `Block::try_from()`  `crates/runtime/src/ch/blocks.rs` 转换arrow格式的`RecordBatch` 为`Block`
 
-
-
 总结：
 
 TensorBase的读数据的流程，实际上自身先解析一次sql，获取表信息，需要投影的列，然后将参与的表全部加载进内存，作为datafusion的数据源。datafusion会再次解析sql，完成诸如 filter，join等逻辑，数据源来自于之前setup进内存的表。
@@ -605,8 +570,6 @@ TensorBase的读数据的流程，实际上自身先解析一次sql，获取表�
     - 内存映射mmap，对虚拟地址空间进行处理，复制，计算不会触发IO，只有在真正读取数据的时候才会发生缺页中断，装载数据进物理内存
 - 重用查询优化，不必自己重写一套分区裁剪等逻辑减少读取的数据。并且后续能够基于真实代价模型，调整执行计划。
 
-
-
 ### 4.3 DataFusion
 
 TensorBase的SQL 查询语句的执行引擎，绝大部分工作的承担者是Apache Arrow DataFusion。
@@ -620,6 +583,7 @@ TensorBase的SQL 查询语句的执行引擎，绝大部分工作的承担者是
 执行上下文，用来注册数据源和执行查询。
 
 - 注册数据源
+  
   - `register_table` 方法，TB使用该方法将TB自己引擎的表，注册成内存表类型的数据源，供DataFusion后续处理。
     - 数据源类型，由`TableProvider` trait提供，`MemTable` 实现了该trait
       - `crates/datafusion/src/datasource/memory.rs` 
@@ -640,8 +604,9 @@ TensorBase的SQL 查询语句的执行引擎，绝大部分工作的承担者是
     - `CatalogProvider`
       - `SchemaProvider`
   - 注册变量等
-  
+
 - 执行`sql()`，创建一个DataFrame，df.colletion() 触发物理计划生成和执行。
+  
   - 包含创建逻辑计划，逻辑优化，物理计划。
     - `crates/datafusion/src/sql`  
       - `parser.rc`词法，语法解析成Statement
@@ -656,6 +621,7 @@ TensorBase的SQL 查询语句的执行引擎，绝大部分工作的承担者是
 在datafusion中，充分使用向量化的方式，批处理记录。
 
 - 表达式的向量化处理
+  
   - `crates/datafusion/src/physical_plan/expressions`
   - `CountAccumulator`  count表达式的累加器
     - `update_batch()` 方法接受数组，计算并增加非null值的个数
@@ -672,6 +638,7 @@ TensorBase的SQL 查询语句的执行引擎，绝大部分工作的承担者是
         - 即类似filter  c1=10 的时候，会将Literal类型10的标量值，先转成10的数组，c1读取该列的数据，然后进行BinaryExpr的计算。
 
 - 算子的向量化处理
+  
   - GroupBy、Distinct
     - `crates/datafusion/src/physical_plan/hash_aggregate.rs`
     - `HashAggregateExec` DataFusion的group by实现方式，使用hash进行分组
@@ -726,8 +693,6 @@ Ballista是DataFusion的分布式扩展，类Spark的执行引擎，已经合并
 
 调度器可以以单点standalone方式运行，也可以使用etcd存储状态以集群模式运行。
 
-
-
 **源码:**
 
 - main函数
@@ -754,16 +719,12 @@ Ballista是DataFusion的分布式扩展，类Spark的执行引擎，已经合并
     - `crates/ballista/rust/scheduler/src/planner.rs`
     - `plan_query_stages`
 
-
-
 #### 4.4.2 执行器Executor
 
 执行器实现了Apache Arrow Filinght gRPC接口，负责
 
 - 执行查询stage，以apache arrow IPC格式持久化结果到磁盘
 - 将查询阶段结果作为 Flights 提供，以便其他执行程序和客户端可以检索它们
-
-
 
 **源码:**
 
@@ -793,8 +754,6 @@ Ballista是DataFusion的分布式扩展，类Spark的执行引擎，已经合并
   - 提供query stage的结果数据查询检索服务
   - 标准方法`do_get`,`do_put`等
 
-
-
 #### 4.4.3 客户端Client
 
 Rust 客户端提供了一个 DataFrame API，它是 DataFusion DataFrame 的瘦包装器，并为客户端提供了构建执行查询计划的方法。
@@ -802,8 +761,6 @@ Rust 客户端提供了一个 DataFrame API，它是 DataFusion DataFrame 的瘦
 客户端通过提交`ExecuteLogicalPlan`到调度器来执行查询计划，然后调用 `GetJobStatus`以检查是否完成。
 
 完成后，客户端会收到包含查询结果的 Flights 位置列表，然后将连接到适当的执行器进程以检索这些结果。
-
-
 
 **源码:**
 
@@ -823,8 +780,6 @@ Rust 客户端提供了一个 DataFrame API，它是 DataFusion DataFrame 的瘦
       - Executor会死循环向Scheduler拉去任务`poll_work`，执行完毕后更新任务状态
     - 发现job 完成后，收集所有分区的结果，返回RecordBatchStream
 
-
-
 #### 4.4.5 分布式执行计划
 
 Ballista的分布式执行计划实现，非常类似于SparkSQL的执行机制。
@@ -832,7 +787,7 @@ Ballista的分布式执行计划实现，非常类似于SparkSQL的执行机制�
 有jobid，stageid的DAG图划分，以及通过ShuffleWriterExec和ShuffleReaderExec算子完成，数据的重分布。
 
 - DistributedPlanner
-
+  
   - `crates/ballista/rust/scheduler/src/planner.rs`
   - `plan_query_stages`分布式计划的生成
     - `plan_query_stages_internal` 将原单机的执行计划，转为分布式的执行计划，返回执行计划和stages的数组，一个stage是一个ShuffleWriterExec。
@@ -855,7 +810,9 @@ Ballista的分布式执行计划实现，非常类似于SparkSQL的执行机制�
       - 创建一个`ShuffleWriterExec` 算子，输出单个分区，作为最终的query stage，输出查询结果。
   - `remove_unresolved_shuffles` 事实上在`plan_query_stages` 生成的计划并不完整，缺乏真正shuffle结果的路径信息（因为还未调度，无法知道真正的执行节点），在创建ShuffleWriterExec时，使用UnresolvedShuffleExec进行了包装。
     - 调度器，在调度计划时，会在`assign_next_schedulable_task` 方法中处理，使用ShuffleReaderExec替换，设置上一个stage，shuffle完后的真正的路径信息。
+
 - ShuffleWriterExec
+  
   - `crates/ballista/rust/core/src/execution_plans/shuffle_writer.rs`
   - 查询计划的一个部分section，该部分具有一致的分区，作为一个单元执行，每个分区并行执行。 每个分区的输出被重新分区并以 Arrow IPC 格式流式传输到磁盘。 查询的后续阶段将使用 ShuffleReaderExec 来读取这些结果。还有一个用于延迟计算的UnresolvedShuffleExec的包装器类。
   - 单孩子节点（上层的执行计划）
@@ -881,7 +838,9 @@ Ballista的分布式执行计划实现，非常类似于SparkSQL的执行机制�
             - （可能看到性能跟hash结果的分区数量以及一行包含的列的个数有关，一个RecordBatch包含的行数应该远大于分区数量才比较好，如果相等，理论上性能应该是接近行存的散列）
               - 散列后的分区数量，一般应该接近executor的个数，而RecordBatch一般应该设置超过1000行，这样一看，列存格式的shuffle，理论上性能应该不成问题（之前以为会有内存拷贝，需要重新组织列存格式）
               - 对于小数据集，会更加适合广播hash join。
+
 - ShuffleReaderExec
+  
   - `crates/ballista/rust/core/src/execution_plans/shuffle_reader.rs`
   - 读取已经被executor执行的ShuffleWriterExec物化到磁盘的分区
   - 无孩子节点
@@ -896,28 +855,23 @@ Ballista的分布式执行计划实现，非常类似于SparkSQL的执行机制�
       - 通过`BallistaClient.fetch_partition` 方法想每个executor拉取数据
     - 合并成一个输出流`RecordBatchStream`
 
-
-
 简单的想法：
 
 - ballista 作为计算引擎层，TB实例作为存储引擎节点，算作一种计算与存储分离的架构。与spark外接各种存储引擎的模式类似。更多，spark可以部署在yarn或者k8s（后者看起来更前途光明）上，ballista 也可以类似。
 
 - ballista 获取数据源，以当前datafusion的注册数据源的方式，在client端注册数据源信息，生成逻辑计划，然后提交计划到scheduler进行执行。
-
+  
   datafusion的注册数据源接口还很简单。可以参考Spark DataSource/DataSource V2 接口注册数据源，下推的filter。
 
 - TB 当前自己的原信息存储在sled中，当前是单机版本。可以提取出来，以etcd？管理的sled集群，提供元信息服务。这样的设计变成hive的metastore角色、tidb的PD cluster。实际还是单点服务，有其他的可扩展、高可用思路吗？（k8s来管理？todo学习k8s架构原理，k8s operator）元信息管理的负载情况 （clickhouse的元信息管理？）
-
+  
   元信息管理，与ballista  scheduler是同样的master类似的角色，但是不合并在一起的理由：模块解耦，可更换、外接计算引擎（spark，kylin等），接hadoop生态。
-
+  
   提供元信息接口，meta client，供datafusio使用的另外好处，在4.2.3 节总结提到。
 
 - 关于WAL，对于OLAP系统来讲个人未了解相关实现（hbase WAL算？），如hive，是没有的，而是写进临时目录，来保证原子性。（todo：读有些重新思考数据库的架构论文，对日志是如何考虑的。aurora 这个OLTP对日志的优化，polardb对日志的优化）对大数据，OLAP系统而言，特点是大数据批量插入，非单条写入。从集中是数据库，引入日志，是为了保证单机崩溃，用redo，undo处理脏页的问题，分布式数据库，利用日志和raft等算法，可以进行副本状态机一致性的改变。对TB的base引擎，数据文件特点是是追加的，是否完全可以不需要考虑脏页问题，保证文件offset正确，只需要覆盖即可？不过存在日志的一个额外好处是，对于扩展系统如备份，恢复、同步，可以拷贝日志，保证实时性和事务一致性状态的恢复。如果只有记录数据的物理文件，如果是物理文件为单位备份恢复，实时性无法保证。（考虑数据即日志？）（tidb似乎有从tiflash写tikv的路径，如何做日志同步的）
-
-
 
 ## REEF
 
 - [TensorBase](https://github.com/tensorbase/tensorbase)
 - [开源产品 | TensorBase，基于Rust的现代化开源数据仓库](https://rustmagazine.github.io/rust_magazine_2021/chapter_4/tensorbase.html)
-

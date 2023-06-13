@@ -66,3 +66,12 @@ awk是一个可编程的文本处理、分析工具，相对与sed而言，具�
   - BEGIN{执行前的语句}
   - END{执行后执行的语句}
   - {每行处理时执行的语句}
+
+
+
+```shell
+# 1. 计算每行长度，并递减排序
+awk  '{print length($0)}' /log/hadoop_template1.log | sort -n -r | head
+
+
+```

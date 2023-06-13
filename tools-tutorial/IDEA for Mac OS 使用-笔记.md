@@ -5,6 +5,7 @@
 - `command` 对应 windowns `win`
 - `⌥` Option 选项 = Windows 的`Alt`键
 - `⌃` Control 控制
+- 锁屏：Ctrl + Command + Q
 
 ## 快捷键命令
 

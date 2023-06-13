@@ -4,13 +4,9 @@
 
 ## 1.常用UML符号
 
-
-
 ### 3.关系
 
 #### 3.1依赖
-
-
 
 ![依赖](./uml笔记图片/Snipaste_2021-05-09_18-06-59.png)
 
@@ -23,8 +19,6 @@ has a
 #### 3.3 继承
 
 ![](./uml笔记图片/Snipaste_2021-05-09_18-08-32.png)
-
-
 
 接口实现关系，线条是虚线，箭头是三角。
 
@@ -63,8 +57,6 @@ OO原则
 - 封装变化
 - 多用组合，少用继承
 - 针对 接口编程，不针对实现编程
-
-
 
 ## 代理模式
 
@@ -148,8 +140,6 @@ InvocationHandler类，只有一个invoke方法，用以处理代理类的方法
 
 RPC, 客户端创建动态代理类，封装调用方法，参数，requestid等信息，通过网络发送给服务端，服务端接受消息，并解析消息，根据调用的方法（或者消息码）转到相应的handle的逻辑，并返回处理结果。
 
-
-
 更多的代理变种：
 
 防火墙代理：控制网络资源的访问
@@ -164,8 +154,6 @@ RPC, 客户端创建动态代理类，封装调用方法，参数，requestid等
 
 写时复制代理：控制对象的复制，延迟对象的复制。
 
-
-
 ## 3.气象监测：观察者模式
 
 背景：
@@ -178,8 +166,6 @@ RPC, 客户端创建动态代理类，封装调用方法，参数，requestid等
 
 - 针对具体实现编程而非接口（设计各个显示类，对各个显示类的对象直接更新属性）
 
-
-
 观察者模式：
 
 定义对象之间的一对多的依赖，当一个对象改变状态时，它所有的依赖者都将受到通知并自动更新。（行为模式）
@@ -189,10 +175,6 @@ RPC, 客户端创建动态代理类，封装调用方法，参数，requestid等
 观察者模式类图：
 
 ![](uml笔记图片/Snipaste_2021-05-11_21-31-48.png)
-
-
-
-
 
 设计原则：为交互对象之间的松耦合设计而努力
 
@@ -212,7 +194,7 @@ java内置的观察者模式（java.util.Observable,java.util.Observer）：
 注意：
 
 - java.util.Observable的notifyObservers()方法表示，观察自己拉取更新（利用subject对象，获取信息），而notifyObservers(Object arg)表示推更新（arg）给观察者。
-
+  
   采用拉取方式，可以只拉取观察者需要的信息。
 
 - Observable是一个类，其通知观察者的顺序，可能由于观察者的变更，而变更。使用内置观察者模式时，不要依赖观察者被通知的顺序。
@@ -221,26 +203,14 @@ java内置的观察者模式（java.util.Observable,java.util.Observer）：
 
 GUI编程，事件监听器。
 
-
-
-
-
-
-
-
-
 ## 4. 创建型模式
-
-
-
-
 
 ### 4.1 建造者模式Builder
 
 将一份复杂对象的构建与其表示相分离，使得同样的构建过程可以创建不同的表示。
 
 >  另外的解释，使用多个简单对象，一步步构建一个复杂的对象的模式。
->
+> 
 > Rust由于没有构造函数，大量使应用此种模式。 《Rust编程之道》
 
 ```rust
@@ -294,17 +264,89 @@ impl CircleBuilder {
 let c = Circle::new().x(1.0).y(2.0).radiuse(2.0).build();
 ```
 
-
-
 其他开源代码中的应用：
 
 - Java StringBuilder   append方法追加字符串，最后build返回最后的String
 
-
-
 ### 4.2 工厂模式
 
+#### 4.2.1 简单工厂模式
 
+定义**一个**工厂类，根据传入的参数不同返回不同的实例，被创建的实例具有共同的父类或接口。
+
+适用：
+
+- 需要创建的对象较少。 
+
+- 客户端不关心对象的创建过程。
+
+```
+public class SimpleFactory {
+    
+    /**
+     * 通过类型获取Coffee实例对象
+     * @param type 咖啡类型
+     * @return
+     */
+    public static Coffee createInstance(String type){
+        if("americano".equals(type)){
+            return new Americano();
+        }else if("cappuccino".equals(type)){
+            return new Cappuccino();
+        }else if("latte".equals(type)){
+            return new Latte();
+        }else{
+            throw new RuntimeException("type["+type+"]类型不可识别，没有匹配到可实例化的对象！");
+        }
+    }
+    
+    public static void main(String[] args) {
+        Coffee latte = SimpleFactory.createInstance("latte");
+        System.out.println("创建的咖啡实例为:" + latte.getName());
+        Coffee cappuccino = SimpleFactory.createInstance("cappuccino");
+        System.out.println("创建的咖啡实例为:" + cappuccino.getName());
+    }
+
+}
+```
+
+#### 4.2.2 工厂方法模式
+
+在工厂方法模式中，不再提供一个统一的工厂类来创建所有的对象，而是针对不同的对象提供不同的工厂。
+
+定义一个用于创建对象的接口，让子类决定将哪一个类实例化。工厂方法模式让一个类的实例化延迟到其子类。
+
+适用场景：
+
+- 客户端可以通过子类来指定创建对应的对象。
+
+- 各个类型创建逻辑复杂。
+
+### 4.2.3 抽象工厂
+
+提供一个创建一系列相关或相互依赖对象的接口，而无须指定它们具体的类。
+
+- AbstractFactory（抽象工厂）声明了**一组**用于创建对象的方法。  
+
+- ConcreteFactory（具体工厂）：它实现了在抽象工厂中声明的创建对象的方法，生成一组具体对象。  
+
+- AbstractProduct（抽象产品）：它为每种对象声明接口，在其中声明了对象所具有的业务方法。  
+
+- ConcreteProduct（具体产品）：它定义具体工厂生产的具体对象。
+
+适应场景
+
+- 需要一组对象共同完成某种功能时。并且可能存在多组对象完成不同功能的情况。  
+  
+  - 工厂需要创建多组产品，产品间具有相关或相互依赖关系。
+
+- 系统结构稳定，不会频繁的增加对象。（一旦增加就需要修改原有代码，不符合开闭原则）
+
+
+
+#### REF
+
+- [三分钟快速了解Spring中的工厂模式 - 掘金](https://juejin.cn/post/6992716383893061663)
 
 
 
@@ -332,19 +374,13 @@ let c = Circle::new().x(1.0).y(2.0).radiuse(2.0).build();
 
 ### 对象作为参数
 
-
-
 ### 通信被封装还是被分布
-
-
 
 ### 对发送者和接收者解耦
 
 观察者模式：主题和观察者的松耦合。
 
 kafka
-
-
 
 ### 访问者模式Visitor
 
@@ -357,144 +393,126 @@ kafka
 ```java
 interface ItemElement
 {
-	public int accept(ShoppingCartVisitor visitor);
+    public int accept(ShoppingCartVisitor visitor);
 }
 class Book implements ItemElement
 {
-	private int price;
-	private String isbnNumber;
-	public Book(int cost, String isbn)
-	{
-		this.price=cost;
-		this.isbnNumber=isbn;
-	}
-	public int getPrice()
-	{
-		return price;
-	}
-	public String getIsbnNumber()
-	{
-		return isbnNumber;
-	}
-	@Override
-	public int accept(ShoppingCartVisitor visitor)
-	{
-		return visitor.visit(this);
-	}
+    private int price;
+    private String isbnNumber;
+    public Book(int cost, String isbn)
+    {
+        this.price=cost;
+        this.isbnNumber=isbn;
+    }
+    public int getPrice()
+    {
+        return price;
+    }
+    public String getIsbnNumber()
+    {
+        return isbnNumber;
+    }
+    @Override
+    public int accept(ShoppingCartVisitor visitor)
+    {
+        return visitor.visit(this);
+    }
 
 }
 class Fruit implements ItemElement
 {
-	private int pricePerKg;
-	private int weight;
-	private String name;
-	public Fruit(int priceKg, int wt, String nm)
-	{
-		this.pricePerKg=priceKg;
-		this.weight=wt;
-		this.name = nm;
-	}
-	public int getPricePerKg()
-	{
-		return pricePerKg;
-	}
-	public int getWeight()
-	{
-		return weight;
-	}
-	public String getName()
-	{
-		return this.name;
-	}
-	@Override
-	public int accept(ShoppingCartVisitor visitor)
-	{
-		return visitor.visit(this);
-	}
+    private int pricePerKg;
+    private int weight;
+    private String name;
+    public Fruit(int priceKg, int wt, String nm)
+    {
+        this.pricePerKg=priceKg;
+        this.weight=wt;
+        this.name = nm;
+    }
+    public int getPricePerKg()
+    {
+        return pricePerKg;
+    }
+    public int getWeight()
+    {
+        return weight;
+    }
+    public String getName()
+    {
+        return this.name;
+    }
+    @Override
+    public int accept(ShoppingCartVisitor visitor)
+    {
+        return visitor.visit(this);
+    }
 }
 interface ShoppingCartVisitor
 {
 
-	int visit(Book book);
-	int visit(Fruit fruit);
+    int visit(Book book);
+    int visit(Fruit fruit);
 }
 class ShoppingCartVisitorImpl implements ShoppingCartVisitor
 {
-	@Override
-	public int visit(Book book)
-	{
-		int cost=0;
-		//apply 5$ discount if book price is greater than 50
-		if(book.getPrice() > 50){
-			cost = book.getPrice()-5;
-		} else
-			cost = book.getPrice();
+    @Override
+    public int visit(Book book)
+    {
+        int cost=0;
+        //apply 5$ discount if book price is greater than 50
+        if(book.getPrice() > 50){
+            cost = book.getPrice()-5;
+        } else
+            cost = book.getPrice();
 
-		System.out.println("Book ISBN::"+book.getIsbnNumber() + " cost ="+cost);
-		return cost;
-	}
+        System.out.println("Book ISBN::"+book.getIsbnNumber() + " cost ="+cost);
+        return cost;
+    }
 
-	@Override
-	public int visit(Fruit fruit){
-		int cost = fruit.getPricePerKg()*fruit.getWeight();
-		System.out.println(fruit.getName() + " cost = "+cost);
-		return cost;
-	}
+    @Override
+    public int visit(Fruit fruit){
+        int cost = fruit.getPricePerKg()*fruit.getWeight();
+        System.out.println(fruit.getName() + " cost = "+cost);
+        return cost;
+    }
 }
 class ShoppingCartClient
 {
-	public static void main(String[] args)
-	{
-		ItemElement[] items = new ItemElement[]{new Book(20, "1234"),
-							new Book(100, "5678"), new Fruit(10, 2, "Banana"),
-							new Fruit(5, 5, "Apple")};
-		int total = calculatePrice(items);
-		System.out.println("Total Cost = "+total);
-	}
-	private static int calculatePrice(ItemElement[] items)
-	{
-		ShoppingCartVisitor visitor = new ShoppingCartVisitorImpl();
-		int sum=0;
-		for(ItemElement item : items){
-			sum = sum + item.accept(visitor);
-		}
-		return sum;
-	}
+    public static void main(String[] args)
+    {
+        ItemElement[] items = new ItemElement[]{new Book(20, "1234"),
+                            new Book(100, "5678"), new Fruit(10, 2, "Banana"),
+                            new Fruit(5, 5, "Apple")};
+        int total = calculatePrice(items);
+        System.out.println("Total Cost = "+total);
+    }
+    private static int calculatePrice(ItemElement[] items)
+    {
+        ShoppingCartVisitor visitor = new ShoppingCartVisitorImpl();
+        int sum=0;
+        for(ItemElement item : items){
+            sum = sum + item.accept(visitor);
+        }
+        return sum;
+    }
 }
 ```
-
-
 
 典型应用：
 
 - AST 树语法解析，通常使用访问者模式来遍历处理。 增加一种AST节点时，只需要visitor的接口，增加接受新的ast节点的函数，和visitor的实现，具体增加处理逻辑。
 - 查询优化的逻辑优化阶段，应该也算是一种访问者模式，逻辑优化规则，自顶向下的遍历整个树，匹配到符合的算子或者模式时，应用规则。
 
-
-
-
-
 #### REF
 
 - [visitor-design-pattern](https://www.geeksforgeeks.org/visitor-design-pattern/)
-
-
 
 TODO：建造者模式apache arrow
 
 适配器模式 clickhouse
 
-
-
-
-
-
-
-
-
-
-
-##　关于建模
+## 关于建模
 
 模型是对现实的简化。
 
@@ -546,10 +564,6 @@ TODO：建造者模式apache arrow
 
 （数据仓库的体系结构，实时流系统体系结构，AI平台的体系结构等）
 
-
-
-
-
 ## 《领域驱动设计：软件核心复杂性应对之道》
 
 ### 一.运用领域模型
@@ -596,13 +610,9 @@ Prolog 语言。在 MODEL-DRIVEN DESIGN 中，建模范式是逻辑，而模型�
 
 ![](uml笔记图片/04inf02.jpg)
 
-
-
 domain 层：领域层。
 
 一个架构能够把那些与领域相关的代码隔离出来，得到一个内聚的领域设计，同时又使领域与系统其他部分保持松散耦合，那么这种架构也许可以支持领域驱动设计。
-
-
 
 #### 4.2 表示
 
@@ -674,8 +684,6 @@ public class BrokerageAccount {
 - 对象范式
 - 关系范式
 
-
-
 #### 聚合AGGREGATE
 
 > 假设我们从数据库中删除一个 Person 对象。这个人的姓名、出生日期和工作描述要一起被删除，但要如何处理地址呢？可能还有其他人住在同一地址。如果删除了地址，那些 Person 对象将会引用一个被删除的对象。如果保留地址，那么垃圾地址在数据库中会累积起来。虽然自动垃圾收集机制可以清除垃圾地址，但这也只是一种技术上的修复；就算数据库系统存在这种处理机制，一个基本的建模问题依然被忽略了。
@@ -691,4 +699,3 @@ public class BrokerageAccount {
 ##### Factory
 
 创建复杂对象，不要自身创建。
-

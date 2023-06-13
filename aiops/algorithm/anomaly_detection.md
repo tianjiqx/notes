@@ -62,8 +62,6 @@ KDDCPU99
 - PROBING（surveillance and probing）  
   端口监视或扫描，例如 ipsweep、 mscan、nmap、portsweep、saint、satan 等
 
-
-
 #### [DDOS](https://www.cloudflare.com/zh-cn/learning/ddos/what-is-a-ddos-attack/) 拒绝服务攻击
 
 - HTTP 洪水攻击类似于同时在大量不同计算机的 Web 浏览器中一次又一次地按下刷新 ——大量 HTTP 请求涌向服务器，导致拒绝服务。
@@ -79,8 +77,6 @@ KDDCPU99
 - [Smurf attack - Wikipedia](https://en.wikipedia.org/wiki/Smurf_attack)
 
 - Smurf 攻击是一种分布式拒绝服务攻击，其中使用 IP 广播地址向计算机网络广播大量具有预期受害者的欺骗源 IP 的 Internet 控制消息协议 (ICMP) 数据包。 默认情况下，网络上的大多数设备都会通过向源 IP 地址发送回复来对此做出响应。如果网络上接收和响应这些数据包的机器数量非常多，受害者的计算机就会被流量淹没。这会使受害者的计算机变慢，以至于无法继续工作。
-
-
 
 #### [DDOS](https://www.cloudflare.com/zh-cn/learning/ddos/what-is-a-ddos-attack/) 拒绝服务攻击
 

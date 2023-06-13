@@ -8,6 +8,9 @@
   git remote -v
   # 修改
   git remote set-url <remote_name> <remote_url>
+  
+  # 拉取远程分支到本地
+  git pull origin <远程分支名>:<本地分支名>
   ```
 
 - 同步远程分支
@@ -143,5 +146,3 @@
 - 拉取别人的PR到本地
   
   `git fetch upstream pull/<ID>/head:<BRANCHNAME>`
-
-- END
