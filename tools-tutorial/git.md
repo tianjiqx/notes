@@ -24,48 +24,33 @@
   git rebase --continue
   ```
 
-- 修改代码并提交到本地
-  
+- 修改代码并提交到本地, 压制提交，合并提交
+  ```shell
   git add .
-  
-  git commit -m "WARP-0000: xxxx"
-
-- 压制提交，合并提交
-  
+  git commit -m "WARP-0000: xxxx"  
   git rebase -i HEAD~3 (管理最近三次commit)
-  
   间隔合并多个commit，只需要将要压制的commit排序到想要保留的commit下面
+  ```
 
 - 比较
-  
+  ```
   git diff  (临时区)
-  
   git diff --cached (暂存区)
-  
   git diff commit1 commit2 (对比commit版本)
-
+  ```
 - 修改commit log
-  
+  ```
   git commit -- amend  (最近一次commit信息)
-  
   解决使用git commit -- amend已提到远程仓库的commit，产生“您的分支和 'origin/master' 出现了偏离”问题，恢复到远程状态
-  
   git reset --hard old commit
-  
   提示你落后远端分支
-  
   git status
-  
   重新从远端pull
-  
   git pull
-  
   查看状态，您的分支与上游分支 'origin/master' 一致
-  
   git status
-
+  ```
 - 拉取tag分支
-  
   ```
   git fetch upstream  
   列出所有tag
