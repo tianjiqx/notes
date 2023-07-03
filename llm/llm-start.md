@@ -24,16 +24,32 @@
 
 - LoRA(Low-Rank Adaptation低秩适应): 调整llm权重方法，冻结预训练模型的权重，并将可训练的秩分解矩阵注入到Transformer进行运行，避免完全重调整模型。
 
+- Zero-shot prompting（零样本提示）：指在机器学习和自然语言处理中，使用一个模型在没有事先训练的样本示例的情况下进行推理和生成。通过给模型提供一个提示或问题，模型可以根据其先前的训练经验生成合理的输出，即使它从未在给定提示下进行过具体训练。
+
+- Few-shot prompting（少样本提示）：类似于零样本提示，但在这种情况下，模型在给定少量示例样本的情况下进行推理和生成。通过利用少量的示例样本，模型可以进行更准确的推理和生成，而不需要大规模的训练数据集。
+
+- In Context Learning（上下文学习）：是一种自然语言处理技术，用于在对话或交互式环境中进行模型的在线学习。通过在对话过程中不断接收输入和反馈，并根据实时数据进行更新和调整，模型可以逐步提高其性能和适应性，以更好地满足特定任务或场景的需求。
+
+- Instruct（指示）：在自然语言处理中，指示是一种技术或方法，用于向模型提供明确的指导或命令，以指示模型完成特定的任务。通过向模型提供特定的指示，例如问题的结构、期望的输出格式或特定的操作指令，可以引导模型生成符合预期的输出。
+
+- RLHF（Reinforcement Learning from Human Feedback）：强化学习的范式。
+
+
 ## 工具
 
 - 模型
-  - [Chinese-LLaMA-Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca) 中文LLaMA模型和指令精调的Alpaca大模型,在原版LLaMA的基础上扩充了中文词表并使用了中文数据进行二次预训练，进一步提升了中文基础语义理解能力。中文Alpaca模型进一步使用了中文指令数据进行精调，显著提升了模型对指令的理解和执行能力。
+  - [Chinese-LLaMA-Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca) 中文LLaMA模型和指令精调的Alpaca大模型,在原版LLaMA的基础上扩充了中文词表并使用了中文数据进行二次预训练，进一步提升了中文基础语义理解能力。中文Alpaca模型进一步使用了中文指令数据进行精调，显著提升了模型对指令的理解和执行能力。 
   - [主流底座模型](https://github.com/Hannibal046/Awesome-LLM#open-llm) 
-    - [LLaMA](https://github.com/facebookresearch/llama): meta,包含 650 亿个参数的大型语言模型。 (非常多以此为基础微调的模型) [get](https://juejin.cn/post/7209850311258898490)
+    - [LLaMA](https://github.com/facebookresearch/llama): meta,包含 650 亿个参数的大型语言模型。 (非常多以此为基础微调的模型) [get](https://juejin.cn/post/7209850311258898490) 并且只使用公开可用的数据集进行训练。 2023
       - [Alpaca](https://github.com/tatsu-lab/stanford_alpaca): stanford 基于LLaMA模型的指令优化
       - [GPT4All](https://github.com/nomic-ai/gpt4all) 在 CPU 上本地运行的开源助手样式大型语言模型
-    - [T5](https://github.com/google-research/text-to-text-transfer-transformer) - google, Text-to-Text Transfer Transformer 
-    - [GLM](https://github.com/THUDM/GLM) 清华 
+    - [T5](https://github.com/google-research/text-to-text-transfer-transformer) - google, Text-to-Text Transfer Transformer 2019
+    - [GPT](https://github.com/openai/gpt-3) 只开源到gpt3 openai lastest gpt4 2023 
+    - [OPT(metaseq)](https://github.com/facebookresearch/metaseq) facebook 多语言模型  2022
+    - [ChatGLM2-6B](https://github.com/THUDM/ChatGLM2-6B), [GLM](https://github.com/THUDM/GLM) 清华, 开源中英双语对话模型 2023
+    - [LC1332/Luotuo-Chinese-LLM](https://github.com/LC1332/Luotuo-Chinese-LLM) Luotuo 可做following 其他中文LLM资源
+    - [PaLM 2 Technical Report]() google 2023 closeSource
+
 
 - 量化工具：
   - [llama.cpp](https://github.com/ggerganov/llama.cpp) llama.cpp 目标是在MacBook上使用4位整数量化(quantization)运行LLaMA模型。
@@ -49,8 +65,11 @@
   - [text-generation-webui](https://github.com/oobabooga/text-generation-webui) 用于运行大型语言模型，如LLaMA，llama.cpp，GPT-J，Pythia，OPT和GALACTICA, 管理LoRA微调
   - [LangChain](https://github.com/hwchase17/langchain) 是一个用于开发由LLM驱动的应用程序的框架，旨在帮助开发人员使用LLM构建端到端的应用程序。
   - [vllm](https://vllm.readthedocs.io/en/latest/serving/distributed_serving.html) 支持使用ray框架，将 vLLM 扩展到单台计算机
-  - [alpa](https://github.com/alpa-projects/alpa) 用于训练和服务大规模神经网络的系统,自动并行化
+  - [alpa](https://github.com/alpa-projects/alpa) 用于训练和服务大规模神经网络的系统,自动并行化,（基于ray管理集群）
+    - [serving](https://github.com/alpa-projects/alpa/blob/main/examples/llm_serving/README.rst)
   - [deepspeed](https://www.deepspeed.ai/) baichuan-7B 使用的分布式训练框架
+
+  - [Hugging Face transformers](https://github.com/huggingface/transformers) 提供了数千个预训练底座模型，用于执行不同模式（如文本、视觉和音频）的任务， 类似还有 [young-geng/EasyLM](https://github.com/young-geng/EasyLM)
 
 ## 部署
 
@@ -61,20 +80,36 @@ text-generation-webui
 bloking_api:
 /api/v1/generate： -> generate_reply 互斥锁(threading.LOCK)，逐个输出
 /api/v1/chat: generate_chat_reply -> chatbot_wrapper -> generate_reply
-streaming_api: (generate_params['stream'] = True)
+streaming_api: (generate_params['stream'] = True) 是并发推理?
 /api/v1/stream:  -> generate_reply 
 /api/v1/chat-stream -> generate_chat_reply 
 
 
 ### 2.分布式
-- 底座模型的模型训练 ray  alpa 
-- 推理
+
+底座模型
+- 训练 
+- 推理 （批量推理，并发推理）
+
+
+alpa
+- 批量推理，输入多个prompt, 调用 tokenizer.batch_decode （ huggingface/transformers interface）批量推理，批量输出结果。
+- 支持模型： Facebook OPT系列 / [bloom](https://huggingface.co/bigscience/bloom) 多语言模型 (examples/textgen.py)  类似OPT
+
+
+[LLM-As-Chatbot](https://github.com/deep-diver/LLM-As-Chatbot) LLM聊天机器人服务
+- 支持模型：Alpaca-LoRA以及衍生模型
+- 支持保留2-3 次对话，作为prompts（更多效果不好，降低推理速度，没能缓存之前对话结果）
+
+vllm:
+- 支持模型：LLaMA(lmsys/vicuna-13b-v1.3, young-geng/koala, openlm-research/open_llama_13b, etc)，OPT, gpt2，GPT-NeoX
+  - [openlm-research/open_llama_13b](https://github.com/openlm-research/open_llama) 基于llama代码重新训练的权重
 
 ## 问题
 ### 1.模型间的区别
 单轮/多轮对话
-流式/非流式输出
-推理速度，缓存结果
+流式/非流式输出结果
+推理速度，checkpoint推理
 语言支持能力
 
 
@@ -86,14 +121,26 @@ streaming_api: (generate_params['stream'] = True)
 - awesome:
   - [HqWu-HITCS/Awesome-Chinese-LLM](https://github.com/HqWu-HITCS/Awesome-Chinese-LLM) 中文底座模型，垂直领域微调及应用，数据集与教程
   - [Hannibal046/Awesome-LLM](https://github.com/Hannibal046/Awesome-LLM) 大型语言模型的精选论文列表，还包含LLM培训框架，部署LLM的工具，有关LLM的课程和教程
-  - [tensorchord/Awesome-LLMOps](https://github.com/tensorchord/Awesome-LLMOps) 底座模型, 部署工具
+  - [tensorchord/Awesome-LLMOps](https://github.com/tensorchord/Awesome-LLMOps) 底座模型, 部署工具，框架
   - [kyrolabs/awesome-langchain](https://github.com/kyrolabs/awesome-langchain) langchain 学习
   - [underlines/awesome-marketing-datascience](https://github.com/underlines/awesome-marketing-datascience) 模型，工具
 
-- 本地化部署
+- Tutorials
+  - [Ameet Deshpande] How Does ChatGPT Work? [Slides](https://docs.google.com/presentation/d/1TTyePrw-p_xxUbi3rbmBI3QQpSsTI1btaQuAUvvNc8w/edit#slide=id.g206fa25c94c_0_24)
+
+  - [邱锡鹏] 大型语言模型的能力分析与应用 Slides | Video 
+- 本地化部署,serving,
 
   - [GPT大语言模型Alpaca-lora本地化部署实践【大语言模型实践一】 | 京东云技术团队](https://juejin.cn/post/7233951543115186231)
   - [ray blog](https://www.anyscale.com/blog/ray-common-production-challenges-for-generative-ai-infrastructure)
+
+  - [large-model-serving](https://github.com/tensorchord/Awesome-LLMOps#large-model-serving)
+
+- DeepSpeed
+  - [DeepSpeed 通过系统优化加速大模型推理](https://zhuanlan.zhihu.com/p/629644249)
+  - [DeepSpeed + Kubernetes 如何轻松落地大规模分布式训练](https://zhuanlan.zhihu.com/p/641132519)
+
+
 
 - 开发应用
   - [本地部署开源大模型的完整教程：LangChain + Streamlit+ Llama](https://zhuanlan.zhihu.com/p/639565332)
@@ -102,6 +149,7 @@ streaming_api: (generate_params['stream'] = True)
     - 对话式搜索, 文档切片+向量检索+大模型生成答案（将企业数据和对话交互信息，先进行向量特征提取，然后存入向量检索引擎构建索引并进行相似度召回，将召回TOP结果传入LLM大语言模型，对信息进行对话式结果整合，最终返回给客户。） 
     - 向量检索， 优势：语义分析的向量召回
     - 业务数据：文档内容，语料，知识库，问答对
+
 
 
 其他
