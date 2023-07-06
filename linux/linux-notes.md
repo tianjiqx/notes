@@ -75,6 +75,10 @@
   
   - 查看压缩包 `tar -tvf  xxx.tar.gz`
 
+
+- 查看时区 `date -R`
+
+
 ## linux 工具blog 链接
 
 - [木子的搬砖工具](https://blog.k8s.li/My-brick-lifting-tools.html)

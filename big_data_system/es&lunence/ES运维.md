@@ -40,8 +40,16 @@ curl -X GET "localhost:9200/_cluster/allocation/explain?pretty" -H 'Content-Type
 // 分片
 // 名字降序
 _cat/shards?v&s=index:desc
+
+
 // UNASSIGNED 原因
 _cat/shards?h=index,shard,prirep,state,unassigned.reason | grep UNASSIGNED
+
+// 找到分配失败的分片
+curl -XGET  ${eshost}/_cat/shards?h=index,shard,prirep,state,unassigned.reason,ud -H 'Content-Type: application/json' -H "Authorization: $tk"
+
+// 通过nodes接口查询node信息，并且通过节点id找到对应节点
+curl -X GET  ${eshost}/_nodes?pretty -H 'Content-Type: application/json' -H "Authorization: $tk"
 
 // 常见处理：
 // 1. 检查 cluster.routing.allocation.enable 是否禁止了分片
@@ -163,6 +171,7 @@ PUT /_cluster/settings
   
   - /_cluster/reroute?retry_failed=true 依然失败
   - 重启一下该节点
+  - [es实战-分片分配失败解决方案](https://developer.aliyun.com/article/789498)
 
 - [干货 | Elasticsearch 运维实战常用命令清单](https://mp.weixin.qq.com/s?__biz=MzI2NDY1MTA3OQ==&mid=2247485141&idx=1&sn=c785d6c128761c33f9744bf1454a472a)
 
