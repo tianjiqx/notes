@@ -99,13 +99,21 @@
 ### 1.单机
 
 text-generation-webui
+
 多线程请求api推理
+
 bloking_api:
+
 /api/v1/generate： -> generate_reply 互斥锁(threading.LOCK)，逐个输出
+
 /api/v1/chat: generate_chat_reply -> chatbot_wrapper -> generate_reply
+
 streaming_api: (generate_params['stream'] = True) 是并发推理?依然阻塞
+
 /api/v1/stream:  -> generate_reply 
+
 /api/v1/chat-stream -> generate_chat_reply 
+
 流式输出格式：a, ab,abc... ，需要skip已经输出内容。
 
 ### 2.分布式

@@ -6,6 +6,7 @@
 langchain + chat4all
 
 对话问答 demo:
+
 下载: nous-hermes-13b.ggmlv3.q4_0.bin, 还有其他int4量化的可在cpu上执行的模型
 https://gpt4all.io/index.html  Model Explorer 
 
@@ -96,16 +97,16 @@ print('end!')
 
 // nous-hermes-13b.ggmlv3.q4_0.bin
 
+// 1
 What NFL team won the Super Bowl in the year Justin Bieber was born?
  In 1994, Justin Bieber was not yet born (he was born on March 1st, 1994). 
  The first Super Bowl of that year took place on January 23rd, 
  where the San Francisco 49ers defeated the Dallas Cowboys with a score of 55-10. 
  So, in the year Justin Bieber was born (1994), the NFL team that won the Super Bowl was the San Francisco 49ers.
 run question: spend time 22.447 s
-end!
 
 
-
+// 2
 介绍一下秦始皇
 llama_new_context_with_model: kv self size  = 1600.00 MB
  Qin Shi Huang was the first emperor of China, who unified China and laid the foundation for its future development. 
@@ -117,9 +118,9 @@ In addition to political reforms, Qin Shi Huang also focused on military conques
 
 Qin Shi Huang is also remembered for his ambitious building projects, including the construction of the Great Wall and the Terracotta
 run question: spend time 95.860 s
-end!
 
 
+// 3
 介绍一下秦始皇, 用中文输出
  Firstly, we need to convert the English name "Qin Shi Huang" into Chinese characters using pinyin system. 
  The pronunciation of each character in pinyin is as follows: Qín (���), Shì (始), Húang (皇).
@@ -130,14 +131,15 @@ Now let's output these characters one by one:
 2. 始 (Shì): Same as above, type "S", "h", "i". Press Enter for each letter. Then type "i" and press Enter one more time to complete the character.
 3. 皇 (Húang): Type "H", "u", "a", "n". Press Enter for each letter. Finally, type "g" and press Enter again to complete the character.
 run question: spend time 58.917 s
-end!
 
+
+// 4
 
 You entered: who are you?
  First, I am a computer program that can answer questions. Second, my answers come from the information stored in my database. Third, this information is compiled and curated by humans. Fourth, these humans work for the company that created me to ensure accuracy and relevance. Finally, you could say that I am an artificial intelligence powered by human knowledge. So, who are you?
 Run question: spend time 15.724 s
 
-
+// 5 是否有会话记忆
 Enter something questions (or 'q' to quit): llama_new_context_with_model: kv self size  = 1600.00 MB
 who are you?
 You entered: who are you?
@@ -154,7 +156,7 @@ You entered: What's relation you and me?
 Now, let's consider you and relation. You are an individual who has relationships with others - family members, friends, co-workers, etc. These relationships involve connections, bonds, links, ties or associations between you and the other person(s). So, in this context, you can say that "I am a part of many relations."
 Run question: spend time 24.635 s
 
-
+// 6 sql生成
 nter something questions (or 'q' to quit): llama_new_context_with_model: kv self size  = 1600.00 MB
 写一个查询表t1的列信息的sql
 You entered: 写一个查询表t1的列信息的sql
@@ -169,6 +171,8 @@ SELECT column_name AS Name,
 FROM user_tab_cols 
 WHERE table_name = 't1' AND column_name = 'Name';
 ```
+
+
 This query uses the `user_tab_cols` system view to retrieve information about the specified column in the `t1` table. The `column_name` and `table_name` criteria are used to filter the results and return only the row that corresponds to the desired column name (`Name`).
 Run question: spend time 37.538 s
 Enter something questions (or 'q' to quit): 
@@ -187,7 +191,7 @@ Run question: spend time 19.514 s
 
 // ggml-replit-code-v1-3b.bin
 
-
+// 7.
 Enter something questions (or 'q' to quit): 介绍一下秦始皇, 用中文输出
 You entered: 介绍一下秦始皇, 用中文输出
 
@@ -198,11 +202,13 @@ You entered: 介绍一下秦始皇, 用中文输出
 Run question: spend time 27.006 s
 
 
+// 8.
 给出获取mysql表t1的定义的sql
 
 You entered: 给出获取mysql表t1的定义的sql
 
-```
+"```"
+
 Run question: spend time 1.014 s
 
 
@@ -217,16 +223,17 @@ which user you are using as well some other important details like server versio
 ```sql
 mysql> USE mydbname\G  # Use the database named "mydatabase". You can use this to connect from anywhere in a different host, but it is not necessary for our purposes here; we will be working only on one machine at once (localhost). The command above shows you which schema/collection your current connection uses and also what version of server software the database runs under
 2. Now that I know my name as well its collection in this particular host, next step is to get a list with all available columns. We can use `DESC` for it:
-
 ```sql 
+
 mysql> USE  mydbname\G;   # Use your current connection's schema/collection here again! 
 This time we will be using the database named "test" and its collection called mytable1 as well, so I am going to type that in. 
 The command above shows you which version of server
+```
 Run question: spend time 26.389 s
 
 
 // orca-mini-13b.ggmlv3.q4_0.bin
-
+// 1.
 You entered: 
 mysql数据库 表t1的定义 sql
  First, we need to understand what the question is asking for. Then, we can break down the question into smaller parts and try to answer each part separately. Finally, we can put everything together to form a complete answer.
