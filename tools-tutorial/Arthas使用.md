@@ -55,21 +55,29 @@ trace class-pattern method-pattern
 getstatic 类名 属性名
 
 # jvm相关
-  dashboard——当前系统的实时数据面板
-  thread——查看当前 JVM 的线程堆栈信息
-  jvm——查看当前 JVM 的信息
-  sysprop——查看和修改JVM的系统属性
-  sysenv——查看JVM的环境变量
-  perfcounter——查看当前 JVM 的Perf Counter信息
-  logger——查看和修改logger
-  getstatic——查看类的静态属性
+dashboard——当前系统的实时数据面板
+thread——查看当前 JVM 的线程堆栈信息
+jvm——查看当前 JVM 的信息
+sysprop——查看和修改JVM的系统属性
+sysenv——查看JVM的环境变量
+vmoption——查看JVM诊断信息
+perfcounter——查看当前 JVM 的Perf Counter信息
+logger——查看和修改logger
+getstatic——查看类的静态属性
 
+JVM系统属性: 
+- 特定于JVM的键值对，可以被在同一JVM实例中运行的所有Java应用程序访问
+- System.setProperty() 或者 命令行设置(一般 -D前缀), 常见 -Duser.timezone, -Dfile.encoding, -Xms -Xmx
+
+JVM环境属性:
+- 特定于JVM运行的操作系统或执行环境
+- export 设置, System.getenv() 获取
 # class相关
-  sc——查看JVM已加载的类信息
-  sm——查看已加载类的方法信息
+sc——查看JVM已加载的类信息
+sm——查看已加载类的方法信息
 
 # 根据前缀，搜索 
-  sc io.tianjiqx.ClassPrefix* 
+sc io.tianjiqx.ClassPrefix* 
 ```
 
 ### 2.2 火焰图

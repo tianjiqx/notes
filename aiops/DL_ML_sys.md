@@ -109,3 +109,7 @@ spark mllib
 - [Kaggle如何入门？ - 知乎](https://www.zhihu.com/question/23987009)
 
 - [ML system 入坑指南 - Fazzie的文章 - 知乎](https://zhuanlan.zhihu.com/p/608318764)
+
+- [DL Systems 学习指南](https://mp.weixin.qq.com/s/F8Dq6zmj6v4bR3WCKBgKAA)
+
+- [PyTorch 源码解读系列](https://zhuanlan.zhihu.com/p/328674159)

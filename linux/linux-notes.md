@@ -76,7 +76,11 @@
   - 查看压缩包 `tar -tvf  xxx.tar.gz`
 
 
-- 查看时区 `date -R`
+- 查看当前时间的时区 `date -R` 
+  - centos/ubuntu等环境 存在 /etc/localtime 当前和时间, /etc/timezone 系统时区信息 有可能不一致, jvm 初始化系统配置user.timezone, 对于这两个文件的优先级,优先检查 /etc/timezone
+  - `readlink /etc/localtime`
+
+- `nvidia-smi` 显示出当前 nvidia GPU 的所有基础信息
 
 
 ## linux 工具blog 链接

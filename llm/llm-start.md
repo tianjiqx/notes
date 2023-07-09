@@ -92,6 +92,7 @@
 - 应用
   - [csunny/DB-GPT](https://github.com/csunny/DB-GPT)  SQL generation and diagnosis,  text to sql
   - [Auto-GPT](https://github.com/Significant-Gravitas/Auto-GPT) chatgpt 自动化
+  - [OpenLLM](https://github.com/bentoml/OpenLLM) 
 
 
 ## 部署
@@ -155,7 +156,7 @@ demo：
 
 [openchatai/OpenChat](https://github.com/openchatai/OpenChat) 一个日常用户聊天机器人控制台,使用 GPT-3/ GPT-4，嵌入到个人网站，可简化大型语言模型的使用。
 
-
+[ademakdogan/ChatSQL](https://github.com/ademakdogan/ChatSQL)  text to sql base openai ChatGPT
 
 
 
@@ -170,6 +171,14 @@ demo：
 CPU/GPU 运行
 非商业许可(llama)/商业许可(GPTJ,MPT)
 
+
+## 应用开发
+
+text to sql
+
+- prompt（简单指令 + schema信息） + llm
+- prompt + vectorStore + llm 对问题，简单向量topN召回，丰富prompts信息，vectorStore做llm的外置知识库
+- prompt + nlp 预处理/ 多轮 + vectorStore + llm 传统nlp预处理和多轮任务，提高回答的准确性， 优化SQL执行效率
 
 
 ## REF
@@ -208,10 +217,12 @@ CPU/GPU 运行
     - 向量检索， 优势：语义分析的向量召回
     - 业务数据：文档内容，语料，知识库，问答对
 
+  - [万字长文：LLM应用构建全解析](https://zhuanlan.zhihu.com/p/633288551) 
+
+  - [基于大语言模型构建知识问答系统](https://zhuanlan.zhihu.com/p/627655485)
   - [LLM+Embedding构建问答系统的局限性及优化方案](https://zhuanlan.zhihu.com/p/641132245)
     - 观点：原始语句的embedding效果不好，需要通过传统nlp处理（HanLP）生成关键词列表，然后基于关键词 Embedding，使用llm通用能力组织结果 
   - [上下文工程：基于 Github Copilot 的实时能力分析与思考](https://www.phodal.com/blog/llm-context-engineering/) 上下文工程
-
 
   - [imClumsyPanda/langchain-ChatGLM](https://github.com/imClumsyPanda/langchain-ChatGLM) 基于本地知识库的 ChatGLM 问答
 
@@ -223,6 +234,27 @@ CPU/GPU 运行
   - [LLMs and SQL](https://blog.langchain.dev/llms-and-sql/)
     - [crunchbot-sql-analyst-gpt](https://www.patterns.app/blog/2023/01/18/crunchbot-sql-analyst-gpt/)
 
+  - [CVP Stack](https://zhuanlan.zhihu.com/p/642185523)  LLM+向量数据库+提示词
+
+  - [chat2db/Chat2DB](https://github.com/chat2db/Chat2DB) 基于 openai 的java接口(com.unfbx.chatgpt) ，简单的prompt完成 sql 生成
+    ```
+    核心：ChatController
+    buildPrompt()
+    String schemaProperty = CollectionUtils.isNotEmpty(tableSchemas) ? String.format(
+            "### 请根据以下table properties和SQL input%s. %s\n#\n### %s SQL tables, with their properties:\n#\n# "
+                + "%s\n#\n#\n### SQL input: %s", pType.getDescription(), ext, dataSourceType,
+            properties, prompt) : String.format("### 请根据以下SQL input%s. %s\n#\n### SQL input: %s",
+            pType.getDescription(), ext, prompt);
+        switch (pType) {
+            case SQL_2_SQL:
+                schemaProperty = StringUtils.isNotBlank(queryRequest.getDestSqlType()) ? String.format(
+                    "%s\n#\n### 目标SQL类型: %s", schemaProperty, queryRequest.getDestSqlType()) : String.format(
+                    "%s\n#\n### 目标SQL类型: %s", schemaProperty, dataSourceType);
+            default:
+                break;
+    咒语内容：给定schema（需要用户手动指定表，然后获取表的schema信息），数据库类型， prompt 说明（将自然语言转换成SQL查询, 解释SQL， 提供优化建议，进行SQL转换）
+    基于简单的特定指令+必要的schema信息，再无其他处理。
+    ```
 
 - 开发环境
   - [AutoDL](https://www.autodl.com/home)
@@ -230,13 +262,21 @@ CPU/GPU 运行
 
 - blogs
   - [快速了解 OpenAI 的 fine-tune 和 Embedding 能力](https://zhuanlan.zhihu.com/p/609359047)
-  
+  - [当LLM遇到Database：阿里达摩院联合HKU推出Text-to-SQL新基准](https://zhuanlan.zhihu.com/p/635895812)
+  - [LLM学习记录（一）--关于大模型的一些知识](https://zhuanlan.zhihu.com/p/624918286)
 
 - papers
   - [Evaluating the Text-to-SQL Capabilities of Large Language Models](https://arxiv.org/abs/2204.00498) 评估大型语言模型的文本到SQL功能
     - 结论: Codex-text2sql 是 Spider 基准上的强大基线, 基于 n-shot 的prompts 也可以泛化的其他领域,表现很好.(奇怪项目被删除/私有化了,可信度需要打?) other [itrummer/CodexDB](https://github.com/itrummer/CodexDB)
     - text to sql 的 prompts 工程 (5-shot, Create Table + Select 3) 
-
+  - Li, Jinyang, et al. [Can LLM Already Serve as A Database Interface? A BIg Bench for Large-Scale Database Grounded Text-to-SQLs](https://arxiv.org/pdf/2305.03111.pdf). May 2023. 阿里达摩院
+    - 在更多，更复杂的测试集上，text to sql，最好的ChatGPT + COT当前准确性也只有40% [bird-bench](https://bird-bench.github.io/)
+    - 数据库值在为大型数据库生成准确的文本到 SQL 方面很重要（Select 3）
+    - prompt： schema + 人工注释 + 外部知识（数字推理知识，领域知识，同义词知识，值说明）
+    - 主要错误：
+      - 错误的模式链接（41%） 将表和列错误关联
+      - 误解知识证据（17%），错误复制注释内容，还可能导致sql注入风险
+      - 语法错误（3%），已经是表现良好的零样本语义解析器。（其实告诉报错信息，后有一定的修正能力）
 
 其他
 
@@ -249,3 +289,8 @@ CPU/GPU 运行
     - 广泛用于图像检索、文本搜索、推荐系统等领域
   - LSH（Locality Sensitive Hashing）将输入的向量映射到哈希码或哈希桶，具有相似性的向量在哈希码或哈希桶中具有较高的概率被映射到同一个位置，从而实现相似向量的局部聚集，快速相似搜索。常用：Random Projection Hashing，Bit Sampling Hashing，Multi-probe LSH。
   - 项目： [facebookresearch/Faiss](https://github.com/facebookresearch/faiss),[Milvus](https://github.com/milvus-io/milvus),[spotify/annoy](https://github.com/spotify/annoy)， [chroma-core/chroma](https://github.com/chroma-core/chroma)
+
+
+- prompts：
+  - [Prompt 编写模式：如何将思维框架赋予机器](https://github.com/prompt-engineering/prompt-patterns) 模式:特定指令（By specific）,指令模板（Instruction Template）,代理模式(By proxy),示例模式（By demonstration） 等
+  - [理解 Prompt：基于编程、绘画、写作的 AI 探索与总结](https://github.com/prompt-engineering/understand-prompt)
