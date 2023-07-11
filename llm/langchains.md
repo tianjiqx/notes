@@ -19,8 +19,39 @@ LangChain是一个用于开发由语言模型驱动的应用程序的框架。
     - Plan-and-execute agents: 计划和执行代理，预先决定完整的操作顺序（类似查询计划，DAG图）
 - Callbacks： 用于日志记录、监视、流式处理等。
 
+
+### openai
+```
+import openai
+from langchain.llms import OpenAI
+from langchain import PromptTemplate, LLMChain
+import os
+
+# 设置环境变量
+os.environ['OPENAI_API_KEY'="sk-UjRJKjxxxxxxqGtOoJcw655VCT" # your key
+# 设置代理
+os.environ["OPENAI_PROXY"] = "http://127.0.0.1:7890"
+
+# print(openai.Model.list())
+
+llm = OpenAI()
+
+res = llm.predict("What would be a good company name for a company that makes colorful socks?")
+print(res)
+
+```
+
+
+
+
+
+
 ## REF
 - [kyrolabs/awesome-langchain](https://github.com/kyrolabs/awesome-langchain) langchain 学习
 - [LLMs and SQL](https://blog.langchain.dev/llms-and-sql/)
     - [crunchbot-sql-analyst-gpt](https://www.patterns.app/blog/2023/01/18/crunchbot-sql-analyst-gpt/)
+
+- [《基于智能搜索和大模型打造企业下一代知识库》之《LangChain 集成及其在电商的应用》](https://aws.amazon.com/cn/blogs/china/intelligent-search-based-enhancement-solutions-for-llm-part-three/)
+- [面向 ChatGPT 编程-可视化分析模型的探索](https://zhuanlan.zhihu.com/p/642868903)
+
 

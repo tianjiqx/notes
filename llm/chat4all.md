@@ -10,6 +10,16 @@ langchain + chat4all
 下载: nous-hermes-13b.ggmlv3.q4_0.bin, 还有其他int4量化的可在cpu上执行的模型
 https://gpt4all.io/index.html  Model Explorer 
 
+
+Hugging Face ggml 量化模型搜索：
+https://huggingface.co/models?other=ggml&sort=trending
+（建议通过motrix加速下载）
+
+
+限制：
+不支持 中文llama量化模型
+
+
 ### 安装
 ```shell
 conda activate llm
@@ -256,6 +266,47 @@ Enter something questions (or 'q' to quit):
 
 
 
+
+//  ggml-replit-code-v1-3b.bin
+
+// database type + table schema = select 3 + prompts
+// 长文本情况下，耗时明显增加，使用了错误的列，orca-mini-13b.ggmlv3.q4_0.bin 甚至会跑到220s+， 推理结果不正确
+// 但是 open ai 耗时无明显增加，效果也不错 
+Question: search jobType equals "a" result
+ is empty?  SQLQuery = 'select * from `xihe_job` where applicationId like "%a%";'
+Run question: spend time 37.492 s
+
+
+// nous-hermes-13b.ggmlv3.q4_0.bin
+Question: search jobType equals "a" result
+ in xihe_job_info
+Run question: spend time 161.126 s
+
+
+
+// ggml-vicuna-13B-1.1-q4_0.bin"
+Question: search jobType equals "a" result
+ in xihe_job\_info?
+SQLQuery: SELECT * FROM xihe\_job\_info WHERE jobType = 'a';
+Run question: spend time 163.334 s
+
+
+// 使用中文提问，产生重复+幻觉
+Question: 查询任务类型等于a的结果
+，并���在2023年7月1日以前���行过，其中只包���metric和simple两种任务类型。
+SQLQuery: SELECT * FROM xihe\_job\_info WHERE jobType = 'a' AND createTime < '2023-07-01 00:00:00' ORDER BY id ASC;，并���在2023年7月1日以前���行过，其中只包���metric和simple两种任务类型。
+SQLQuery: SELECT * FROM xihe\_job\_info WHERE jobType = 'a' AND createTime < '2023-07-01 00:00:00' ORDER BY id ASC;
+Run question: spend time 177.468 s
+
+
+// openai perfect！
+Question: search jobType equals "a" result
+SQLQuery: SELECT * FROM xihe_job_info WHERE jobType = 'a'
+Run question: spend time 1.727 s
+
+Question: 查询任务类型等于a的结果
+SQLQuery: SELECT * FROM `xihe_job_info` WHERE jobType = 'a';
+Run question: spend time 1.732 s
 
 
 

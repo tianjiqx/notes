@@ -48,7 +48,8 @@
   - [主流底座模型](https://github.com/Hannibal046/Awesome-LLM#open-llm) 
     - [LLaMA](https://github.com/facebookresearch/llama): meta,包含 650 亿个参数的大型语言模型。 (非常多以此为基础微调的模型) [get](https://juejin.cn/post/7209850311258898490) 并且只使用公开可用的数据集进行训练。 2023
       - [Alpaca](https://github.com/tatsu-lab/stanford_alpaca): stanford 基于LLaMA模型的指令优化
-      
+      - [Facico/Chinese-Vicuna](https://github.com/Facico/Chinese-Vicuna) 中文Vicuna模型, [Vicauna](https://lmsys.org/blog/2023-03-30-vicuna/) 在Alpaca训练方法上的改进多轮对话和扩展上下文，基于 GPT4 评分，90% 以上的回答比llama， Alpaca等更好，40%等同或更优于 chatGPT 的回答
+        - [lm-sys/FastChat](https://github.com/lm-sys/FastChat)
     - [T5](https://github.com/google-research/text-to-text-transfer-transformer) - google, Text-to-Text Transfer Transformer 2019
     - [GPT](https://github.com/openai/gpt-3) 只开源到gpt3 openai lastest gpt4 2023 
     - [OPT(metaseq)](https://github.com/facebookresearch/metaseq) facebook 多语言模型  2022
@@ -58,7 +59,7 @@
 
 
 - 量化工具：
-  - [llama.cpp](https://github.com/ggerganov/llama.cpp) llama.cpp 目标是在MacBook上使用4位整数量化(quantization)运行LLaMA模型。
+  - [llama.cpp](https://github.com/ggerganov/llama.cpp) llama.cpp 使用4位整数量化(quantization)运行LLaMA模型。
   - [GPTQ-for-LLaMA](https://github.com/qwopqwop200/GPTQ-for-LLaMa) 使用 GPTQ 对 LLaMA 进行 4 位量化, 只支持 linux
   
 
@@ -196,12 +197,16 @@ text to sql
   - [Ameet Deshpande] How Does ChatGPT Work? [Slides](https://docs.google.com/presentation/d/1TTyePrw-p_xxUbi3rbmBI3QQpSsTI1btaQuAUvvNc8w/edit#slide=id.g206fa25c94c_0_24)
 
   - [邱锡鹏] 大型语言模型的能力分析与应用 moss [Slides](https://github.com/Hannibal046/Awesome-LLM/blob/main/resources/%E5%A4%A7%E5%9E%8B%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E7%9A%84%E8%83%BD%E5%8A%9B%E5%88%86%E6%9E%90%E4%B8%8E%E5%BA%94%E7%94%A8%20-%2030min.pdf) | [Video](https://www.bilibili.com/video/BV1Xb411X7c3/?buvid=XY2DA82257CC34DECD40B00CAE8AFB7F3B43C&is_story_h5=false&mid=dM1oVipECo22eTYTWkJVVg%3D%3D&p=1&plat_id=116&share_from=ugc&share_medium=android&share_plat=android&share_session_id=c42b6c60-9d22-4c75-90b8-48828e1168af&share_source=WEIXIN&share_tag=s_i&timestamp=1676812375&unique_k=meHB9Xg&up_id=487788801&vd_source=1e55c5426b48b37e901ff0f78992e33f) 
+
+  - [ACL 2023 Tutorial: Retrieval-based Language Models and Applications](https://acl2023-retrieval-lm.github.io/) 基于检索的语言模型
+
 - 本地化部署,serving,
 
   - [GPT大语言模型Alpaca-lora本地化部署实践【大语言模型实践一】 | 京东云技术团队](https://juejin.cn/post/7233951543115186231)
   - [ray blog](https://www.anyscale.com/blog/ray-common-production-challenges-for-generative-ai-infrastructure)
 
   - [large-model-serving](https://github.com/tensorchord/Awesome-LLMOps#large-model-serving)
+
 
 - DeepSpeed
   - [DeepSpeed 通过系统优化加速大模型推理](https://zhuanlan.zhihu.com/p/629644249)
@@ -256,6 +261,8 @@ text to sql
     基于简单的特定指令+必要的schema信息，再无其他处理。
     ```
 
+  - [为什么GPT API的效果比网页版差？ - 段小草的回答 - 知乎](https://www.zhihu.com/question/606274110/answer/3089927079)    
+
 - 开发环境
   - [AutoDL](https://www.autodl.com/home)
 
@@ -270,7 +277,7 @@ text to sql
     - 结论: Codex-text2sql 是 Spider 基准上的强大基线, 基于 n-shot 的prompts 也可以泛化的其他领域,表现很好.(奇怪项目被删除/私有化了,可信度需要打?) other [itrummer/CodexDB](https://github.com/itrummer/CodexDB)
     - text to sql 的 prompts 工程 (5-shot, Create Table + Select 3) 
   - Li, Jinyang, et al. [Can LLM Already Serve as A Database Interface? A BIg Bench for Large-Scale Database Grounded Text-to-SQLs](https://arxiv.org/pdf/2305.03111.pdf). May 2023. 阿里达摩院
-    - 在更多，更复杂的测试集上，text to sql，最好的ChatGPT + COT当前准确性也只有40% [bird-bench](https://bird-bench.github.io/)
+    - 在更多，更复杂的测试集上，text to sql，最好的ChatGPT + COT(Chain of Thought思维链)当前准确性也只有40% [bird-bench](https://bird-bench.github.io/)
     - 数据库值在为大型数据库生成准确的文本到 SQL 方面很重要（Select 3）
     - prompt： schema + 人工注释 + 外部知识（数字推理知识，领域知识，同义词知识，值说明）
     - 主要错误：
