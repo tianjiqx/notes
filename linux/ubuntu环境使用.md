@@ -19,6 +19,12 @@
 
 
 
+# 声音无输出
+
+参考了这篇文章， 设置 options snd-hda-intel dmic_detect=0 ，在我的gtr7机器上，耳机输出成功。
+
+https://www.myfreax.com/fix-no-sound-dummy-output-issue-in/
+
 
 tips:
 
