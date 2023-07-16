@@ -62,7 +62,7 @@ ImportError: Using SOCKS proxy, but the 'socksio' package is not installed. Make
 需要安装 `pip install socksio`
 
 2. pip install chromadb 导致 pydantic 降级，导入openai报错
-需要手动恢复回 pydantic==1.10.11
+需要手动恢复回 `pip install pydantic==1.10.11 `
 
 3. 请求超时，默认100， 需要设置更大
 export FASTCHAT_WORKER_API_TIMEOUT=1000

@@ -16,6 +16,8 @@ https://huggingface.co/models?other=ggml&sort=trending
 （建议通过motrix加速下载）
 
 
+
+
 限制：
 不支持 中文llama量化模型
 

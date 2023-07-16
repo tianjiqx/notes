@@ -41,9 +41,15 @@ print(res)
 
 ```
 
+### Text to SQL-Like
 
+目标 text to 类SQL的查询语言。经过测试，在prompt中提供直接提供语法规则说明效果并不理想。
+而是提供一定的5-10条示例，能够有较好的效果。(少样本学习)
 
+少样本学习，关键： 
+- 根据问题，向问题集库中，搜索相似的问题和回答 [Select by maximal marginal relevance]](https://python.langchain.com/docs/modules/model_io/prompts/example_selectors/mmr)
 
+- 提升相似搜索的正确性，补充文档相关的文档 llamaindex
 
 
 ## REF
@@ -54,4 +60,6 @@ print(res)
 - [《基于智能搜索和大模型打造企业下一代知识库》之《LangChain 集成及其在电商的应用》](https://aws.amazon.com/cn/blogs/china/intelligent-search-based-enhancement-solutions-for-llm-part-three/)
 - [面向 ChatGPT 编程-可视化分析模型的探索](https://zhuanlan.zhihu.com/p/642868903)
 
+- [大模型与数据科学：从Text-to-SQL 开始（一）](https://zhuanlan.zhihu.com/p/640580808)
 
+- [langchain docs](https://python.langchain.com/docs/get_started)

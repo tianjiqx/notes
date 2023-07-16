@@ -21,9 +21,11 @@
 
 - Embeddings(嵌入)：训练过程中学习到的单词或标记的向量表示。
   - 在 Prompt 加入上下文: 通过计算语料库的 Embedding，将 Vector 放到向量数据库中。然后和 Prompt 文本匹配最相似的 Vector ，并将内容放到 Prompt 中
-  - 但是效果, 有可能是不相干的材料
+  - 但是副作用, 有可能是不相干的材料
+  - 词向量，必须使用相同的方法（模型）生成
 
-- quantization（量化）：将float类型参数，转为CPU友好的int4,int8等类型，使其在cpu上运行。
+- quantization（量化）：LLM的量化是将其高维向量表示转化为低维、离散的表示形式，以实现存储效率和计算效率的提升。
+  > 将float类型参数，转为int4,int8等类型，使其在cpu上运行。
 
 - LoRA(Low-Rank Adaptation低秩适应): 调整llm权重方法，冻结预训练模型的权重，并将可训练的秩分解矩阵注入到Transformer进行运行，避免完全重调整模型。
 
@@ -39,7 +41,7 @@
   - 约束（Constraints）：这些是对生成文本的限制条件。约束可以是长度限制、特定词汇的使用要求、语法规则等。通过约束，可以控制模型生成的文本满足特定要求。
 - RLHF（Reinforcement Learning from Human Feedback）：强化学习的范式。
 
-  
+- 与人类对齐（Alignment）：对回答加上人工安全限制，无害化。  
 
 ## 工具
 
@@ -263,6 +265,9 @@ text to sql
 
   - [为什么GPT API的效果比网页版差？ - 段小草的回答 - 知乎](https://www.zhihu.com/question/606274110/answer/3089927079)    
 
+  - [[必读] LLM 应用开发全栈指南](https://zhuanlan.zhihu.com/p/629589593), [LLM 全栈开发指南补遗](https://zhuanlan.zhihu.com/p/633033220)
+    >  Retrieval [LlamaIndex原理与应用简介 bilibili](https://www.bilibili.com/video/BV1Yk4y1L7Vh/?vd_source=ffe1d2d53cd3bb3f3d39661a064bcec5) 
+
 - 开发环境
   - [AutoDL](https://www.autodl.com/home)
 
@@ -271,6 +276,8 @@ text to sql
   - [快速了解 OpenAI 的 fine-tune 和 Embedding 能力](https://zhuanlan.zhihu.com/p/609359047)
   - [当LLM遇到Database：阿里达摩院联合HKU推出Text-to-SQL新基准](https://zhuanlan.zhihu.com/p/635895812)
   - [LLM学习记录（一）--关于大模型的一些知识](https://zhuanlan.zhihu.com/p/624918286)
+  - [大规模语言模型（LLMs）概念篇](https://zhuanlan.zhihu.com/p/635657998) Tokenizer 
+
 
 - papers
   - [Evaluating the Text-to-SQL Capabilities of Large Language Models](https://arxiv.org/abs/2204.00498) 评估大型语言模型的文本到SQL功能
@@ -285,6 +292,8 @@ text to sql
       - 误解知识证据（17%），错误复制注释内容，还可能导致sql注入风险
       - 语法错误（3%），已经是表现良好的零样本语义解析器。（其实告诉报错信息，后有一定的修正能力）
 
+  - Gu, Zihui, et al. Few-Shot Text-to-SQL Translation Using Structure and Content Prompt Learning.
+
 其他
 
 - [video: 向量数据库技术鉴赏2](https://www.bilibili.com/video/BV1BM4y177Dk) ，[向量数据库技术鉴赏1](https://www.bilibili.com/video/BV1BM4y177Dk)，chatgpt解释：
@@ -297,7 +306,17 @@ text to sql
   - LSH（Locality Sensitive Hashing）将输入的向量映射到哈希码或哈希桶，具有相似性的向量在哈希码或哈希桶中具有较高的概率被映射到同一个位置，从而实现相似向量的局部聚集，快速相似搜索。常用：Random Projection Hashing，Bit Sampling Hashing，Multi-probe LSH。
   - 项目： [facebookresearch/Faiss](https://github.com/facebookresearch/faiss),[Milvus](https://github.com/milvus-io/milvus),[spotify/annoy](https://github.com/spotify/annoy)， [chroma-core/chroma](https://github.com/chroma-core/chroma)
 
+- [语义索引（向量检索）的几类经典方法](https://zhuanlan.zhihu.com/p/161467314)
+- [高维空间最近邻逼近搜索算法评测](https://zhuanlan.zhihu.com/p/37381294) 
+  - [erikbern/ann-benchmarks](https://github.com/erikbern/ann-benchmarks)
 
 - prompts：
   - [Prompt 编写模式：如何将思维框架赋予机器](https://github.com/prompt-engineering/prompt-patterns) 模式:特定指令（By specific）,指令模板（Instruction Template）,代理模式(By proxy),示例模式（By demonstration） 等
   - [理解 Prompt：基于编程、绘画、写作的 AI 探索与总结](https://github.com/prompt-engineering/understand-prompt)
+
+  - [OpenAI Cookbook](https://github.com/openai/openai-cookbook)
+  - [LangChain AI Handbook](https://www.pinecone.io/learn/series/langchain/langchain-prompt-templates/)
+  - [Learn Prompting](https://learnprompting.org/docs/intro)
+  - [Prompt Engineering Guide](https://github.com/dair-ai/Prompt-Engineering-Guide)
+  - [Lilian Weng's blog](https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/)
+
