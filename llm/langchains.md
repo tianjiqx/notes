@@ -9,7 +9,7 @@ LangChain是一个用于开发由语言模型驱动的应用程序的框架。
 - MODEL I/0 与语言模型的接口
 - Data connection 数据连接
     - 文档加载器
-    - 文档转换（文本spliter）
+    - 文档转换（文本spliter: RecursiveCharacterTextSplitter） 
     - 文档embedding models，利用第三方接口（openai等），将文本转为向量形式，
     - 向量存储
 - Chains 链：对组件的一系列调用，可以包括其他链。
@@ -18,6 +18,42 @@ LangChain是一个用于开发由语言模型驱动的应用程序的框架。
     - Action agents: 操作代理，适用小任务，基于之前action输出，决定下一个操作
     - Plan-and-execute agents: 计划和执行代理，预先决定完整的操作顺序（类似查询计划，DAG图）
 - Callbacks： 用于日志记录、监视、流式处理等。
+
+
+#### Example selectors 示例选择器
+
+- Select by maximal marginal relevance (MMR) MaxMarginalRelevanceExampleSelector
+    - 查找嵌入与输入具有最大余弦相似性的示例，迭代添加，同时惩罚它们与已选择的示例的接近度。
+- Select by similarity SemanticSimilarityExampleSelector
+
+
+#### 检索
+
+- 重复信息
+    - MMR
+- 冲突信息
+    - 对来源进行优先级排序
+- 时效性
+    - 对最近的信息进行加权, 完全过滤过时的信息
+    - 给生成信息带上时间戳——要求 LLM 优先选择更近期的信息
+    -  人工反馈
+- 元数据查询
+    - 元数据过滤器，精确匹配
+- 多跳问题
+    - 一次提出多个问题，问题分解后多次检索
+    - GPTCache 缓存 已知问题
+
+
+### Agent
+
+如何处理自然的提问，直接 prompt 工程，处理 text2sql这样问题，需要人工提供shecma,字段说明等等，非常的不自然。
+此时，agent 可以分析原始问题，然后思考需要利用那些工具，来进行进一步的补充信息。
+
+
+#### AgentOutputParser
+代理执行输出结果处理解析，返回 AgentFinish（最终输出结果） / AgentAction（下一个链需要执行的Action， 包括需要执行工具和输入）。
+
+- MRKLOutputParser  MRKL系统输出解析
 
 
 ### openai
@@ -51,9 +87,17 @@ print(res)
 
 - 提升相似搜索的正确性，补充文档相关的文档 llamaindex
 
+- Agents 由 llm 决定 需要向向量数据库中搜索的信息
+    - key1：激活 llm的 cot 能力， 第一个 prompt 对于问题的分解能力，意图的路由（第一层可能需要一个prompt的路由）
+    - key2：tools 的能力限制， tools 获取的准确性。
+
+
+
 
 ## REF
 - [kyrolabs/awesome-langchain](https://github.com/kyrolabs/awesome-langchain) langchain 学习
+- [LangChain 中文入门教程](https://github.com/liaokongVFX/LangChain-Chinese-Getting-Started-Guide)
+
 - [LLMs and SQL](https://blog.langchain.dev/llms-and-sql/)
     - [crunchbot-sql-analyst-gpt](https://www.patterns.app/blog/2023/01/18/crunchbot-sql-analyst-gpt/)
 
@@ -63,3 +107,30 @@ print(res)
 - [大模型与数据科学：从Text-to-SQL 开始（一）](https://zhuanlan.zhihu.com/p/640580808)
 
 - [langchain docs](https://python.langchain.com/docs/get_started)
+
+- [LangChain 联合创始人下场揭秘：如何用 LangChain 和向量数据库搞定语义搜索？](https://link.zhihu.com/?target=https%3A//mp.weixin.qq.com/s%3F__biz%3DMzUzMDI5OTA5NQ%3D%3D%26mid%3D2247498030%26idx%3D1%26sn%3Db6c871bdf189da0dd0de6ff0c4cdb81e%26chksm%3Dfa515896cd26d180216439e4d7c5f815d299b1a53bae657d1ad3dbf8b74297cf5bd3dfc96c9e%26scene%3D21%23wechat_redirect)
+
+- [【2023.4】思考如何设计 可靠的长文档问答系统](https://zhuanlan.zhihu.com/p/624222373)
+
+- [HanLP《自然语言处理入门》笔记--9.关键词、关键句和短语提取](https://github.com/NLP-LOVE/Introduction-NLP)
+
+- [大模型+知识库/数据库问答的若干问题（三）](https://zhuanlan.zhihu.com/p/642125832)
+
+
+- Agent
+    - [LangChain Agent 执行过程解析 OpenAI_YezIwnl 的博客](https://blog.csdn.net/qq_35361412/article/details/129797199)
+
+    - [MRKL Systems](https://learnprompting.org/docs/advanced_applications/mrkl) MRKL系统,由一组模块（例如计算器、天气 API、数据库等）和一个路由器组成，路由器决定如何将传入的自然语言查询“路由”到相应的模块。
+        - ``` 
+            What is the price of Apple stock right now? 
+            The current price is DATABASE[SELECT price FROM stock WHERE company = "Apple" AND time = "now"].
+
+            What is the weather like in New York?
+            The weather is WEATHER_API[New York].
+          ``` 
+
+    - [Replicating MRKL](https://python.langchain.com/docs/modules/agents/how_to/mrkl)  MRKL demo 
+
+
+- [openai.Completion.create 接口参数说明](https://www.cnblogs.com/ghj1976/p/openaicompletioncreate-jie-kou-can-shu-shuo-ming.html)  stop参数用于指定在生成文本时停止生成的条件，当生成文本中包含指定的字符串或达到指定的最大生成长度时，生成过程会自动停止。
+    - stop 参数在 agent 中，可以用来截断生成，插入llm推理出来的下一步Action Input，之后根据 Action Input，进入应用逻辑，执行 action，迭代推理。
