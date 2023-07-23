@@ -88,8 +88,49 @@ print(res)
 - 提升相似搜索的正确性，补充文档相关的文档 llamaindex
 
 - Agents 由 llm 决定 需要向向量数据库中搜索的信息
-    - key1：激活 llm的 cot 能力， 第一个 prompt 对于问题的分解能力，意图的路由（第一层可能需要一个prompt的路由）
+    - key1：激活 llm的 cot 能力， 第一个 prompt 对于问题的分解能力，意图的路由
     - key2：tools 的能力限制， tools 获取的准确性。
+
+
+
+#### [chat2db/Chat2DB](https://github.com/chat2db/Chat2DB) 
+基于 openai 的java接口(com.unfbx.chatgpt) ，简单的prompt完成 sql 生成
+
+```
+核心：ChatController
+buildPrompt()
+String schemaProperty = CollectionUtils.isNotEmpty(tableSchemas) ? String.format(
+        "### 请根据以下table properties和SQL input%s. %s\n#\n### %s SQL tables, with their properties:\n#\n# "
+            + "%s\n#\n#\n### SQL input: %s", pType.getDescription(), ext, dataSourceType,
+        properties, prompt) : String.format("### 请根据以下SQL input%s. %s\n#\n### SQL input: %s",
+        pType.getDescription(), ext, prompt);
+    switch (pType) {
+        case SQL_2_SQL:
+            schemaProperty = StringUtils.isNotBlank(queryRequest.getDestSqlType()) ? String.format(
+                "%s\n#\n### 目标SQL类型: %s", schemaProperty, queryRequest.getDestSqlType()) : String.format(
+                "%s\n#\n### 目标SQL类型: %s", schemaProperty, dataSourceType);
+        default:
+            break;
+咒语内容：给定schema（需要用户手动指定表，然后获取表的schema信息），数据库类型， prompt 说明（将自然语言转换成SQL查询, 解释SQL， 提供优化建议，进行SQL转换）
+基于简单的特定指令+必要的schema信息，再无其他处理。
+```
+
+
+#### papers
+
+  - [Evaluating the Text-to-SQL Capabilities of Large Language Models](https://arxiv.org/abs/2204.00498) 评估大型语言模型的文本到SQL功能
+    - 结论: Codex-text2sql 是 Spider 基准上的强大基线, 基于 n-shot 的prompts 也可以泛化的其他领域,表现很好.(奇怪项目被删除/私有化了,可信度需要打?) other [itrummer/CodexDB](https://github.com/itrummer/CodexDB)
+    - text to sql 的 prompts 工程 (5-shot, Create Table + Select 3) 
+  - Li, Jinyang, et al. [Can LLM Already Serve as A Database Interface? A BIg Bench for Large-Scale Database Grounded Text-to-SQLs](https://arxiv.org/pdf/2305.03111.pdf). May 2023. 阿里达摩院
+    - 在更多，更复杂的测试集上，text to sql，最好的ChatGPT + COT(Chain of Thought思维链)当前准确性也只有40% [bird-bench](https://bird-bench.github.io/)
+    - 数据库值在为大型数据库生成准确的文本到 SQL 方面很重要（Select 3）
+    - prompt： schema + 人工注释 + 外部知识（数字推理知识，领域知识，同义词知识，值说明）
+    - 主要错误：
+      - 错误的模式链接（41%） 将表和列错误关联
+      - 误解知识证据（17%），错误复制注释内容，还可能导致sql注入风险
+      - 语法错误（3%），已经是表现良好的零样本语义解析器。（其实告诉报错信息，后有一定的修正能力）
+
+  - Gu, Zihui, et al. Few-Shot Text-to-SQL Translation Using Structure and Content Prompt Learning.
 
 
 
@@ -134,3 +175,7 @@ print(res)
 
 - [openai.Completion.create 接口参数说明](https://www.cnblogs.com/ghj1976/p/openaicompletioncreate-jie-kou-can-shu-shuo-ming.html)  stop参数用于指定在生成文本时停止生成的条件，当生成文本中包含指定的字符串或达到指定的最大生成长度时，生成过程会自动停止。
     - stop 参数在 agent 中，可以用来截断生成，插入llm推理出来的下一步Action Input，之后根据 Action Input，进入应用逻辑，执行 action，迭代推理。
+
+
+- [SQL Database Agent](https://python.langchain.com/docs/modules/agents/toolkits/sql_database)  官方 SQL agent 示例，支持自然的提问提问.[sqlagent.py](./test/sqlagent.py) 做一点修改，debug。
+    -  bad 情况：统计表的行数，可能生成笛卡尔积的查询语句，或者同时执行多条命令的sql。
