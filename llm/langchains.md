@@ -179,3 +179,6 @@ String schemaProperty = CollectionUtils.isNotEmpty(tableSchemas) ? String.format
 
 - [SQL Database Agent](https://python.langchain.com/docs/modules/agents/toolkits/sql_database)  官方 SQL agent 示例，支持自然的提问提问.[sqlagent.py](./test/sqlagent.py) 做一点修改，debug。
     -  bad 情况：统计表的行数，可能生成笛卡尔积的查询语句，或者同时执行多条命令的sql。
+
+
+- [LLM-based Agents survey 基于大语言模型多智能代理简单综述及展望](https://zhuanlan.zhihu.com/p/648376562)

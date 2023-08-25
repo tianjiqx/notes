@@ -6,6 +6,18 @@
 - zero-shot 依赖模型本身
 - frew-shot 外部注入例子
 
+- Multiple-prompt interventions
+  - directional-stimulus prompting 定向刺激提示技术，其中用户给出需要包含在已知包含这些事实的文档的生成摘要中的特定事实，但模型不会将它们包含在摘要中。
+  - generated-knowledge prompting 生成知识提示技术，其中用户首先要求模型提供与要解决的问题相关的最相关事实，然后在收到相关事实后，用户再次要求模型根据这些事实提出解决方案。
+  - self-refine prompting 自我细化提示技术，其中用户首先要求模型提供初始解决方案，然后在收到初始解决方案后，用户再次要求模型生成对初始解决方案的批评，然后 - 在提供批评后 - 用户提示模型通过生成改进的解决方案来解决自己的批评。当令牌、时间或“停止”令牌用完时，自我优化对话将停止。
+  - Maieutic（苏格拉底）提示 用户首先要求模型提供与要解决的问题相关的现象的解释，然后 - 在收到解释后 - 用户再次要求模型为所提供解释中最不被理解的部分提供额外的解释，重复此操作，直到用户的理解达到所需的水平。不一致的解释路径（树）被修剪或丢弃，改善了复杂的常识推理。
+  - tree-of-thought prompting 思想树提示技术，其中用户首先要求模型提供解决问题的“可能的后续步骤”，然后在收到步骤后，用户再次要求模型运行每个建议的可能步骤，使用广度优先，光束或其他一些树搜索方法。
+  - least-to-most prompting 最小到最大提示技术，其中用户首先要求模型为要解决的问题提供子问题，然后 - 在收到子问题后 - 用户再次要求模型按顺序解决这些问题，以便以后的子问题可以在先前子问题的答案的帮助下解决。
+
+
+Retrieval-augmented generation 检索增强生成
+提示通常包含一些示例（因此“少数镜头”）。示例可以通过文档检索从数据库中自动检索，有时使用矢量数据库。给定一个查询，调用文档检索器来检索最相关的内容（通常通过首先将查询和文档编码为向量，然后查找向量在欧几里得范数中最接近查询向量的文档来测量）。然后，LLM 根据查询和检索到的文档生成输出。
+
 
 prompt的经验：
 - Few-shot prompt通常有比较好的效果
@@ -19,10 +31,6 @@ prompt的经验：
 - 善用温度temperature变量
     - 当其值为0时，表明模型输出结果是确定的，通常用于决定性任务，如分类、预测等；
     - 当其值>0时，越大，则表明模型随机性越强，适合生成任务。
-
-
-
-
 
 - CoT 思维链
 
@@ -78,6 +86,8 @@ rationale指的是问题解决过程中的中间推理步骤。
 
 ## REF
 
+- [wiki: Prompt_engineering](https://en.wikipedia.org/wiki/Prompt_engineering)
+
 - books:
 
   - [Prompt 学习指南](https://prompt-guide.xiniushu.com/) 推荐
@@ -85,7 +95,7 @@ rationale指的是问题解决过程中的中间推理步骤。
   - [吴恩达《ChatGPT Prompt Engineering for Developers》课程中文版](https://prompt-engineering.
     - [《ChatGPT Prompt Engineering for Developers》中文笔](https://cloud.tencent.com/developer/article/2286467)
 
-- [Prompt Engineering Guide](https://github.com/dair-ai/Prompt-Engineering-Guide) awesome 概念，prompt 相关论文
+- [dair-ai/Prompt Engineering Guide](https://github.com/dair-ai/Prompt-Engineering-Guide) awesome 概念，prompt 相关论文
 
 
 - blogs:
@@ -123,3 +133,9 @@ rationale指的是问题解决过程中的中间推理步骤。
     - ToT 在需要非平凡规划或搜索的三个新任务上显着提高了语言模型的问题解决能力：24, Creative Writing 和 Mini Crosswords 的游戏.
 
 
+
+- [Prompt Engineering: A Practical Example](https://realpython.com/practical-prompt-engineering/) 推荐
+
+- [AI Prompt Engineering Isn’t the Future](https://hbr.org/2023/06/ai-prompt-engineering-isnt-the-future) 问题表述——识别、分析和描述问题的能力 更重要。
+
+- [复杂推理：大语言模型的北极星能力](https://yaofu.notion.site/6dafe3f8d11445ca9dcf8a2ca1c5b199)

@@ -217,6 +217,8 @@ text to sql
 
 
 - 开发应用
+  - [《LLM 应用开发实践笔记》](https://aitutor.liduos.com/)
+  - [ChatGPT 中文指南(https://github.com/yzfly/awesome-chatgpt-zh)
   - [本地部署开源大模型的完整教程：LangChain + Streamlit+ Llama](https://zhuanlan.zhihu.com/p/639565332)
     - 流程：LangChain加载和转换文档 -> Embeddings -> Chroma(向量数据库) 创建存储和检索文档 -> Streamlit 构建可视化界面
   - [基于 OpenSearch 向量检索版+大模型，搭建对话式搜索](https://zhuanlan.zhihu.com/p/636966290)
@@ -243,30 +245,13 @@ text to sql
 
   - [CVP Stack](https://zhuanlan.zhihu.com/p/642185523)  LLM+向量数据库+提示词
 
-  - [chat2db/Chat2DB](https://github.com/chat2db/Chat2DB) 基于 openai 的java接口(com.unfbx.chatgpt) ，简单的prompt完成 sql 生成
-    ```
-    核心：ChatController
-    buildPrompt()
-    String schemaProperty = CollectionUtils.isNotEmpty(tableSchemas) ? String.format(
-            "### 请根据以下table properties和SQL input%s. %s\n#\n### %s SQL tables, with their properties:\n#\n# "
-                + "%s\n#\n#\n### SQL input: %s", pType.getDescription(), ext, dataSourceType,
-            properties, prompt) : String.format("### 请根据以下SQL input%s. %s\n#\n### SQL input: %s",
-            pType.getDescription(), ext, prompt);
-        switch (pType) {
-            case SQL_2_SQL:
-                schemaProperty = StringUtils.isNotBlank(queryRequest.getDestSqlType()) ? String.format(
-                    "%s\n#\n### 目标SQL类型: %s", schemaProperty, queryRequest.getDestSqlType()) : String.format(
-                    "%s\n#\n### 目标SQL类型: %s", schemaProperty, dataSourceType);
-            default:
-                break;
-    咒语内容：给定schema（需要用户手动指定表，然后获取表的schema信息），数据库类型， prompt 说明（将自然语言转换成SQL查询, 解释SQL， 提供优化建议，进行SQL转换）
-    基于简单的特定指令+必要的schema信息，再无其他处理。
-    ```
-
   - [为什么GPT API的效果比网页版差？ - 段小草的回答 - 知乎](https://www.zhihu.com/question/606274110/answer/3089927079)    
 
   - [[必读] LLM 应用开发全栈指南](https://zhuanlan.zhihu.com/p/629589593), [LLM 全栈开发指南补遗](https://zhuanlan.zhihu.com/p/633033220)
     >  Retrieval [LlamaIndex原理与应用简介 bilibili](https://www.bilibili.com/video/BV1Yk4y1L7Vh/?vd_source=ffe1d2d53cd3bb3f3d39661a064bcec5) 
+
+
+- [Text2vec](https://github.com/shibing624/text2vec) 中文词向量
 
 - 开发环境
   - [AutoDL](https://www.autodl.com/home)
@@ -277,22 +262,8 @@ text to sql
   - [当LLM遇到Database：阿里达摩院联合HKU推出Text-to-SQL新基准](https://zhuanlan.zhihu.com/p/635895812)
   - [LLM学习记录（一）--关于大模型的一些知识](https://zhuanlan.zhihu.com/p/624918286)
   - [大规模语言模型（LLMs）概念篇](https://zhuanlan.zhihu.com/p/635657998) Tokenizer 
+  - [【大语言模型】一文看懂llama2(原理,模型,训练)](https://zhuanlan.zhihu.com/p/651248009)
 
-
-- papers
-  - [Evaluating the Text-to-SQL Capabilities of Large Language Models](https://arxiv.org/abs/2204.00498) 评估大型语言模型的文本到SQL功能
-    - 结论: Codex-text2sql 是 Spider 基准上的强大基线, 基于 n-shot 的prompts 也可以泛化的其他领域,表现很好.(奇怪项目被删除/私有化了,可信度需要打?) other [itrummer/CodexDB](https://github.com/itrummer/CodexDB)
-    - text to sql 的 prompts 工程 (5-shot, Create Table + Select 3) 
-  - Li, Jinyang, et al. [Can LLM Already Serve as A Database Interface? A BIg Bench for Large-Scale Database Grounded Text-to-SQLs](https://arxiv.org/pdf/2305.03111.pdf). May 2023. 阿里达摩院
-    - 在更多，更复杂的测试集上，text to sql，最好的ChatGPT + COT(Chain of Thought思维链)当前准确性也只有40% [bird-bench](https://bird-bench.github.io/)
-    - 数据库值在为大型数据库生成准确的文本到 SQL 方面很重要（Select 3）
-    - prompt： schema + 人工注释 + 外部知识（数字推理知识，领域知识，同义词知识，值说明）
-    - 主要错误：
-      - 错误的模式链接（41%） 将表和列错误关联
-      - 误解知识证据（17%），错误复制注释内容，还可能导致sql注入风险
-      - 语法错误（3%），已经是表现良好的零样本语义解析器。（其实告诉报错信息，后有一定的修正能力）
-
-  - Gu, Zihui, et al. Few-Shot Text-to-SQL Translation Using Structure and Content Prompt Learning.
 
 其他
 
