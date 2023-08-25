@@ -24,6 +24,8 @@ GET /_recovery?human&active_only=true
 GET /_cat/indices?v&health=yellow
 GET /_cat/indices?v&health=red
 
+GET _cat/indices?v
+
 
 // 查看集群 unassigned 原因
 GET _cluster/allocation/explain?pretty

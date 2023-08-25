@@ -131,3 +131,26 @@
 - 拉取别人的PR到本地
   
   `git fetch upstream pull/<ID>/head:<BRANCHNAME>`
+
+
+- 忽略已经在remote的文件/目录
+  ```
+  .gitignore 
+  # Ignore .idea files
+  .idea/
+
+
+  git add .gitignore
+  git commit -m "Add .gitignore to ignore .idea/"
+
+  # 查找被track的文件
+  git ls-files -v | grep "\.idea"
+
+  # 停止跟踪
+  git rm -r --cached .idea/
+
+  # 提交更改
+  git commit -m "Untrack .idea files"
+  git push
+
+  ```
