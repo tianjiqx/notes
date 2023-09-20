@@ -9,6 +9,14 @@
     - rust
 
 
+### 维度
+- 部署（self-hosted / cloud / in-memory） 
+- Metadata Filtering
+- Hybrid Search （向量/标量搜索）
+- Delete
+- 持久化（WAL）
+- Async 异步 / GPU
+- 开源
 
 ## REF
 - [video: 向量数据库技术鉴赏2](https://www.bilibili.com/video/BV1BM4y177Dk) ，[向量数据库技术鉴赏1](https://www.bilibili.com/video/BV1BM4y177Dk)，chatgpt解释：
@@ -26,3 +34,11 @@
   - [erikbern/ann-benchmarks](https://github.com/erikbern/ann-benchmarks)
 
 
+- Weaviate
+  - [Vamana vs. HNSW - Exploring ANN algorithms Part 1](https://weaviate.io/blog/ann-algorithms-vamana-vs-hnsw)
+  - [HNSW+PQ - Exploring ANN algorithms Part 2.1](https://weaviate.io/blog/ann-algorithms-hnsw-pq)
+
+- [llamaindex vector stores](https://gpt-index.readthedocs.io/en/latest/core_modules/data_modules/storage/vector_stores.html)
+
+- [矢量数据库对比和选择指南](https://zhuanlan.zhihu.com/p/641822949)
+- [Milvus 、Qdrant、Waeviate、Pinecone、ElasticSearch矢量数据库对比](https://www.zhihu.com/column/c_1360702016520626176)

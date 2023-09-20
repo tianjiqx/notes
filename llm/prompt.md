@@ -139,3 +139,4 @@ rationale指的是问题解决过程中的中间推理步骤。
 - [AI Prompt Engineering Isn’t the Future](https://hbr.org/2023/06/ai-prompt-engineering-isnt-the-future) 问题表述——识别、分析和描述问题的能力 更重要。
 
 - [复杂推理：大语言模型的北极星能力](https://yaofu.notion.site/6dafe3f8d11445ca9dcf8a2ca1c5b199)
+
