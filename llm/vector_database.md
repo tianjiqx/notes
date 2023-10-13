@@ -9,6 +9,19 @@
     - rust
 
 
+
+内存空间需求：
+
+数据集 Sift1M  100万，128维, 总计 1 GB
+
+float32 4B 
+向量图： 1,000,000 x 128 x 4 bytes = 512,000,000   512MB 
+邻域图：索引时还会构建邻域的图形表示。该图表示每个向量的 k 最近邻。
+int64 标识
+1,000,000 x 64 x 8 bytes = 512,000,000 bytes  512MB
+
+
+
 ### 维度
 - 部署（self-hosted / cloud / in-memory） 
 - Metadata Filtering
@@ -41,4 +54,4 @@
 - [llamaindex vector stores](https://gpt-index.readthedocs.io/en/latest/core_modules/data_modules/storage/vector_stores.html)
 
 - [矢量数据库对比和选择指南](https://zhuanlan.zhihu.com/p/641822949)
-- [Milvus 、Qdrant、Waeviate、Pinecone、ElasticSearch矢量数据库对比](https://www.zhihu.com/column/c_1360702016520626176)
+- [Milvus 、Qdrant、Waeviate、Pinecone、ElasticSearch矢量数据库对比](https://zhuanlan.zhihu.com/p/641268774)

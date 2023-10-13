@@ -20,4 +20,6 @@ sparksql，calcite等其他系统
 - [TUM youtube query optimize](https://www.youtube.com/watch?v=5PxAmNud03k)
 - [Query Optimization by Predicate Move-Around](https://www.vldb.org/conf/1994/P096.PDF)
 - [blog: Database Query Optimizer Volcano Cascades](https://accelazh.github.io/database/Database-Query-Optimizer-Volcano-Cascades)
-
+- [[VLDB 2006]Analysis of Two Existing and One New Dynamic Programming--论文学习](https://zhuanlan.zhihu.com/p/632872022)
+- [Doris新优化器背后的故事](https://mp.weixin.qq.com/s/OHTFoJlw2knd-28nH3CACQ)
+- [开源优化器实现资料汇总](https://zhuanlan.zhihu.com/p/609987395)

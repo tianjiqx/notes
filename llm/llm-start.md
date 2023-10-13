@@ -212,7 +212,7 @@ text to sql
 
   - [ACL 2023 Tutorial: Retrieval-based Language Models and Applications](https://acl2023-retrieval-lm.github.io/) 基于检索的语言模型
 
-- 本地化部署,serving,
+- 本地化部署,serving
 
   - [GPT大语言模型Alpaca-lora本地化部署实践【大语言模型实践一】 | 京东云技术团队](https://juejin.cn/post/7233951543115186231)
   - [ray blog](https://www.anyscale.com/blog/ray-common-production-challenges-for-generative-ai-infrastructure)

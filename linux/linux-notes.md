@@ -83,6 +83,11 @@
 - `nvidia-smi` 显示出当前 nvidia GPU 的所有基础信息
 
 
+- `axel` 多线程下载工具，代替wget
+
+- `glances`  top/htop 代替
+
+
 ## linux 工具blog 链接
 
 - [木子的搬砖工具](https://blog.k8s.li/My-brick-lifting-tools.html)
