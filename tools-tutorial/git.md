@@ -61,6 +61,11 @@
   git checkout -b <tag-name>
   ```
 
+- cherry-pick 将其他分支的提交，追加到本地
+  ```
+  git cherry-pick  <commid_id1> <commid_id2>
+  ```
+
 - 打patch，应用path
   
   ```

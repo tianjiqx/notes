@@ -184,6 +184,13 @@ demo：
 CPU/GPU 运行
 非商业许可(llama)/商业许可(GPTJ,MPT)
 
+### 2. 模型微调
+
+微调指令的示例， 不需要笛卡尔积？ 泛化能力，组合学习的指令？
+单指令？多会话效果，会话长度，相关性？
+未知答案时，通过微调？达成输出建议能力。
+
+
 
 ## 应用开发
 
@@ -198,12 +205,16 @@ text to sql
 - [通向AGI之路：大型语言模型（LLM）技术精要](https://zhuanlan.zhihu.com/p/597586623)
 - [LoRA: 大语言模型个性化的最佳实践](https://zhuanlan.zhihu.com/p/625737759)
 - [大语言模型（LLM）相关学习资料整理](https://zhuanlan.zhihu.com/p/616280753)
+- [LLM入门指南](https://zhuanlan.zhihu.com/p/669193585)
+
 - awesome:
   - [HqWu-HITCS/Awesome-Chinese-LLM](https://github.com/HqWu-HITCS/Awesome-Chinese-LLM) 中文底座模型，垂直领域微调及应用，数据集与教程
   - [Hannibal046/Awesome-LLM](https://github.com/Hannibal046/Awesome-LLM) 大型语言模型的精选论文列表，还包含LLM培训框架，部署LLM的工具，有关LLM的课程和教程
   - [tensorchord/Awesome-LLMOps](https://github.com/tensorchord/Awesome-LLMOps) 底座模型, 部署工具，框架
   - [kyrolabs/awesome-langchain](https://github.com/kyrolabs/awesome-langchain) langchain 学习
   - [underlines/awesome-marketing-datascience](https://github.com/underlines/awesome-marketing-datascience) 模型，工具
+
+
 
 - Tutorials
   - [Ameet Deshpande] How Does ChatGPT Work? [Slides](https://docs.google.com/presentation/d/1TTyePrw-p_xxUbi3rbmBI3QQpSsTI1btaQuAUvvNc8w/edit#slide=id.g206fa25c94c_0_24)
