@@ -113,3 +113,5 @@ spark mllib
 - [DL Systems 学习指南](https://mp.weixin.qq.com/s/F8Dq6zmj6v4bR3WCKBgKAA)
 
 - [PyTorch 源码解读系列](https://zhuanlan.zhihu.com/p/328674159)
+
+- [机器学习算法学习资料](https://zhuanlan.zhihu.com/p/92760753)

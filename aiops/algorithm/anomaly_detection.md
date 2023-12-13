@@ -47,6 +47,12 @@
 
 - [opendistro ad for es](https://opendistro.github.io/for-elasticsearch-docs/docs/ad/)  产品设计，基于RCF算法
 
+- [AIOps挑战赛 | 阿里达摩院刘春辰：鲁棒时序异常检测与周期识别](https://www.bizseer.com/index.php?m=content&c=index&a=show&catid=26&id=50)
+- [智能运维系列（三）| 浅析智能异常检测：“慧识图”核心算法](https://www.infoq.cn/article/mryjNLXOlujV7fkQFUaL)
+- [大规模Aiops系统在核心网数据中心的探索与实践-算法架构](https://zhuanlan.zhihu.com/p/466955597)
+- [基于数据流的异常检测：Robust Random Cut Forest](https://developer.aliyun.com/article/722280)
+- [智能运维 | 异常检测：百度是这样做的](https://mp.weixin.qq.com/s?__biz=MzA5NTQ5MzE5OQ==&mid=2653057356&idx=1&sn=85d82226c7f66685ec8cf486569976dc)
+
 ### 领域知识
 
 KDDCPU99
