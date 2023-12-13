@@ -98,7 +98,7 @@ kubectl get namespace
 kubectl get pods --namespace=development
 kubectl describe pod podname
 
-// 指定名字空间 
+// 指定名字空间 , -o wide 获取 ip 、node 等信息 
 -n namespace
 kubectl -n hde6ti7 get pods  -o wide |grep name
 

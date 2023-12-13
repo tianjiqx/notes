@@ -74,6 +74,17 @@ curl -X POST 'https://loclhost.com:9200/_cluster/reroute?pretty'-H 'Content-Type
 curl -XPOST <ip>:<port>/_cluster/reroute?retry_failed=true 
 curl -XGET http://localhost:9200/_cluster/allocation/explain
 
+
+# 查看指定索引的分配失败原因
+curl -X GET "localhost:9200/api/v1/admin/internal/_cluster/allocation/explain?pretty" -H 'Content-Type: application/json' -d'
+{
+  "index": "my-index-000001", 
+  "shard": 0, 
+  "primary": true 
+}
+'
+
+
 // 4. 检查磁盘水位
 curl -s 'localhost:9200/_cat/allocation?v'
 
@@ -123,6 +134,9 @@ GET /my-index-000001/_mapping?pretty
 // 线程
 GET /_cat/thread_pool/<thread_pool>
 GET /_cat/thread_pool
+
+_cat/thread_pool?v&h=node_name,name,type,active,queue,rejected,completed,size,queue_size,largest,min,max,keep_alive,pid,ip,port,ephemeral_node_id,host
+
 
 // 查看写线程状态，活跃数据量，完成任务数
 _cat/thread_pool/write?v=true&h=node_name,name,active,queue,rejected,completed

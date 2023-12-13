@@ -269,6 +269,17 @@ OpenTelemetryBenchmark.perfCreateSpanWithCurrentTimeNanos  1000000  avgt    5   
 - `W3CTraceContextPropagator`
   - sdk 实现的`ContextPropagators` 用于从context 中提取或注入 Span
 
+
+数据结构:
+
+- Resource（资源）： 代表应用程序的执行环境中的资源，如主机、进程、服务等。Resource 对象包含有关资源的属性，例如类型、标识符等。资源的例子可能包括计算资源、网络资源或其他相关的环境信息。
+
+- Spans： 跨度是跟踪系统中的基本数据单元，表示应用程序执行路径中的一段时间。它可以包含有关操作的信息，例如开始时间、结束时间、操作名称、上下文信息等。
+
+- ResourceSpans： 是将资源和相应的跨度数据组合在一起的结构。它表示在特定资源上执行的一组跨度。这有助于组织和关联跨度数据，使其能够更好地反映应用程序的执行上下文和资源关系。
+
+
+
 #### **6.3 API 使用**
 
 ```java
