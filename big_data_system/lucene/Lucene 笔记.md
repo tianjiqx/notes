@@ -73,6 +73,12 @@ StoreValues 提供行存格式。 比如`_source` 字段存储原始数据。
 - 通过给定的Term的条件找到所有Doc的DocId列表
 - 根据DocId查找Doc
 
+
+经验：
+
+从 lucene 读取 5w/s
+
+
 ## REF
 
 - [Apache lucene](https://lucene.apache.org/)

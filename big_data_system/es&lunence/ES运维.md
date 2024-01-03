@@ -83,6 +83,8 @@ curl -X GET "localhost:9200/api/v1/admin/internal/_cluster/allocation/explain?pr
   "primary": true 
 }
 '
+// 查看，写分片路径path字段，文档数
+_cat/write_shards?v&bytes=b
 
 
 // 4. 检查磁盘水位
@@ -141,6 +143,9 @@ _cat/thread_pool?v&h=node_name,name,type,active,queue,rejected,completed,size,qu
 // 查看写线程状态，活跃数据量，完成任务数
 _cat/thread_pool/write?v=true&h=node_name,name,active,queue,rejected,completed
 
+// 查看节点热点线程
+GET /_nodes/hot_threads?threads=5&interval=500ms
+GET /_nodes/nodeId1,nodeId2/hot_threads
 
 // 节点下线
 PUT /_cluster/settings

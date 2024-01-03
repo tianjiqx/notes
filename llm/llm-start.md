@@ -284,6 +284,7 @@ text to sql
   - [LLM学习记录（一）--关于大模型的一些知识](https://zhuanlan.zhihu.com/p/624918286)
   - [大规模语言模型（LLMs）概念篇](https://zhuanlan.zhihu.com/p/635657998) Tokenizer 
   - [【大语言模型】一文看懂llama2(原理,模型,训练)](https://zhuanlan.zhihu.com/p/651248009)
+  - [gte-large](https://huggingface.co/thenlper/gte-large) Embeddings 模型
 
 
 其他

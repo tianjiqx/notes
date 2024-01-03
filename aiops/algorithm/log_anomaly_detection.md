@@ -186,7 +186,7 @@ Logram 使用字典来存储日志中 n-grams 的频率，并利用 n-gram 字�
 - [日志解析LogMine方法 - 简书](https://www.jianshu.com/p/c59570aacb94)
 
 - [**ACM Computing Survey**] [A Survey on Automated Log Analysis for Reliability Engineering](https://arxiv.org/abs/2009.07237)  
-  [ACM Computing Survey] 可靠性工程自动化日志分析调查
+  [ACM Computing Survey] 可靠性工程自动化日志分析调查 (推荐)
 
 - Tools and Benchmarks for Automated Log Parsing
 
@@ -201,3 +201,6 @@ Logram 使用字典来存储日志中 n-grams 的频率，并利用 n-gram 字�
   - [GitHub - tianjiqx/Logram: Efficient Log Parsing Using n-Gram Dictionaries](https://github.com/tianjiqx/Logram)  支持logpai的基准测试
 
 - https://zenodo.org/record/6425919#.ZEE8L-xBz0p ULP 
+
+
+- [Paper Notes (log based amomaly detection)日志异常检测 - gaiusyu的文章 - 知乎](https://zhuanlan.zhihu.com/p/522895226)

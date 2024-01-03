@@ -535,6 +535,7 @@ http://localhost:16686/trace/736941d6a5b4fa973942e1a5d0026ca9
 ## REF
 
 - [OpenTelemetry](https://opentelemetry.io/)
+- [opentelemetry-docs中文](https://wdk-docs.github.io/opentelemetry-docs/docs/)
 - [Github: open-telemetry/opentelemetry-java](https://github.com/open-telemetry/opentelemetry-java)
   - [boot-opentelemetry-tempo](https://github.com/mnadeem/boot-opentelemetry-tempo)
 - [Prometheus 实战](https://songjiayang.gitbooks.io/prometheus/content/)

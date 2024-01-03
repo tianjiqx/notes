@@ -46,6 +46,9 @@
   
   ssd: stat2.0 r:225MB/S  w:71MB/S stat3.0 r: 311MB/S
 
+- ss 命令
+  ss -tnl 查看主机监听的端口
+
 - [ifstat命令_统计网络接口活动状态的工具](https://www.cnblogs.com/friday0502/p/9450562.html)
 
 - [使用jstack命令查看CPU高占用的问题记录](https://www.cnblogs.com/xujanus/p/11275413.html)
