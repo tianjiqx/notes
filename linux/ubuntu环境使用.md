@@ -33,6 +33,33 @@ tips:
 > 设置 > 键盘 > 键盘快捷键 > super + v 搜索
 
 
+# 技巧
+
+## 调整swap大小
+
+现在的个人主机内存，也很容易32G, 64G。但是依然可能满足不了开发需要，比如分析jvm dump文件，idea等占用依然出现机器卡住等情况。此时可以调整，swap大小，现在按照的Ubuntu, 一般默认swap大小只有2G。相较物理内存太小。大内存机器，内存和swap可以调整到1:1 或者1:1.5。 一般对 swap 批评可能是交换内存引起卡顿，对服务性能有影响。但是这在个人机器上，个人实际感知不到。
+
+```shell
+# 查看当前的swap分区和使用情况
+sudo swapon --show
+
+# 禁用swap
+sudo swapoff /swapfile
+
+#创建新的swap文件 /swapfile32g
+sudo mkswap /swapfile32g
+
+# 启用
+sudo swapon /swapfile32g
+
+# 永久性修改，重启机器后生效
+sudo vi /etc/fstab
+
+
+UUID=xxxx-xxxx /    ext4   errors=remount-ro 0       1
+/swapfile32g  none  swap  sw  0  0
+
+```
 
 
 

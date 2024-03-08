@@ -342,6 +342,7 @@ Google 创建的 OpenCensus 项目提供 “特定语言库的集合，用于检
   - [github: prometheus](https://github.com/prometheus/prometheus)
 - [github: OpenMetrics](https://github.com/OpenObservability/OpenMetrics)
 - [OpenTelemetry](https://opentelemetry.io/)
+- [opentelemetry-docs中文](https://wdk-docs.github.io/opentelemetry-docs/docs/)
 - ["Everything You Wanted to Know About Distributed Tracing" ](https://github.com/keyvanakbary/learning-notes/blob/master/talks/everything-you-wanted-to-know-about-distributed-tracing.md) by Hungai Kevin Amuhinda 笔记，标题夸张了，不如直接看open telemetry 官网介绍
   - [youtube](https://www.youtube.com/watch?v=HSgb7gOO1Ig)
   - [slides](https://www.slideshare.net/KevinHungai/everything-you-wanted-to-know-about-distributed-tracing)

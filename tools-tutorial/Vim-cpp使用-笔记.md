@@ -110,3 +110,9 @@ TODO：更现代化的vim8 配置，[如何在 Linux 下利用 Vim 搭建 C/C++ 
 [Vim 8 下 C/C++ 开发环境搭建](http://www.skywind.me/blog/archives/2084)
 
 [将vim与系统剪贴板的交互使用](https://zhuanlan.zhihu.com/p/73984381)
+
+
+## vim 命令
+
+- `:set invlist` 显示不可见字符, 以^I表示一个 tab 符，$表示一个回车符
+

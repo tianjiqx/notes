@@ -64,6 +64,8 @@
 - cherry-pick 将其他分支的提交，追加到本地
   ```
   git cherry-pick  <commid_id1> <commid_id2>
+  范围[A,B], 包括A
+  git cherry-pick A^..B 
   ```
 
 - 打patch，应用path
