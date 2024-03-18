@@ -18,3 +18,5 @@ Ctrl + E: 打开最近的文件
 Ctrl + F12: 显示当前文件的结构
 
 
+## Install
+- [Ubuntu 20.04 安装 qt Creator](https://zhuanlan.zhihu.com/p/586929474)
