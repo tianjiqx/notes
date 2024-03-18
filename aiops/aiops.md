@@ -10,3 +10,6 @@
 - https://developer.aliyun.com/article/1368113 
 - https://zhuanlan.zhihu.com/p/664609196 
 
+
+## OpenAops
+- [课程](), [Advanced Network Management (AIOps) - 裴丹](https://netman.aiops.org/courses/advanced-network-management-spring2023-syllabus/) 论文,材料

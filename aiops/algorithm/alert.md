@@ -84,3 +84,10 @@ Real-time Incident Prediction for Online Service Systems
 - https://www.bizseer.com/index.php?m=content&c=index&a=show&catid=26&id=105
 - https://www.bizseer.com/index.php?m=content&c=index&a=show&catid=26&id=109 
 - https://www.bizseer.com/index.php?m=content&c=index&a=show&catid=26&id=101 
+
+
+- [AIOPS WORKSHOP](https://workshop.aiops.org/#2019%20AIOps%E6%8C%91%E6%88%98%E8%B5%9B%E5%86%B3%E8%B5%9B%20%E6%9A%A8%20%E7%AC%AC%E4%BA%8C%E5%B1%8AAIOps%E7%A0%94%E8%AE%A8%E4%BC%9A-div) 相关SLIDE
+  - [aiopschallenge 新链接](https://www.aiops.cn/aiopschallenge/)
+
+- [时间序列异常检测（三）—— 告警策略与根因定位](https://zhuanlan.zhihu.com/p/363254791)
+
