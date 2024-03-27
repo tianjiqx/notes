@@ -47,11 +47,30 @@
 
 - [opendistro ad for es](https://opendistro.github.io/for-elasticsearch-docs/docs/ad/)  产品设计，基于RCF算法
 
+- [基于数据流的异常检测：Robust Random Cut Forest](https://developer.aliyun.com/article/722280)
+
 - [AIOps挑战赛 | 阿里达摩院刘春辰：鲁棒时序异常检测与周期识别](https://www.bizseer.com/index.php?m=content&c=index&a=show&catid=26&id=50)
 - [智能运维系列（三）| 浅析智能异常检测：“慧识图”核心算法](https://www.infoq.cn/article/mryjNLXOlujV7fkQFUaL)
+
+“微众银行智能监控系统识图模块”是针对业务四大黄金指标而设计的智能曲线异常检测系统。四大黄金指标包括交易量(业务实时产生的交易量)、业务成功率(业务成功量/交易量)、系统成功率(系统成功量/交易量, 业务成功量和系统成功量的区别在于是否明确捕捉到系统异常)、平均时延(交易的平均耗时)。
+(对业务时序数据的异常检测)
+识图的检测方法主要有三种：
+● 基于 LSTM 与高斯分布的检测，这个算法主要用于交易量和时延的检测。大部分的曲线突变都能准确检测到，但算法的死角在于小幅度长时间的缓慢变化容易被漏掉。
+● 基于 k-means 算法的特征检测，主要用于填补第一种算法的盲区,在交易量缓慢变化的案例效果较好。
+● 基于概率密度的检测，主要用于业务成功率和系统成功率的曲线，因为成功率曲线的背后隐藏着无数的可能，需要用一个更接近本质的量来衡量异常的程度。
+
 - [大规模Aiops系统在核心网数据中心的探索与实践-算法架构](https://zhuanlan.zhihu.com/p/466955597)
 - [基于数据流的异常检测：Robust Random Cut Forest](https://developer.aliyun.com/article/722280)
 - [智能运维 | 异常检测：百度是这样做的](https://mp.weixin.qq.com/s?__biz=MzA5NTQ5MzE5OQ==&mid=2653057356&idx=1&sn=85d82226c7f66685ec8cf486569976dc)
+
+
+
+
+
+
+
+
+
 
 ### 领域知识
 
