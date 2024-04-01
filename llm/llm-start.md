@@ -104,6 +104,7 @@
 - [claude](https://claude.ai/chats) FQ
 - [文言一心](https://yiyan.baidu.com/)
 - [通义千问](https://qianwen.aliyun.com/)
+- [kimi](https://kimi.moonshot.cn/) 暗月之面， 长文本
 - [智谱清言](https://chatglm.cn/detail)  ChatGLM
 - [百川](https://www.baichuan-ai.com/chat)
 - [讯飞星火](https://xinghuo.xfyun.cn/desk) 效果不行
