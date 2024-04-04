@@ -3,6 +3,14 @@
 # Performance Analysis and Tuning on Modern CPU
 
 
+测量工具 [temci](https://github.com/parttimenerd/temci)
+
+自动化性能回归测试框架
+- https://github.com/JoeyHendricks/STATS-PAL
+- https://github.com/evergreen-ci/evergreen
+
+
+
 
 
 ## REF
