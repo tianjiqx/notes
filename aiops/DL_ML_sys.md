@@ -78,6 +78,7 @@ spark mllib
   - [yahoo/egads](https://github.com/yahoo/egads)
     
     - 雅虎开源的 Java 包，用于自动检测大规模时间序列数据中的异常。
+    - 基于net.sourceforge.openforecast和雅虎自己实现的 OlympicModel 模型
 
 - [SREWorks](https://github.com/alibaba/SREWorks)
   

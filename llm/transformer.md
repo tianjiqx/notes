@@ -25,6 +25,7 @@ LLM 也许是一个巨大的神谕机（hash） ，根据输入的key，获取va
   - [图解 transformer——多头注意力](https://mp.weixin.qq.com/s/Mdt55azb2ZAuxWNxTM8-mw)
   - [原文系列](https://towardsdatascience.com/transformers-explained-visually-not-just-how-but-why-they-work-so-well-d840bd61a9d3)
 
+- [transformer的细节到底是怎么样的？](https://www.zhihu.com/question/362131975)
+
 - Transformer/Attention Tutorial/Survey
   - [Everything You Need to Know about Transformers: Architectures, Optimization, Applications, and Interpretation, in AAAI Tutorial 2023.](https://transformer-tutorial.github.io/aaai2023/) 需要前置基础
-  - 

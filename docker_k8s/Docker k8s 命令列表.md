@@ -153,3 +153,20 @@ kubectl get pods -o wide | grep hdfs
 kubectl get events --sort-by=.metadata.creationTimestamp | grep hdfs
 kubectl get events --sort-by=.metadata.creationTimestamp | grep inceptor
 ```
+
+
+### `get service` 和 `get pod` 获取的 ip 区别 
+
+`get service` 和 `get pod` 是 Kubernetes 中 `kubectl` 命令行工具的两个不同的子命令，它们用于获取不同类型的信息，并且返回的 IP 地址也有所不同。
+
+- `get service`：
+   当你执行 `kubectl get service` 命令时，你会获取到 Kubernetes 服务（Service）的相关信息。服务是 Kubernetes 中的一个抽象层，它定义了如何访问一组 Pod。服务通常有一个稳定的虚拟 IP 地址（ClusterIP），这个 IP 地址不会随着 Pod 的变动而改变。这意味着，无论后端的 Pod 如何变化，服务的 IP 地址都保持不变，从而保证了应用程序的连续性和稳定性。
+   - **ClusterIP**：这是服务的内部 IP 地址，它在集群内部使用，以便其他组件可以访问该服务。这个 IP 地址对于集群外部是不可见的。
+   - **NodePort** 或 **LoadBalancer**：如果服务配置了 NodePort 或 LoadBalancer 类型，它会有一个与集群节点的 IP 地址或外部负载均衡器的 IP 地址相关联的端口。这个 IP 地址可以从集群外部访问服务。
+
+- `get pod`：
+   当你执行 `kubectl get pod -owide` 命令时，你会获取到 Pod 的列表和相关信息。Pod 是 Kubernetes 中的最小部署单元，它是一个或多个容器的集合，运行在同一个网络命名空间中。
+   - **Pod IP**：这是分配给每个 Pod 的 IP 地址。这个 IP 地址是动态的，可能会随着 Pod 的创建、销毁或重启而改变。
+   - **Node IP**：如果 Pod 是运行在特定节点上的，你也可以看到节点的 IP 地址，但这通常不是通过 `get pod` 命令直接获取的。
+
+总结来说，`get service` 命令返回的是服务的 IP 地址，它提供了一种稳定的访问后端 Pod 的方式，而 `get pod` 命令返回的是 Pod 自身的 IP 地址，这个地址是动态的，可能会变化。服务的 IP 地址（ClusterIP）用于集群内部通信，而 Pod 的 IP 地址通常用于调试和内部组件间的通信。如果你需要从集群外部访问应用程序，你可能需要查看服务的 NodePort 或 LoadBalancer IP 地址。
