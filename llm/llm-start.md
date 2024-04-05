@@ -291,4 +291,5 @@ text to sql
 其他
 
 - [prompt 提示工程](./prompt.md)
-
+ 
+- [动手学大模型应用开发](https://datawhalechina.github.io/llm-universe/#/) 非常基础，其实直接看langchain的例子即可
