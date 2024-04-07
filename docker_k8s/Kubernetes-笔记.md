@@ -1224,3 +1224,7 @@ kubectl rollout undo deployments/kubernetes-bootcamp
 - [分布式计算引擎 Flink/Spark on k8s 的实现对比以及实践](https://zhuanlan.zhihu.com/p/404171594)
 - [使用Golang构建一个高可用的Kubernetes Operator](https://zhuanlan.zhihu.com/p/400890229)
 - [Helm 官网](https://helm.sh/zh/) helm 概念与教材
+- [guangzhengli/k8s-tutorials](https://github.com/guangzhengli/k8s-tutorials)
+- [chaseSpace/k8s-tutorial-cn](https://github.com/chaseSpace/k8s-tutorial-cn) 推荐，关于使用
+  - [Kubernetes 基础教程](https://github.com/chaseSpace/k8s-tutorial-cn/blob/main/doc_tutorial.md)
+  - [Kubernetes 进阶教程](https://github.com/chaseSpace/k8s-tutorial-cn/blob/main/doc_tutorial_senior.md)
