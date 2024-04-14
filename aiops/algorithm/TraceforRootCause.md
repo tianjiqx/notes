@@ -20,3 +20,6 @@
 
 
 - [github:py-why/dowhy](git@github.com:py-why/dowhy.git) 因果推断库
+
+- [分布式因果推断在美团履约平台的探索与实践](https://zhuanlan.zhihu.com/p/679918563)
+  - 微软的EconML和[DoWhy](git@github.com:py-why/dowhy.git)，Uber的[CausalML](https://github.com/uber/causalml), [grf-lab](https://grf-labs.github.io/grf/index.html) 广义随机森林
