@@ -166,7 +166,7 @@ kubectl -n <namespace> cp perf-tools <podname>:/usr/share/perf-tools
 - [perf tutorial](https://perf.wiki.kernel.org/index.php/Tutorial#Introduction)
 - [perf](https://www.brendangregg.com/perf.html)
 - [系统级性能分析工具perf的介绍与使用](https://www.cnblogs.com/arnoldlu/p/6241297.html)
-
+- [linux系统分析之工具大全(观测，性能分析等)](https://zhuanlan.zhihu.com/p/526432016?)
 
 
 

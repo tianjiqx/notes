@@ -380,4 +380,4 @@ Google 创建的 OpenCensus 项目提供 “特定语言库的集合，用于检
 - [spark monitoring](https://spark.apache.org/docs/latest/monitoring.html)
   - 基于[Dropwizard 指标库](http://metrics.dropwizard.io/4.2.0)  收集内存，jvm信息
 - [深度解析｜基于 eBPF 的 Kubernetes 一站式可观测性系统](https://zhuanlan.zhihu.com/p/494316281)
-
+- [DeepFlow 在腾讯蓝鲸观测平台中的探索与实践](https://www.infoq.cn/article/RAUa40QhU5eJhmQB0mF3)
