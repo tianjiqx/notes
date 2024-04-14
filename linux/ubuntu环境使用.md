@@ -18,8 +18,9 @@
 > https://zhuanlan.zhihu.com/p/346665734
 
 
+# 问题
 
-# 声音无输出
+## 声音无输出
 
 参考了这篇文章， 设置 options snd-hda-intel dmic_detect=0 ，在我的gtr7机器上，耳机输出成功。
 
@@ -31,6 +32,28 @@ tips:
 - win(super) + v 快捷键取消日历快捷键，避免习惯误触
 
 > 设置 > 键盘 > 键盘快捷键 > super + v 搜索
+
+
+## freeing initrd memory on virtualbox
+
+AMD® Ryzen 7 7840hs w/ radeon 780m graphics × 16 
+
+相关问题描述：
+
+- [Unable to install CentOS](https://forums.virtualbox.org/viewtopic.php?p=544077#p544077)
+
+- [Ideapad 5 Pro R7-7840HS VM virtualization issue](https://forums.virtualbox.org/viewtopic.php?t=110964)
+
+linux修复方法类似：
+
+```
+cd /usr/lib/virtualbox/
+
+# "ubuntu22.04.04" 有 virutial machine name
+./VBoxManage setextradata "ubuntu22.04.04" "VBoxInternal/CPUM/HostCPUID/80000006/edx" "0x00009040"
+
+```
+
 
 
 # 技巧
