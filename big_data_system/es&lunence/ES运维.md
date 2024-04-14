@@ -180,6 +180,45 @@ PUT /_cluster/settings
 // 8.恢复索引数据。
 ```
 
+## 2.常见问题处理
+### ES 节点 磁盘 高水位，导致节点上的索引 read_only / delete 状态
+
+- 当集群磁盘使用率超过85%低警戒水位线：会导致新的分片无法分配。
+- 当集群磁盘使用率超过90%高警戒水位线：Elasticsearch 会尝试将对应节点中的分片迁移到其他磁盘使用率比较低的数据节点中。
+- 当集群磁盘使用率超过95%洪泛警戒水位线：系统会对 Elasticsearch 集群中对应节点里每个索引强制设置 read_only_allow_delete 属性，此时该节点上的所有索引将无法写入数据，只能读取和删除对应索引。
+
+
+处理：
+- 清理集群过期/旧数据 （如果允许）// 扩展磁盘空间 // 什么都不做等待分片迁移，负载均衡 // 调整水位（爆盘风险）
+- 关闭索引只读状态， 关闭集群只读状态
+```
+PUT _all/_settings
+{
+         "index.blocks.read_only_allow_delete": null
+}
+PUT _cluster/settings
+{
+         "persistent": {
+             "cluster.blocks.read_only_allow_delete": null
+         }
+}
+
+```
+- 调整写索引并发（可能应该调小），主动rollover, 负载均衡写分片，包括配置禁止在高水位节点，分配分片
+
+```
+curl -X PUT  index/_settings -H 'Content-Type: application/json'  -d '{
+        "index.routing.allocation.exclude._name" : "node_*"
+}'
+```
+
+
+#### REF
+- [集群磁盘使用率高和 read_only 状态问题如何解决？ - 腾讯云](https://cloud.tencent.com/document/product/845/56276)
+- [Elasticsearch 磁盘使用率超过警戒水位线，怎么办？ - 腾讯云](https://cloud.tencent.com/developer/article/1941253)
+
+
+
 ### REF
 
 - [rest-apis](https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-apis.html)
