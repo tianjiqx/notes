@@ -324,6 +324,20 @@ OpenTracing 为流行平台提供“一致的、富有表现力的、与供应�
 Google 创建的 OpenCensus 项目提供 “特定语言库的集合，用于检测应用程序、收集统计数据（指标）和将数据导出到受支持的后端。”
 
 
+## APM
+
+### 自动注入
+
+- 物理机上的应用程序，使用Linux的[preload](https://www.cnblogs.com/net66/p/5609026.html)技术，在程序运行前执行自动注入逻辑，以实现探针的自动注入。修改/etc/ld.so.preload配置文件
+
+  1. preload是一个c程序，是一个.so动态链接库
+  2. preload只支持linux arm64和x86_64架构的系统
+  3. 所有的程序都会首先执行preload
+  4. 如果preload奔溃，待执行的程序就会崩溃
+  5. preload的安装需要root权限，因为要修改/etc/ld.so.preload、libketaagent.so本身需要所有用户可读
+
+- k8s环境，使用[mutating admission webhook](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/)技术。拦截发送给API Server的创建、更新Pod对象（包含特定标签、注解），并对Pod的资源定义进行修改，以实现自动注入逻辑. 通过如opentelemetry-operator实现。
+
 
 ##  REF
 
