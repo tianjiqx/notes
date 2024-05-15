@@ -10,9 +10,15 @@
 
 
 
-## S3
+## AWS S3（Simple Storage Service）
 
-## 面向对象存储的系统
+
+
+## 支持面向对象存储的系统
+
+- prestro 借助 Hive 连接器，读取和写入存储在 S3 上的表
+    - trino 增加 s3 文件系统支持
+
 
 
 ## REF

@@ -38,6 +38,14 @@
 
 
 
+## 共识协议
+
+Raft, Paxos ,CURP 
+
+[CURP：对共识算法的重新思考](https://zhuanlan.zhihu.com/p/692464275) 
+- 在跨数据中心, 跨云 的 单RTT
+
+- [共识、线性一致性、顺序一致性、最终一致性、强一致性概念区分](https://zhuanlan.zhihu.com/p/618127949)
 
 ### 参考
 - [wiki: consistency model](https://en.wikipedia.org/wiki/Consistency_model),详细的一致性类型介绍介绍
