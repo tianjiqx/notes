@@ -36,6 +36,10 @@
 - https://developer.aliyun.com/article/1368113 
 - https://zhuanlan.zhihu.com/p/664609196 
 
+## 业界实践
+
+- [京东科技全链路故障诊断智能运维实践](https://dbaplus.cn/news-131-5890-1.html)
+
 
 ## OpenAiops
 - [课程](), [Advanced Network Management (AIOps) - 裴丹](https://netman.aiops.org/courses/advanced-network-management-spring2023-syllabus/) 论文,材料
@@ -45,3 +49,4 @@
 
 - [AI大模型运维开发探索第三篇：深入浅出运维智能体](https://mp.weixin.qq.com/s/VNxnatwTpl9srHszyNACXQ)
   - 基于agent 诊断 hdfs 问题
+

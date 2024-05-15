@@ -106,3 +106,6 @@ https://zhuanlan.zhihu.com/p/27161877
   - AUC对应的是一系列的acc，acc是衡量的是一个模型在一个特定threshold下的预测准确度
 
 - [平稳性和差分](https://otexts.com/fppcn/stationarity.html)
+
+- [几种常见的聚类外部评价指标](https://zhuanlan.zhihu.com/p/343667804)
+- [评价聚类的指标：纯度、兰德系数以及调整兰德系数](https://www.jianshu.com/p/13cff7c11669) 混淆矩阵的计算
