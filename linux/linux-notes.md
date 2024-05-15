@@ -49,6 +49,13 @@
 - ss 命令
   ss -tnl 查看主机监听的端口
 
+- du 统计大小
+  - du -ah . 统计当前目录下所有文件的大小(包括目录)
+  - du  -ah  -t 100M 过滤大于100M
+  - du -ah -BM -t 100M .  | sort -rnk1 过滤大于10M并且
+  - find . -type f -size +100M -exec du -hBM {} + | sort -rh | head -n 10 统计过滤100M大小的文件（不包括目录）
+
+
 - [ifstat命令_统计网络接口活动状态的工具](https://www.cnblogs.com/friday0502/p/9450562.html)
 
 - [使用jstack命令查看CPU高占用的问题记录](https://www.cnblogs.com/xujanus/p/11275413.html)
