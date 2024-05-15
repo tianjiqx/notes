@@ -29,7 +29,7 @@ GET _cat/indices?v
 
 // 查看集群 unassigned 原因
 GET _cluster/allocation/explain?pretty
-
+// 查看指定索引 shard的分配失败原因
 curl -X GET "localhost:9200/_cluster/allocation/explain?pretty" -H 'Content-Type: application/json' -d'
 {
   "index": "my-index-000001", 
@@ -85,6 +85,21 @@ curl -X GET "localhost:9200/api/v1/admin/internal/_cluster/allocation/explain?pr
 '
 // 查看，写分片路径path字段，文档数
 _cat/write_shards?v&bytes=b
+
+// 手动迁移shard到别的节点，处理 read only
+POST _cluster/reroute
+{
+  "commands": [
+    {
+      "move": {
+        "index": "index_name",
+        "shard": 0,
+        "from_node": "hostname-a",
+        "to_node": "hostname-b"
+      }
+    }
+  ]
+}
 
 
 // 4. 检查磁盘水位
@@ -237,4 +252,7 @@ curl -X PUT  index/_settings -H 'Content-Type: application/json'  -d '{
 
 - [Elasitcsearch 开发运维常用命令集锦](https://mp.weixin.qq.com/s?__biz=MzI2NDY1MTA3OQ==&mid=2247487406&idx=1&sn=7f4d62b2710af7a833a66371c873d8af)
 
-- https://www.elastic.co/guide/en/elasticsearch/reference/current/diagnose-unassigned-shards.html
+- [Diagnose unassigned shards](https://www.elastic.co/guide/en/elasticsearch/reference/current/diagnose-unassigned-shards.html)
+
+
+- [Elasticsearch常用的命令](https://armsword.com/2022/09/27/the-most-frequently-used-commands-of-elasticsearch/) 命令丰富

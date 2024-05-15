@@ -79,6 +79,27 @@ StoreValues 提供行存格式。 比如`_source` 字段存储原始数据。
 从 lucene 读取 5w/s
 
 
+## System requirements 
+- Lucene 9.0 requires JDK 11 or newer
+
+- Lucene 8.11.3  JDK 8 or greater
+
+## 文件格式说明：
+
+- 域数据文件 (.fdx 和 .fdt)：.fdt文件存储了文档中域（Field）的具体内容，而.fdx文件作为.fdt文件的索引，记录了文档在.fdt文件中的偏移位置，以便快速定位
+- 词项字典文件 (.tis 和 .tii)：这些文件构成了词典，包含了段中所有词项（Term）的集合，并按字典顺序排序，它们是实现倒排索引的基础
+- 词频文件 (.frq)：此文件存储了每个词项在文档中的频率，即文档中出现多少次该词项
+- 词位置文件 (.prx)：.prx文件存储了词项在文档中出现的位置信息
+
+- 删除文档文件 (.del)：这个文件记录了已经被删除的文档，但实际上文档数据仍然保留在索引中，直到索引优化(Optimize)操作发生
+
+- Compound File (.cfs 或 .cfe)：复合文件格式将多个文件合并为一个文件，以减少文件句柄的使用并提高效率
+
+- .dvd文件存储了DocValues的数据，与之配套的.dvm文件存储了元数据，用于解析.dvd文件中的数据。每个DocValues字段的数据和元数据文件是分开存储的
+
+https://lucene.apache.org/core/9_10_0/core/org/apache/lucene/codecs/lucene99/package-summary.html#package.description
+
+
 ## REF
 
 - [Apache lucene](https://lucene.apache.org/)
@@ -108,3 +129,9 @@ StoreValues 提供行存格式。 比如`_source` 字段存储原始数据。
 - 源码分析
   - [Lucene解析 - IndexWriter](https://zhuanlan.zhihu.com/p/35795070)
   - [Lucene的部分源码阅读](https://zhuanlan.zhihu.com/p/367391355)
+
+
+- 开发
+  - [ZSTD Compressor support in Lucene [LUCENE-8739]](https://github.com/apache/lucene/issues/9784) 关于zstd 压缩的支持，主要一直未成功原因是 zstd 是C++，管理者 不想在内核引入 jni 依赖，glibc等可移植问题
+    - 不过facebook 也开源了 [airlift/aircompressor](https://github.com/airlift/aircompressor) 支持纯java的 zstd 声称比jni，jna方式更快，但是测试下来还是要比jni方式慢一倍
+

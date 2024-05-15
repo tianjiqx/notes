@@ -1,10 +1,10 @@
-# DataFuse 笔记
+# Databend 笔记
 
 [TOC]
 
 ## 1. 简介
 
-Datafuse 是一个开源的**弹性**和**可扩展的**云数据仓库Cloud Warehouse，使用存储在云存储系统（例如 AWS S3 和 Azure Blob Storage 或其他）中的数据执行工作负载。
+Databend(Datafuse: 曾用名) 是一个开源的**弹性**和**可扩展的**云数据仓库Cloud Warehouse，使用存储在云存储系统（例如 AWS S3 和 Azure Blob Storage 或其他）中的数据执行工作负载。
 
 面向云环境的OLAP系统。最开始根据TensorBase作者的评价，以为对标的是rust的Clickhouse，但是根据最近Datafuse博客，它其实对标Snowflake，AWS Redshift。
 
@@ -523,7 +523,7 @@ DatafuseQuery(client) ---->(rpc)  DatafuseStore{flightServer ---> ActionHandler 
 
 ## REF
 
-- [github:datafuse](https://github.com/datafuselabs/datafuse.git)
+ - [github:databend](https://github.com/datafuselabs/databend)
 - [doc:datafuse](https://datafuse.rs/overview/architecture/)
 - [Rust, Datafuse and the Cloud Warehouse（1）云时代数仓架构设计](https://zhuanlan.zhihu.com/p/402092313) 设计理念
 - [Rust, Datafuse and the Cloud Warehouse（2）Datafuse 架构概览](https://zhuanlan.zhihu.com/p/402093492)
@@ -534,3 +534,6 @@ DatafuseQuery(client) ---->(rpc)  DatafuseStore{flightServer ---> ActionHandler 
 - [[Snowflake核心技术解读系列一]架构设计](https://developer.aliyun.com/article/780125)
 - [存算分离/DB on K8s 论文/blog收集](https://zhuanlan.zhihu.com/p/377755864) 与palardb 架构对比
 
+
+- [Ballista 分布式查询引擎 - 分布式执行计划](https://zhuanlan.zhihu.com/p/693963072)
+- [Ballista 分布式查询引擎 - 事件驱动调度](https://zhuanlan.zhihu.com/p/694217331)

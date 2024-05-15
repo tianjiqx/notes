@@ -144,3 +144,10 @@ Trino 使用了一个 **分布式的架构**，由多个节点组成，包括 **
 - [prestodb docs](https://prestodb.io/docs/0.286/overview/concepts.html#query-execution-model)
 - [Presto Scheduler](https://aaaaaaron.github.io/2022/07/11/Presto-Scheduler/)
 - [生成查询计划](https://mumu-presto.readthedocs.io/zh/latest/core/createqueryplan.html#id16)
+- [Presto Connector 实现原理](https://zhuanlan.zhihu.com/p/143115558)
+
+- [trino 对象存储支持](https://trino.io/docs/current/object-storage.html)
+
+
+- [Presto架构、源码分析专栏](https://github.com/huangfox/dpkb/blob/main/columns/presto/Presto%E6%9E%B6%E6%9E%84%E3%80%81%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B8%93%E6%A0%8F.md)
+
