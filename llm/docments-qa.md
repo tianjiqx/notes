@@ -34,6 +34,25 @@
 - LLM 总结 TOP-K
 
 
+## RAGFlow
+英飞流公司（matrixorigin？），RAG处理系统。
+亮点：
+
+- DeepDoc
+基于视觉ocr，进行文本提取，布局识别（Layout recognition），TSR（Table Structure Recognition，表结构识别） 
+以及直接对图表等进行提问和处理。
+
+- 按模板分块文档
+    - book,papaer,qa,picture,
+
+- 对应文档分块的解析器， 文档 to text
+    - RAGFlowDocxParser
+    - RAGFlowExcelParser
+    - RAGFlowPdfParser
+    - RAGFlowPptParser
+    - 简历
+
+
 
 
 ## REF
@@ -43,5 +62,15 @@
     - 对称语义检索与非对称语义检索
 - [Langchain-Chatchat](https://github.com/chatchat-space/Langchain-Chatchat.git) 本地知识库问答
 
+- [infiniflow/ragflow](https://github.com/infiniflow/ragflow)
+    - [DeepDoc](https://github.com/infiniflow/ragflow/blob/main/deepdoc/README_zh.md) 基于视觉ocr，进行文本提取，布局识别（Layout recognition），TSR（Table Structure Recognition，表结构识别）
+        - 文本、标题、配图、配图标题、表格、表格标题
+        - 页头，页尾，参考引用，公式
+        - PDF、DOCX、EXCEL和PPT四种文档格式都有相应的解析器， PDF：
+            - 在PDF中有自己位置的文本块（页码和矩形位置）。展示分块位置。
+            - 带有PDF裁剪图像的表格，以及已经翻译成自然语言句子的内容。
+            - 图中带标题和文字的图。
 
+    - [检索增强生成引擎 RAGFlow 正式开源！](https://www.infoq.cn/article/hjjm3kv620idoyyobtps) 
+    - [slides:Al 原生数据库 Infinity 系统架构与 RAG 技术实践](https://ppt.infoq.cn/slide/show?cid=143&pid=4634)
 
