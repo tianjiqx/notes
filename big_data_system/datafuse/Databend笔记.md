@@ -537,3 +537,6 @@ DatafuseQuery(client) ---->(rpc)  DatafuseStore{flightServer ---> ActionHandler 
 
 - [Ballista 分布式查询引擎 - 分布式执行计划](https://zhuanlan.zhihu.com/p/693963072)
 - [Ballista 分布式查询引擎 - 事件驱动调度](https://zhuanlan.zhihu.com/p/694217331)
+
+- [DataBend vs Rockset DataBend 与 Rockset](https://www.influxdata.com/comparison/databend-vs-rockset/)
+- [Databend 倒排索引的设计与实现](https://zhuanlan.zhihu.com/p/699366157)

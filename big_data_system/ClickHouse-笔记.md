@@ -239,8 +239,33 @@ Skipping索引：
 
   ![](clickhouse-笔记图片/Snipaste_2021-07-17_12-30-45.png)
 
-- x
 
+## 5. 用于构建可观测性系统
+
+
+blogs:
+  - [使用ClickHouse构建可观察性解决方案-第1部分-日志](https://clickhouse.com/blog/storing-log-data-in-clickhouse-fluent-bit-vector-open-telemetry)
+  - [使用ClickHouse构建可观察性解决方案-第2部分-跟踪](https://clickhouse.com/blog/storing-traces-and-spans-open-telemetry-in-clickhouse) 
+    - 使用OpenTelemetry来收集跟踪数据
+  - [滴滴从Elasticsearch迁移到ClickHouse，打造新一代日志存储系统](https://clickhouse.com/blog/didi-migrates-from-elasticsearch-to-clickHouse-for-a-new-generation-log-storage-system)  
+    - 峰值QPS约为200, 与Elasticsearch相比，查询速度提高了约4倍
+    - 使用单独的Log和Trace集群, 防止日志上的高消耗查询（如LIKE查询）干扰跟踪上的高QPS查询
+    - 日志 400个物理节点，峰值写入流量超过40 GB/s， 100MB/s 每个节点
+
+  日志存储设计
+  - 分区key：虽然大多数SQL查询只检索一个小时的数据，但按小时分区会导致HDFS中有太多的部分和大量的小文件。因此，分区是按天而不是按小时进行的。 
+  - 排序键：为了快速定位特定小时的数据，通过将日志时间四舍五入到最近的小时来创建一个名为 logTimeHour 的新字段。然后将其用作主要排序键。由于大多数查询指定 odinLeaf 、 uri 和 traceid ，这些列分别用作第二、第三和第四排序键，基于它们从最小到最大的基数。这意味着查询特定 traceid 的数据只需要阅读少量的索引颗粒。通过这种设计，所有相等查询都可以在毫秒内完成。
+  - Map列：引入Map类型是为了实现动态方案，允许将不用于过滤的列放置到Map中。这有效地减少了部分文件的数量，并防止在HDFS上出现大量小文件。
+
+  跟踪表设计
+  - AggregatingMergeTree：Trace表使用AggregatingMergeTree引擎，该引擎基于 traceid 聚合数据。这种聚合大大减少了跟踪数据的量，实现了5：1的压缩比，并显著提高了检索速度。
+  - 分区和排序键：类似于日志表的设计。
+  - index_granularity ：1024，减少此参数有助于最大限度地减少对颗粒内不匹配数据的扫描，从而加快“traceid”检索。
+
+  跟踪索引表， 用于通过 order_id 提供快速查找 tace_id
+  - AggregatingMergeTree
+  - 分区和排序键：类似于日志表的设计
+  - index_granularity ：1024
 
 
 ## REF
