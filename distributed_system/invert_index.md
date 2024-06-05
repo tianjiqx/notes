@@ -8,7 +8,7 @@
 - [Lucene](https://github.com/apache/lucene)  java
 
 - [Apache Doris](https://github.com/apache/doris)  基于[CLucene](https://github.com/apache/doris-thirdparty/blob/d3de160/src/core/CLucene.h) 非常老的项目
-    - https://www.infoq.cn/article/kmui4okixhx4mvpqh3cd  
+    - [从 Elasticsearch 到 Apache Doris，构建新一代日志存储分析平台](https://www.infoq.cn/article/kmui4okixhx4mvpqh3cd)  
     
 
 - [clickhouse](https://github.com/ClickHouse/ClickHouse) [inverted index](https://github.com/ClickHouse/ClickHouse/blob/master/docs/en/engines/table-engines/mergetree-family/invertedindexes.md)
@@ -20,3 +20,7 @@
 
 - [infinity](https://github.com/infiniflow/infinity) c++
     - [倒排](https://github.com/infiniflow/infinity/blob/main/src/storage/invertedindex/)、向量，自己实现的简易版本，认为Lucene的历史负担，打分等搜索需求历史负担，可以简化
+
+
+- [databend](https://github.com/datafuselabs/databend) 支持倒排，基于[fst](https://crates.io/crates/fst) 库实现，但是在EE版本，需要授权
+    - [Databend 倒排索引的设计与实现](https://zhuanlan.zhihu.com/p/699366157)
