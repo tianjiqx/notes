@@ -74,3 +74,5 @@
     - [检索增强生成引擎 RAGFlow 正式开源！](https://www.infoq.cn/article/hjjm3kv620idoyyobtps) 
     - [slides:Al 原生数据库 Infinity 系统架构与 RAG 技术实践](https://ppt.infoq.cn/slide/show?cid=143&pid=4634)
 
+- [[合作]一次RAG技术调研](https://zhuanlan.zhihu.com/p/703596693)
+

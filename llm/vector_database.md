@@ -21,7 +21,6 @@ int64 标识
 1,000,000 x 64 x 8 bytes = 512,000,000 bytes  512MB
 
 
-
 ### 维度
 - 部署（self-hosted / cloud / in-memory） 
 - Metadata Filtering
@@ -50,6 +49,7 @@ int64 标识
 - Weaviate
   - [Vamana vs. HNSW - Exploring ANN algorithms Part 1](https://weaviate.io/blog/ann-algorithms-vamana-vs-hnsw)
   - [HNSW+PQ - Exploring ANN algorithms Part 2.1](https://weaviate.io/blog/ann-algorithms-hnsw-pq)
+    - PQ 用于压缩内存消耗
 
 - [llamaindex vector stores](https://gpt-index.readthedocs.io/en/latest/core_modules/data_modules/storage/vector_stores.html)
 
