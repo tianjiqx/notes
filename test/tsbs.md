@@ -5,6 +5,8 @@
 
 [TSBS](https://github.com/timescale/tsbs) 基于 influxdata/influxdb-comparisons 的时序评测基准
 
+（遗憾，似乎不在维护）
+
 
 #### 构建
 前置：已经安装 go 环境
@@ -26,7 +28,6 @@ make
     --log-interval="10s" --format="clickhouse" \
     | gzip > /home/tianjiqx/newdisk/clickhouse-data.gz
 
-```
 --use-case：使用场景，包括iot、devops、cpu-only，例如iot；
 --seed：用于确定性生成的 PRNG 种子。例如：123；
 --scale：要生成的卡车/设备数量。例如：50000；
@@ -34,6 +35,8 @@ make
 --timestamp-end：数据中时间戳的结束时间。例如：2016-01-01T00:10:00Z；
 --log-interval：每个设备的每次读取之间应该间隔多长时间，以秒为单位。例如：10s；
 --format：需要生成的数据库，例如: clickhouse。
+
+```
 
 
 #### devops 数据集说明
@@ -112,6 +115,89 @@ SELECT name,total_bytes,total_rows FROM system.tables WHERE database = 'benchmar
 
 ```
 
+
+## 测试
+
+环境：
+
+AMD® Ryzen 7 7840hs w/ radeon 780m graphics × 16
+16*2 G 内存 ddr5  5600MT/s
+1T SSD  7000 MB/s
+time dd if=/dev/zero of=/home/tianjiqx/test.txt bs=4k count=200000
+819200000字节（819 MB，781 MiB）已复制，0.699636 s，1.2 GB/s
+
+time dd if=/dev/zero of=/home/tianjiqx/test.txt bs=4k count=200000 oflag=direct
+819200000字节（819 MB，781 MiB）已复制，2.41827 s，339 MB/s
+
+
+--scale=400
+
+原始数据集大小 9331 2000 行
+ck： 类csv   25G
+ketadb： json 55G
+
+
+
+| 系统         | size（GB）   | load time（s） | 压缩比 | 速度（row/s） |
+| ---------- | ---------- | ------------ | --- | --------- |
+| clickhouse | 2.66       | 659.041      |     | 141,596   |
+| doris      | 741.278 MB | 82.449       |     | 1,132,427 |
+| clickhouse_tsv | 3.02       | 659.041      |     | 141,596   |
+| doris_tsv      | 768.334 MB | 126.646      |     | 1,308,631 |
+
+
+导入时间，各个系统导入方式不同，参考意义不大
+clickhouse 使用9 + 1 总共10张表存储数据
+
+注意：
+- tag id 生成在测试中基于内存map, 真实场景应该如何扩展生成tag id？（tagkv的 hashcode？） 
+- tags 长度 对于devops 是固定的
+- 并且按照 tag_id, created_at 有序
+
+
+clickhouse: 单线程导入，查询时使用 in 查询从 tags 表进行查询
+doirs: 单线程，导入 clickhouse 导出的 csv文件
+clickhouse_tsv: tsv导入, tag未分离，并且保留tag_id 保证有序
+doris_tsv  类似 clickhouse_tsv
+
+
+问题：
+- 每类指标系列，需要使用单独的表，成千上万的表，是否元信息会有问题？
+- 指标的tag的更新，tag字段的增减，对应schema变更问题
+    - doris [variant](https://doris.apache.org/zh-CN/docs/sql-manual/sql-types/Data-Types/VARIANT?_highlight=v#variant) 类型 ?
+
+
+```
+SELECT
+    toStartOfMinute(created_at) AS minute,
+    max(usage_user) AS max_usage_user
+FROM cpu
+WHERE tags_id IN (SELECT id FROM tags WHERE hostname IN ('host_311')) AND (created_at >= '2016-01-02 11:06:44') AND (created_at < '2016-01-02 12:06:44')
+GROUP BY minute
+ORDER BY minute ASC
+```
+
+
+| query                 | 说明                                              | clickhouse  <br>(avg) ms | doris |
+| --------------------- | ----------------------------------------------- | ------------------------ | ----- |
+| single-groupby-1-1-1  | 对 1 个主机的一个指标进行简单聚合 （MAX），每 5 分钟一次，持续 1 小时       | 11.40,9.02               | 27.46 |
+| single-groupby-1-1-12 | 1 台主机的一个指标上的简单聚合 （MAX），每 5 分钟一次，持续 12 小时        | 6.16                     | 16.71 |
+| single-groupby-1-8-1  | 对 8 个主机的一个指标进行简单聚合 （MAX），每 5 分钟一次，持续 1 小时       | 6.24                     | 14.79 |
+| single-groupby-5-1-1  | 对 1 台主机的 5 个指标进行简单聚合 （MAX），每 5 分钟一次，持续 1 小时     | 6.20                     | 13.89 |
+| single-groupby-5-1-12 | 对 1 台主机的 5 个指标进行简单聚合 （MAX），每 5 分钟一次，持续 12 小时    | 6.29                     | 13.98 |
+| single-groupby-5-8-1  | 对 8 个主机的 5 个指标进行简单聚合 （MAX），每 5 分钟一次，持续 1 小时     | 6.05                     | 13.92 |
+| cpu-max-all-1         | 聚合单个主机 1 小时内每小时的所有 CPU 指标                       | 6.33                     | 11.80 |
+| cpu-max-all-8         | 在 1 小时内聚合 8 台主机每小时的所有 CPU 指标                    | 6.14                     | 14.45 |
+| double-groupby-1      | 跨时间和主机进行聚合，在 24 小时内平均每个主机每小时 1 个 CPU 指标         | 5.36                     | 12.29 |
+| double-groupby-5      | 跨时间和主机进行聚合，在 24 小时内平均每个主机每小时提供 5 个 CPU 指标       | 4.58                     | 13.92 |
+| double-groupby-all    | 跨时间和主机进行聚合，给出每个主机每小时 24 小时内所有 （10） 个 CPU 指标的平均值 | 4.76                     | 11.47 |
+| high-cpu-all          | 一个指标高于所有主机阈值的所有读数                               | 4.73                     | 11.93 |
+| high-cpu-1            | 一个指标高于特定主机阈值的所有读数                               | 4.76                     | 12.79 |
+| lastpoint             | 每个主机的最后读数                                       | 5.02                     | 11.82 |
+| groupby-orderby-limit | 随机选择的终点之前的最后 5 个汇总读数（跨时间）                       | 4.72                     | 11.67 |
+
+
+（每 5 分钟一次？ 检查语句似乎是每分钟）
 
 
 #### REF
