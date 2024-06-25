@@ -74,4 +74,8 @@ awk是一个可编程的文本处理、分析工具，相对与sed而言，具�
 awk  '{print length($0)}' /log/hadoop_template1.log | sort -n -r | head
 
 
+# 2. 每行求和
+
+| awk '{sum+=$1} END {print sum}'
+
 ```
