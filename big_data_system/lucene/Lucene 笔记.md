@@ -107,6 +107,9 @@ https://lucene.apache.org/core/9_10_0/core/org/apache/lucene/codecs/lucene99/pac
 - [基于Lucene查询原理分析Elasticsearch的性能](https://zhuanlan.zhihu.com/p/47951652)
 - [Lucene底层架构-dvm-dvm构建过程](https://kkewwei.github.io/elasticsearch_learning/2019/11/15/Lucene%E5%BA%95%E5%B1%82%E6%9E%B6%E6%9E%84-dvm-dvm%E6%9E%84%E5%BB%BA%E8%BF%87%E7%A8%8B/)
 
+
+- [深度解析 Lucene 轻量级全文索引实现原理](https://cloud.tencent.com/developer/news/841587)
+
 扩展材料：
 
 - 原理

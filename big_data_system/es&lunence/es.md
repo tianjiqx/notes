@@ -2,6 +2,42 @@
 ## ES 原理
 
 
+### Mapping
+
+Elasticsearch Mapping 是对索引中文档字段的数据类型、存储方式、分析设置等关键属性的定义，类似于关系型数据库中的表结构定义。是ES实现动态schema的背后技术。
+
+1. 基本概念
+Mapping 定义了文档的结构，包括字段名、字段类型、是否被索引、分析器选择等。
+动态 Mapping 当向索引中插入文档时，如果文档中的字段没有在Mapping中预先定义，Elasticsearch可以根据字段的值自动推断其类型并创建相应的Mapping。但动态Mapping可能导致类型冲突，因此在生产环境中建议明确指定Mapping。
+2. 字段类型
+Text & Keyword：text 类型适用于全文本搜索，经过分析器处理生成倒排索引；keyword 类型不做分析，适合精确值匹配，如ID、标签。
+Numeric：支持多种数值类型，如long、double，优化存储和范围查询。
+Date：存储日期/时间，支持多种格式，并可配置时区。
+Object & Nested：object 用于嵌套的对象，保持父子关系；nested 类型则允许对象数组中的每个对象独立查询。
+3. 分析器
+分析器负责将文本字段转换成词项（tokens）以便索引和搜索。它包括字符过滤器、分词器和token过滤器三个阶段。
+可以为不同的字段指定不同的分析器，以满足特定的搜索需求。
+4. 索引设置
+是否索引：控制字段是否参与全文搜索，未被索引的字段不能被搜索到。
+norms：影响文档评分，可用于节省存储空间和加快查询速度。
+doc_values：优化聚合和排序操作，占用较少的内存。
+5. Mapping 参数
+enabled：控制字段是否被索引。
+store：决定字段值是否以原始形式存储，以便检索时直接获取。
+coerces：是否允许Elasticsearch自动转换字段类型。
+ignore_above：对于text字段，超过指定长度的值将被忽略，避免大值导致的问题。
+6. 动态Template
+动态模板允许用户为未知字段定义默认的Mapping设置，这样在动态Mapping过程中，新字段可以根据预设的规则自动应用特定的类型和设置。
+7. 更新Mapping
+虽然Mapping可以更新，但某些更改（如改变已存在字段的数据类型）可能需要重新索引数据。
+使用PUT _mapping API可以更新索引的Mapping。
+8. 查看Mapping
+可以通过GET /index_name/_mapping API来查看索引的当前Mapping。
+Elasticsearch的Mapping设计对索引的性能、查询效率及存储空间有着直接影响，因此合理设计Mapping是至关重要的。
+
+
+
+
 ### 一致性协议
 
 PacificA类算法  < 7.x
@@ -33,3 +69,7 @@ raft
 - [【离线】esrally实践总结](https://developer.aliyun.com/article/851848) 基准测试
 
 - [业界使用 ES 的一些工程实践](https://www.cnblogs.com/hapjin/p/17892378.html)
+
+- mapping
+    - [一文搞懂 Elasticsearch 之 Mapping](https://www.cnblogs.com/wupeixuan/p/12514843.html)  数据类型
+    - [Elasticsearch中mapping全解实战](https://www.cnblogs.com/youngdeng/p/12867728.html)

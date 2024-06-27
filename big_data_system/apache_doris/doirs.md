@@ -63,3 +63,7 @@ Doris 中指标列，最终只会存储聚合后的数据，丢失明细数据�
 - [Apache Doris 迎来重磅升级！云原生存算分离架构来了](https://www.infoq.cn/article/u9x7rwcqvkeq2ptbmm3n)
 
 
+- [selectdb 文档、ppt汇总](https://selectdb.feishu.cn/docx/doxcnm0uTBWFTc4Qn9A1WHuqrcg)
+
+
+- [StarRocks 源码解析](https://www.zhihu.com/column/c_1595736761170358272)
