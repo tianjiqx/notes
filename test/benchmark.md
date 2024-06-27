@@ -16,6 +16,11 @@ chmod u+x download.sh
 [logpai/loghub](https://github.com/logpai/loghub)
 
 
+### openaiops
+
+[log数据](https://www.aiops.cn/log-data/) 一些汇总，基本来源loghub
+
+
 ## 时序
 
 ### TSBS 时间系列基准套件

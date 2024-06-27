@@ -207,3 +207,6 @@ Logram 使用字典来存储日志中 n-grams 的频率，并利用 n-gram 字�
 
 - [分布式转型时期，日志分析难题如何应对？](https://dbaplus.cn/news-134-5991-1.html) 
   - 基于文本聚类和RNN循环神经网络模型算法，对日志进行智能分类
+
+
+- Landauer, M., Skopik, F., & Wurzenberger, M. (2023): A Critical Review of Common Log Data Sets Used for Evaluation of Sequence-based Anomaly Detection Techniques. [arxiv:2309.02854](https://arxiv.org/pdf/2309.02854).   基于事件序列的日志异常检测方法review + 日志测试集

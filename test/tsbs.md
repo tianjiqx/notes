@@ -10,7 +10,7 @@
 
 #### 构建
 前置：已经安装 go 环境
-
+`
 ```
 git clone git@github.com:timescale/tsbs.git
 cd tsbs
@@ -118,7 +118,7 @@ SELECT name,total_bytes,total_rows FROM system.tables WHERE database = 'benchmar
 
 ## 测试
 
-环境：
+### 环境
 
 AMD® Ryzen 7 7840hs w/ radeon 780m graphics × 16
 16*2 G 内存 ddr5  5600MT/s
@@ -134,17 +134,15 @@ time dd if=/dev/zero of=/home/tianjiqx/test.txt bs=4k count=200000 oflag=direct
 
 原始数据集大小 9331 2000 行
 ck： 类csv   25G
-ketadb： json 55G
 
-
-
+#### load & storage
 | 系统         | size（GB）   | load time（s） | 压缩比 | 速度（row/s） |
 | ---------- | ---------- | ------------ | --- | --------- |
 | clickhouse | 2.66       | 659.041      |     | 141,596   |
 | doris      | 741.278 MB | 82.449       |     | 1,132,427 |
-| clickhouse_tsv | 3.02       | 659.041      |     | 141,596   |
-| doris_tsv      | 768.334 MB | 126.646      |     | 1,308,631 |
-
+| clickhouse_tsv | 3.02       | 659.041      |     | 1,308,631   |
+| doris_tsv      | 768.334 MB | 126.646      |     | 736,793 |
+| doris_varint +倒排索引      | 821.751 MB | 229.866      |     | 405,940 |
 
 导入时间，各个系统导入方式不同，参考意义不大
 clickhouse 使用9 + 1 总共10张表存储数据
@@ -159,14 +157,21 @@ clickhouse: 单线程导入，查询时使用 in 查询从 tags 表进行查询
 doirs: 单线程，导入 clickhouse 导出的 csv文件
 clickhouse_tsv: tsv导入, tag未分离，并且保留tag_id 保证有序
 doris_tsv  类似 clickhouse_tsv
+doris_varint + 倒排索引，使用 variant 存储tag字段，并对 tags 字段构建倒排索引
+
 
 
 问题：
 - 每类指标系列，需要使用单独的表，成千上万的表，是否元信息会有问题？
 - 指标的tag的更新，tag字段的增减，对应schema变更问题
-    - doris [variant](https://doris.apache.org/zh-CN/docs/sql-manual/sql-types/Data-Types/VARIANT?_highlight=v#variant) 类型 ?
+    - doris [variant](https://doris.apache.org/zh-CN/docs/sql-manual/sql-types/Data-Types/VARIANT?_highlight=v#variant) 类型 ? 将写入的 JSON 列存化，使用 variant 存储tag字段
+    - variant 当前不支持作为key排序，分组key, 过滤支持
+    - variant ，ui即倒排索引 会对增加存储空间，但确实依然维持了非常好的压缩比例 
 
 
+#### query
+
+single-groupby-1-1-1
 ```
 SELECT
     toStartOfMinute(created_at) AS minute,
@@ -177,27 +182,77 @@ GROUP BY minute
 ORDER BY minute ASC
 ```
 
+其他，可以查看 fork的 tsbs 仓库
 
 | query                 | 说明                                              | clickhouse  <br>(avg) ms | doris |
 | --------------------- | ----------------------------------------------- | ------------------------ | ----- |
-| single-groupby-1-1-1  | 对 1 个主机的一个指标进行简单聚合 （MAX），每 5 分钟一次，持续 1 小时       | 11.40,9.02               | 27.46 |
-| single-groupby-1-1-12 | 1 台主机的一个指标上的简单聚合 （MAX），每 5 分钟一次，持续 12 小时        | 6.16                     | 16.71 |
-| single-groupby-1-8-1  | 对 8 个主机的一个指标进行简单聚合 （MAX），每 5 分钟一次，持续 1 小时       | 6.24                     | 14.79 |
-| single-groupby-5-1-1  | 对 1 台主机的 5 个指标进行简单聚合 （MAX），每 5 分钟一次，持续 1 小时     | 6.20                     | 13.89 |
-| single-groupby-5-1-12 | 对 1 台主机的 5 个指标进行简单聚合 （MAX），每 5 分钟一次，持续 12 小时    | 6.29                     | 13.98 |
-| single-groupby-5-8-1  | 对 8 个主机的 5 个指标进行简单聚合 （MAX），每 5 分钟一次，持续 1 小时     | 6.05                     | 13.92 |
-| cpu-max-all-1         | 聚合单个主机 1 小时内每小时的所有 CPU 指标                       | 6.33                     | 11.80 |
-| cpu-max-all-8         | 在 1 小时内聚合 8 台主机每小时的所有 CPU 指标                    | 6.14                     | 14.45 |
-| double-groupby-1      | 跨时间和主机进行聚合，在 24 小时内平均每个主机每小时 1 个 CPU 指标         | 5.36                     | 12.29 |
-| double-groupby-5      | 跨时间和主机进行聚合，在 24 小时内平均每个主机每小时提供 5 个 CPU 指标       | 4.58                     | 13.92 |
-| double-groupby-all    | 跨时间和主机进行聚合，给出每个主机每小时 24 小时内所有 （10） 个 CPU 指标的平均值 | 4.76                     | 11.47 |
-| high-cpu-all          | 一个指标高于所有主机阈值的所有读数                               | 4.73                     | 11.93 |
-| high-cpu-1            | 一个指标高于特定主机阈值的所有读数                               | 4.76                     | 12.79 |
-| lastpoint             | 每个主机的最后读数                                       | 5.02                     | 11.82 |
-| groupby-orderby-limit | 随机选择的终点之前的最后 5 个汇总读数（跨时间）                       | 4.72                     | 11.67 |
+| single-groupby-1-1-1  | 对 1 个主机的一个指标进行简单聚合 （MAX），每 5 分钟一次，持续 1 小时       | 7.87              | 22.55 |
+| single-groupby-1-1-12 | 1 台主机的一个指标上的简单聚合 （MAX），每 5 分钟一次，持续 12 小时        | 5.83                     | 19.17 |
+| single-groupby-1-8-1  | 对 8 个主机的一个指标进行简单聚合 （MAX），每 5 分钟一次，持续 1 小时       | 8.03                     | 19.75 |
+| single-groupby-5-1-1  | 对 1 台主机的 5 个指标进行简单聚合 （MAX），每 5 分钟一次，持续 1 小时     | 11.50                     | 19.74 |
+| single-groupby-5-1-12 | 对 1 台主机的 5 个指标进行简单聚合 （MAX），每 5 分钟一次，持续 12 小时    | 7.20                     | 20.24 |
+| single-groupby-5-8-1  | 对 8 个主机的 5 个指标进行简单聚合 （MAX），每 5 分钟一次，持续 1 小时     | 13.83                     | 18.60 |
+| cpu-max-all-1         | 聚合单个主机 1 小时内每小时的所有 CPU 指标                       | 15.07                     | 15.48 |
+| cpu-max-all-8         | 在 1 小时内聚合 8 台主机每小时的所有 CPU 指标                    | 26.60                     | 17.18 |
+| double-groupby-1      | 跨时间和主机进行聚合，在 24 小时内平均每个主机每小时 1 个 CPU 指标         | 13.30                    | 32.51 |
+| double-groupby-5      | 跨时间和主机进行聚合，在 24 小时内平均每个主机每小时提供 5 个 CPU 指标       | 32.16                     | 40.65 |
+| double-groupby-all    | 跨时间和主机进行聚合，给出每个主机每小时 24 小时内所有 （10） 个 CPU 指标的平均值 | 58.06                     | 55.51 |
+| high-cpu-all          | 一个指标高于所有主机阈值的所有读数                               | 122.87                     | 74.76 |
+| high-cpu-1            | 一个指标高于特定主机阈值的所有读数                               | 5.11                     | 8.16 |
+| lastpoint             | 每个主机的最后读数                                       | 32.34                     | 48.73 |
+| groupby-orderby-limit | 随机选择的终点之前的最后 5 个汇总读数（跨时间）                       | 10.63                     | 24.14 |
 
 
 （每 5 分钟一次？ 检查语句似乎是每分钟）
+
+
+clickhouse 相比 doris 在指标查询上，一般都快一倍，不过似乎在更大数据量的case上，doris 反而变相更良好，例如 high-cpu-all， cpu-max-all-8，double-groupby-all。
+过滤效率的差异？ clickhouse 索引空间换来的查询性能？
+
+
+### QPS 测试
+
+q1: doris-single-groupby-1-1-1
+对 1 个主机的一个指标进行简单聚合 （MAX），每 5 分钟一次，持续 1 小时
+
+```
+SELECT
+                   DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:00') AS minute,
+        max(usage_user) AS max_usage_user
+    FROM cpu
+    WHERE tags_id IN (SELECT id FROM tags WHERE hostname IN ('host_${__Random(0,399,)}')) AND (created_at >= '2016-01-03 21:17:20') AND (created_at < '2016-01-03 22:17:20')
+    GROUP BY minute
+    ORDER BY minute ASC
+```
+
+| 样本数           | 均值ms | 吞吐量   |
+| ------------- | ---- | ----- |
+| 10*500=10000  | 13   | 685.7 |
+| 25*400=10000  | 31   | 740.6 |
+| 50*200=10000  | 64   | 723.4 |
+| 100*100=10000 | 135  | 691.9 |
+
+
+clickhouse
+
+```
+SELECT
+    toStartOfMinute(created_at) AS minute,
+    max(usage_user) AS max_usage_user
+FROM cpu
+WHERE tags_id IN (SELECT id FROM tags WHERE hostname IN ('host_${__Random(0,399,)}')) AND (created_at >= '2016-01-03 21:17:20') AND (created_at < '2016-01-03 22:17:20')
+GROUP BY minute
+ORDER BY minute ASC
+```
+
+| 样本数           | 均值ms | 吞吐量   |
+| ------------- | ---- | ----- |
+| 10*500=10000  | 12   | 749.3 |
+| 25*400=10000  | 27   | 842.1 |
+| 50*200=10000  | 54   | 851.1 |
+| 100*100=10000 | 106  | 861   |
+
+qps 吞吐也基本一直，clickhouse 吞吐略好
 
 
 #### REF
