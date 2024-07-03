@@ -54,6 +54,7 @@
   - du  -ah  -t 100M 过滤大于100M
   - du -ah -BM -t 100M .  | sort -rnk1 过滤大于10M并且
   - find . -type f -size +100M -exec du -hBM {} + | sort -rh | head -n 10 统计过滤100M大小的文件（不包括目录）
+  - `find . -type f -exec du -ah {} +` 统计目录大小
 
 
 - [ifstat命令_统计网络接口活动状态的工具](https://www.cnblogs.com/friday0502/p/9450562.html)
@@ -96,6 +97,20 @@
 - `axel` 多线程下载工具，代替wget
 
 - `glances`  top/htop 代替
+
+
+- 授权，访问 /var/lib/clickhouse 权限 clickhouse:clickhouse
+  ```shell
+# 将tianjiqx加入到clickhouse
+sudo usermod -a -G clickhouse tianjiqx
+
+# 授权 clickhouse 用户组 读写执行权限
+sudo chmod 770 /var/lib/clickhouse
+
+# 更新 clickhouse 用户组
+newgrp clickhouse
+
+```
 
 
 ## linux 工具blog 链接
