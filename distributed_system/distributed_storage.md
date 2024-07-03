@@ -41,3 +41,6 @@ Ceph是一个开源的分布式存储系统，CRUSH算法是其核心组件之�
 
 - [Ceph CRUSH算法](https://cloud.tencent.com/developer/article/1664645)
 
+- [Consistent Hashing and Random Trees (1997)](https://zhenghe.gitbook.io/open-courses/papers-we-love/consistent-hashing-and-random-trees-1997)
+
+- [从一致性 hash 到 ceph crush](https://zhuanlan.zhihu.com/p/60963885)
