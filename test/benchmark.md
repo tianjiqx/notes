@@ -70,4 +70,4 @@ Yahoo! Cloud Serving Benchmark，是由雅虎公司开发的一个开源工具�
 - [benchANT/YCSB](https://github.com/benchANT/YCSB)
 
 
-
+- [StarRocks 查询优化分析](https://zhuanlan.zhihu.com/p/706527168) TPC-DS/TPCH相关的优化
