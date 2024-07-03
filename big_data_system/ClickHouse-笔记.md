@@ -297,6 +297,28 @@ blogs:
 
 
 
+### 6. 使用tips
+
+```
+# 执行建表
+clickhouse-client  --database benchmark6 --multiquery < create.sql
+
+# 导入数据
+clickhouse-client --time --query "INSERT INTO benchmark5.cpu FORMAT TSV" < /home/tianjiqx/newdisk/devops/devops-cpu
+
+# 查看 表的物理路径
+select name,data_paths from tables where database='benchmark5';
+
+# 查看 数据库整体大小
+SELECT sum(total_bytes)/1024/1024/1024, sum(total_rows) FROM system.tables WHERE  database = 'benchmark5'
+
+
+
+```
+
+
+
+
 ## REF
 
 - ClickHouse原理解析与应用实战-朱凯
@@ -318,7 +340,7 @@ blogs:
   - [slide-云数据库clickhouse最佳实践](https://developer.aliyun.com/topic/download?id=842) clickhouse表结构设计关联查询优化
   - [slide-ClickHouse在手淘流量分析应用实践](https://developer.aliyun.com/topic/download?id=843)
 
-
+- [clickhouse 系统表](https://www.cnblogs.com/traditional/p/15348004.html)
 
 
 

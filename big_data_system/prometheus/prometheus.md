@@ -103,6 +103,8 @@ Prometheus 是一个开源的监控和警报工具集，旨在为复杂系统提
     - [存储](https://icloudnative.io/prometheus/3-prometheus/storage.html)
     - [浅谈Prometheus的数据存储](https://cloud.tencent.com/developer/article/1870694)
 
+    - [Time series database behind Prometheus](https://zhuanlan.zhihu.com/p/702329117)
+
 - 应用
 
     - [云原生时代如何用 Prometheus 实现性能压测可观测-Metrics 篇](https://zhuanlan.zhihu.com/p/495082415)     
