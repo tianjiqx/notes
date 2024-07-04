@@ -87,11 +87,15 @@ readings,latitude,longitude,elevation,velocity,heading,grade,fuel_consumption
 
 # 其他参数， --help 查看
 
+
+# TSV 格式导入
+clickhouse-client --time --query "INSERT INTO benchmark.cpu FORMAT TSV" < /home/tianjiqx/newdisk/devops/devops-cpu
+
+
 ```
 
 
-
-注意官方 clickhouse 建表语句陈旧，需要修改
+注意官方 clickhouse 建表语句陈旧，需要修改，可参考 fork的tsbs 仓库。
 
 #### 查询语句
 
@@ -136,16 +140,21 @@ time dd if=/dev/zero of=/home/tianjiqx/test.txt bs=4k count=200000 oflag=direct
 ck： 类csv   25G
 
 #### load & storage
-| 系统         | size（GB）   | load time（s） | 压缩比 | 速度（row/s） |
-| ---------- | ---------- | ------------ | --- | --------- |
-| clickhouse | 2.95       | 659.041      |  4.0   | 141,596   |
-| doris      | 741.278 MB | 82.449       |  1.0   | 1,132,427 |
-| clickhouse_tsv | 3.02       | 659.041      | 4.1    | 1,308,631   |
-|clickhouse+codec |	2.73 |	2673.98	| 3.7 |	34,896 |
-|clickhouse+codec+tsv |	2.835 |	1095.85 |	3.8 |	85,150 |
-| doris_tsv      | 768.334 MB | 126.646 | 1.02    | 736,793 |
-| doris_varint +倒排索引      | 821.751 MB | 229.866      |  1.09   | 405,940 |
-| ES（6.8）     | 10.8 | 1980      |  14.67   | 47,127 |
+
+
+| 系统                                 | size（GB）   | load time（s） | 压缩比 | 速度（row/s） |
+|--------------------------------------|------------|--------------|--------|-------------|
+| clickhouse                           | 2.95       | 659.041      | 4.0    | 141,596     |
+| doris                                | 741.278 MB | 82.449       | 1.0    | 1,132,427   |
+| clickhouse_tsv                       | 3.02       | 71.305       | 4.1    | 1,308,631   |
+| clickhouse+codec                     | 2.73       | 2673.98      | 3.7    | 34,896      |
+| clickhouse+codec+tsv                 | 2.835      | 1095.85      | 3.8    | 85,150      |
+| clickhouse+codec+tsv 优化            | 1.85       | 460.591      | 2.51   | 202,591     |
+| clickhouse+codec+tsv(LZ4HC)          | 2.42       | 351.65       | 3.34   | 265,354     |
+| clickhouse+codec+tsv(LowCardinality) | 3.05       | 343.001      | 4.21   | 272,045     |
+| doris_tsv                            | 768.334 MB | 126.646      | 1.02   | 736,793     |
+| doris_varint +倒排索引               | 821.751 MB | 229.866      | 1.09   | 405,940     |
+| ES（6.8）                              | 10.8       | 1980         | 14.67  | 47,127      |
 
 
 导入时间，各个系统导入方式不同，参考意义不大
@@ -279,6 +288,11 @@ qps 吞吐也基本一直，clickhouse 吞吐略好
 
 #### clickhouse 存储分析
 
+
+- 各列的存储空间大小，占比
+- 不同编码格式
+- 高、低基数影响
+- 数据类型影响（time, float64）
 
 clickhouse+codec+tsv：
 
@@ -543,6 +557,8 @@ tags	/var/lib/clickhouse/store/50a/50aeaf7c-4ff9-4f9f-9e96-3298a6df1d4a/
 602M	/var/lib/clickhouse/store/595/59599b1c-247d-43b9-aab6-a40790a141c1/
 84K	/var/lib/clickhouse/store/50a/50aeaf7c-4ff9-4f9f-9e96-3298a6df1d4a/
 
+手动再执行 lz4 压缩， 55.69%
+159M 88ca94d8-2af6-45ce-a7bb-2bf7680f42b3.tar.lz4
 
 cpu:
 
@@ -678,7 +694,235 @@ total: 291596 K
 ```
 
 
+调优编码：
+- created_date Date DEFAULT today()
+- Float64 CODEC(Gorilla)
+
+```
+cpu	/var/lib/clickhouse/store/541/541ef9a8-7904-47fe-bfd8-d44c6feacf16/
+disk	/var/lib/clickhouse/store/f6c/f6cd9b9c-94a4-40d6-8fcd-cf96d6003155/
+diskio	/var/lib/clickhouse/store/c87/c872b906-10c3-4c1e-850e-52158a5de117/
+kernel	/var/lib/clickhouse/store/7cc/7cce17a5-2da1-4e00-a5b7-b59c8e237846/
+mem	/var/lib/clickhouse/store/fae/fae47377-8207-4697-91b9-998cf7cde1fc/
+net	/var/lib/clickhouse/store/e51/e518bbaf-087f-4085-8a73-003782806518/
+nginx	/var/lib/clickhouse/store/5d9/5d9c574a-4b82-47c8-bfd0-ee53f65420ab/
+postgresl	/var/lib/clickhouse/store/c4d/c4dd4625-22be-496e-ac9d-3a8686dfaf3f/
+redis	/var/lib/clickhouse/store/177/17782c60-beaa-4e2a-9cb6-e30da9523dff/
+tags	/var/lib/clickhouse/store/216/2165ffd4-716d-41b0-993e-4e219d1eb541/
+
+
+130M	/var/lib/clickhouse/store/541/541ef9a8-7904-47fe-bfd8-d44c6feacf16/
+110M	/var/lib/clickhouse/store/f6c/f6cd9b9c-94a4-40d6-8fcd-cf96d6003155/
+220M	/var/lib/clickhouse/store/c87/c872b906-10c3-4c1e-850e-52158a5de117/
+158M	/var/lib/clickhouse/store/7cc/7cce17a5-2da1-4e00-a5b7-b59c8e237846/
+475M	/var/lib/clickhouse/store/fae/fae47377-8207-4697-91b9-998cf7cde1fc/
+236M	/var/lib/clickhouse/store/e51/e518bbaf-087f-4085-8a73-003782806518/
+119M	/var/lib/clickhouse/store/5d9/5d9c574a-4b82-47c8-bfd0-ee53f65420ab/
+103M	/var/lib/clickhouse/store/c4d/c4dd4625-22be-496e-ac9d-3a8686dfaf3f/
+370M	/var/lib/clickhouse/store/177/17782c60-beaa-4e2a-9cb6-e30da9523dff/
+84K	/var/lib/clickhouse/store/216/2165ffd4-716d-41b0-993e-4e219d1eb541/
+
+cpu：
+
+total： 133112 K = 130 MB
+
+time 50080 KB = 48.9 MB
+
+50080 .time.bin
+7956 .usage_user.bin
+7920 .usage_steal.bin
+7912 .usage_irq.bin
+7912 .usage_idle.bin
+7900 .usage_guest_nice.bin
+7896 .usage_nice.bin
+7892 .usage_system.bin
+7884 .usage_softirq.bin
+7880 .usage_guest.bin
+7872 .usage_iowait.bin
+1340 .created_at.bin
+708 .data.bin
+228 .tags_id.bin
+120 .created_date.bin
+64 .serialization.json
+64 .primary.cidx
+64 .partition.dat
+64 .minmax_created_date.idx
+64 .metadata_version.txt
+64 .default_compression_codec.txt
+64 .count.txt
+64 .columns.txt
+64 .checksums.txt
+56 .usage_user.cmrk2
+56 .usage_system.cmrk2
+56 .usage_steal.cmrk2
+56 .usage_softirq.cmrk2
+56 .usage_nice.cmrk2
+56 .usage_irq.cmrk2
+56 .usage_iowait.cmrk2
+56 .usage_idle.cmrk2
+56 .usage_guest_nice.cmrk2
+56 .usage_guest.cmrk2
+56 .time.cmrk2
+56 .tags_id.cmrk2
+56 .created_date.cmrk2
+56 .created_at.cmrk2
+56 .additional_tags.sparse.idx.cmrk2
+56 .additional_tags.sparse.idx.bin
+56 .additional_tags.cmrk2
+8 .data.cmrk3
+4 .format_version.txt
+0 .additional_tags.bin
+
+0.376225 .time.bin
+0.0597692 .usage_user.bin
+0.0594988 .usage_steal.bin
+0.0594387 .usage_irq.bin
+0.0594387 .usage_idle.bin
+0.0593485 .usage_guest_nice.bin
+0.0593185 .usage_nice.bin
+0.0592884 .usage_system.bin
+0.0592283 .usage_softirq.bin
+0.0591983 .usage_guest.bin
+0.0591382 .usage_iowait.bin
+0.0100667 .created_at.bin
+0.00531883 .data.bin
+0.00171284 .tags_id.bin
+0.000901496 .created_date.bin
+0.000480798 .serialization.json
+0.000480798 .primary.cidx
+0.000480798 .partition.dat
+0.000480798 .minmax_created_date.idx
+0.000480798 .metadata_version.txt
+0.000480798 .default_compression_codec.txt
+0.000480798 .count.txt
+0.000480798 .columns.txt
+0.000480798 .checksums.txt
+0.000420698 .usage_user.cmrk2
+0.000420698 .usage_system.cmrk2
+0.000420698 .usage_steal.cmrk2
+0.000420698 .usage_softirq.cmrk2
+0.000420698 .usage_nice.cmrk2
+0.000420698 .usage_irq.cmrk2
+0.000420698 .usage_iowait.cmrk2
+0.000420698 .usage_idle.cmrk2
+0.000420698 .usage_guest_nice.cmrk2
+0.000420698 .usage_guest.cmrk2
+0.000420698 .time.cmrk2
+0.000420698 .tags_id.cmrk2
+0.000420698 .created_date.cmrk2
+0.000420698 .created_at.cmrk2
+0.000420698 .additional_tags.sparse.idx.cmrk2
+0.000420698 .additional_tags.sparse.idx.bin
+0.000420698 .additional_tags.cmrk2
+6.00998e-05 .data.cmrk3
+3.00499e-05 .format_version.txt
+0 .additional_tags.bin
+
+find . -type f -exec du -a {} + | awk -F'/' '{print $1 $NF}' | awk '{sum[$2] += $1} END {for (key in sum) print sum[key], key}' | sort -nr  | grep bin$ | awk '{sum +=$1} END {print sum/1024}'
+
+128.473 MB
+
+```
+
+DoubleDelta+LZ4HC(9) 编码 
+
+```
+cpu	/var/lib/clickhouse/store/f9e/f9e48964-e5ff-4cac-b45d-479c7f78a752/
+disk	/var/lib/clickhouse/store/96e/96e6ba7d-a279-4c00-9573-ca4998ac4d22/
+diskio	/var/lib/clickhouse/store/5e2/5e24528f-fe67-4999-adbb-0784bbc7fcbf/
+kernel	/var/lib/clickhouse/store/96f/96f3a85a-8322-48c2-a597-d773133d1ce5/
+mem	/var/lib/clickhouse/store/ce7/ce73b4bf-59f7-4b6d-8ebe-b9571964a166/
+net	/var/lib/clickhouse/store/9a7/9a76e5c1-d19a-4a3b-a71a-e5dbe7357899/
+nginx	/var/lib/clickhouse/store/aa5/aa50fc31-249f-4865-b4bf-5d21b602c448/
+postgresl	/var/lib/clickhouse/store/a9b/a9bff97d-d81f-40b7-825c-4c49638f5938/
+redis	/var/lib/clickhouse/store/812/812e5d86-57d7-4b7d-8135-c4e0b765da97/
+tags	/var/lib/clickhouse/store/805/805c8929-204d-4a77-af7e-e76f905b45a4/
+
+153M	/var/lib/clickhouse/store/f9e/f9e48964-e5ff-4cac-b45d-479c7f78a752/
+134M	/var/lib/clickhouse/store/96e/96e6ba7d-a279-4c00-9573-ca4998ac4d22/
+317M	/var/lib/clickhouse/store/5e2/5e24528f-fe67-4999-adbb-0784bbc7fcbf/
+230M	/var/lib/clickhouse/store/96f/96f3a85a-8322-48c2-a597-d773133d1ce5/
+537M	/var/lib/clickhouse/store/ce7/ce73b4bf-59f7-4b6d-8ebe-b9571964a166/
+344M	/var/lib/clickhouse/store/9a7/9a76e5c1-d19a-4a3b-a71a-e5dbe7357899/
+158M	/var/lib/clickhouse/store/aa5/aa50fc31-249f-4865-b4bf-5d21b602c448/
+163M	/var/lib/clickhouse/store/a9b/a9bff97d-d81f-40b7-825c-4c49638f5938/
+1001M	/var/lib/clickhouse/store/812/812e5d86-57d7-4b7d-8135-c4e0b765da97/
+84K	/var/lib/clickhouse/store/805/805c8929-204d-4a77-af7e-e76f905b45a4/
+
+
+cpu：
+total  156508 KB = 152.84 MB
+
+50080 .time.bin
+10236 .usage_user.bin
+10236 .usage_idle.bin
+10236 .usage_guest.bin
+10232 .usage_iowait.bin
+10232 .usage_guest_nice.bin
+10228 .usage_system.bin
+10228 .usage_nice.bin
+10224 .usage_softirq.bin
+10220 .usage_steal.bin
+10216 .usage_irq.bin
+1340 .created_at.bin
+840 .data.bin
+228 .tags_id.bin
+120 .created_date.bin
+64 .serialization.json
+64 .primary.cidx
+64 .partition.dat
+64 .minmax_created_date.idx
+64 .metadata_version.txt
+64 .default_compression_codec.txt
+64 .count.txt
+64 .columns.txt
+64 .checksums.txt
+56 .usage_user.cmrk2
+56 .usage_system.cmrk2
+56 .usage_steal.cmrk2
+56 .usage_softirq.cmrk2
+56 .usage_nice.cmrk2
+56 .usage_irq.cmrk2
+56 .usage_iowait.cmrk2
+56 .usage_idle.cmrk2
+56 .usage_guest_nice.cmrk2
+56 .usage_guest.cmrk2
+56 .time.cmrk2
+56 .tags_id.cmrk2
+56 .created_date.cmrk2
+56 .created_at.cmrk2
+56 .additional_tags.sparse.idx.cmrk2
+56 .additional_tags.sparse.idx.bin
+56 .additional_tags.cmrk2
+8 .data.cmrk3
+4 .format_version.txt
+0 .additional_tags.bin
+
+
+```
+
+
+
+clickhouse time 字段（2016-01-01 08:00:00 +0800）空间开销过高
+
+
 ###### 时间类型对比：
+
+DoubleDelta vs lz4:
+
+对于时间戳类型 DoubleDelta 更有优势 (9.35X) ，created_date 日期类型 lz4 压缩更好  
+
+调优：
+1340 .created_at.bin
+120 .created_date.bin
+
+
+| 编码格式        | created_at(KB) | created_date(KB) | sum       | 比例     |
+|-----------------|----------------|------------------|-----------|----------|
+| DoubleDelta<br> | 1340<br>       | 1300<br>         | 2640<br>  | 1.81<br> |
+| lz4<br>         | 12528<br>      | 100<br>          | 12628<br> | 8.65<br> |
+| 混合优化<br>    | 1340<br>       | 120<br>          | 1460<br>  | 1.0<br>  |
+
 
 DoubleDelta：
 
@@ -688,8 +932,6 @@ DoubleDelta：
 lz4：
 12528 .created_at.bin
 100 .created_date.bin
-
-对于 时间戳类型DoubleDelta更有优势 (9.35X) ，created_date 日期类型 lz4 压缩更好  
 
 ##### double 类型
 
@@ -719,24 +961,185 @@ usage_user:  22520 + 56 = 22576 KB
 
 lz4 空间消耗是 Gorilla 1.25X, Gorilla null文件为什么开销大？
 
-
-
-理论数据计算：
+理论数据计算fiels空间大小：
 
 cpu 单表 10368000 行，Float64 8B， 10 fields
 
 10368000 * 8B * 10 = 791 MB
 
+实际：
 
 lz4 约等于 220 MB
 
-Gorilla 约等于 176 MB
+Gorilla + null 约等于 176 MB
+
+Gorilla 约等于 77.7 MB
 
 
-调优： 
-- Date DEFAULT today()
-- Float64 CODEC(Gorilla)
+字段对比
 
+| 编码格式            | usage_user(KB) | null(KB) | sum (KB)      | 压缩比       |
+| --------------- | ---------- | ------------ | --------- | -------- |
+| Gorilla+nullable | 7956   | 10104     | 18060  | 2.27 |
+| lz4        | 22520  | 56      | 22576 | 2.84  |
+| Gorilla    |  7956  |  0     | 7956 | 1.0 |
+| LZ4HC      |  10236 |  0     | 10236 | 1.29 |
+测试导入时使用 Gorilla编码时，cpu负载不高，也许由于依赖顺序编码未能充分利用多线程工作（并发导入可能写入性能会提高）
+
+
+
+ck的其他支持编码优化：
+
+- LowCardinality(String) 低基数，将使用基于字典的编码
+- COLUMN `time` CODEC(Delta, ZSTD)
+
+
+#### doris 存储分析
+
+
+
+```
+mysql> SELECT table_name, data_length/1024/1024 AS total_size,TABLE_ROWS FROM information_schema.tables WHERE table_schema = 'benchmark' order by total_size;
++-------------+----------------------+------------+
+| table_name  | total_size           | TABLE_ROWS |
++-------------+----------------------+------------+
+| tags        | 0.010890960693359375 |       1200 |
+| devops_disk |    8.727141380310059 |   10368000 |
+| postgresl   |   17.584471702575684 |   10368000 |
+| nginx       |    40.80240345001221 |   10368000 |
+| kernel      |    61.71394729614258 |   10368000 |
+| cpu         |     70.4008436203003 |   10368000 |
+| diskio      |    93.10633373260498 |   10368000 |
+| net         |   103.64865684509277 |   10368000 |
+| redis       |   112.20183277130127 |   10368000 |
+| mem         |   242.31737899780273 |   10368000 |
++-------------+----------------------+------------+
+
+
+由于非单列存储，无法获取各列的空间大小
+
+SHOW TABLETS FROM benchmark.cpu\G;
+               TabletId: 27195
+              ReplicaId: 27196
+              BackendId: 12172
+             SchemaHash: 415384547
+                Version: 2
+      LstSuccessVersion: 2
+       LstFailedVersion: -1
+          LstFailedTime: NULL
+          LocalDataSize: 73820635
+         RemoteDataSize: 0
+               RowCount: 10368000
+                  State: NORMAL
+LstConsistencyCheckTime: NULL
+           CheckVersion: -1
+           VersionCount: 2
+              QueryHits: 0
+               PathHash: 2715812420580570149
+                   Path: /home/tianjiqx/tmp/apache-doris-2.1.3-bin-x64/be/storage
+                MetaUrl: http://192.168.111.154:8040/api/meta/header/27195
+       CompactionStatus: http://192.168.111.154:8040/api/compaction/show?tablet_id=27195
+      CooldownReplicaId: -1
+         CooldownMetaId: 
+
+
+MetaUrl 可观察到 使用默认压缩类型 "compression_type": "LZ4F",
+
+```
+
+ck和doris 表空间大小对比
+​
+| 表        | doris(MB) | ck调优(MB) | 压缩比 |
+|-----------|-----------|------------|--------|
+| cpu       | 70.401    | 130        | 1.85   |
+| disk      | 8.727     | 110        | 12.60  |
+| diskio    | 93.106    | 220        | 2.36   |
+| kernel    | 61.714    | 158        | 2.56   |
+| mem       | 242.317   | 475        | 1.96   |
+| net       | 103.649   | 236        | 2.28   |
+| nginx     | 40.802    | 119        | 2.92   |
+| postgresl | 17.584    | 103        | 5.86   |
+| redis     | 112.202   | 370        | 3.30   |
+| tags      | 11.152 KB | 84K        | 7.53   |
+​
+
+disk表，基本是低基数字段， 字典编码压缩效率可以很高
+```
+select count(distinct(used)),count(distinct(free)),count(distinct(free)) from disk;
++----------------------+----------------------+----------------------+
+| count(DISTINCT used) | count(DISTINCT free) | count(DISTINCT free) |
++----------------------+----------------------+----------------------+
+|                   41 |                   21 |                   21 |
+```
+
+
+ck Gorilla 编码 disk 各个列文件大小
+```
+47324 .time.bin
+27484 .used.bin
+24784 .free.bin
+1728 .additional_tags.bin
+1516 .inodes_used.bin
+1472 .inodes_free.bin
+1344 .used_percent.bin
+1344 .total.bin
+1344 .inodes_total.bin
+1336 .created_at.bin
+352 .data.bin
+220 .tags_id.bin
+124 .created_date.bin
+
+```
+
+ck lz4 
+
+```
+49056 .free.bin
+48740 .used.bin
+41680 .time.bin
+12768 .created_at.bin
+1704 .additional_tags.bin
+1164 .inodes_used.bin
+1164 .inodes_free.bin
+852 .data.bin
+388 .used_percent.bin
+384 .total.bin
+384 .inodes_total.bin
+208 .tags_id.bin
+104 .created_date.bin
+56 .used_percent.null.bin
+56 .used.null.bin
+56 .total.null.bin
+56 .inodes_used.null.bin
+56 .inodes_total.null.bin
+56 .inodes_free.null.bin
+56 .free.null.bin
+
+```
+
+ck 默认lz4  是无字典参数？ LZ4HC(level:1-12)
+
+ck 按照日期拆分出多个目录，是否也导致压缩效率不高？
+
+cpu表，字段值实际是int值，并且范围很低（0-100），是否也导致实际可以利用字典，提高压缩率
+
+
+
+LowCardinality(Float64) 未起作用？
+
+| 表        | doris(MB) | ck(LowCardinality) | 压缩比 |
+|-----------|-----------|--------------------|--------|
+| cpu       | 70.401    | 128.41             | 1.82   |
+| disk      | 8.727     | 174.97             | 20.05  |
+| diskio    | 93.106    | 433.13             | 4.65   |
+| kernel    | 61.714    | 297.68             | 4.82   |
+| mem       | 242.317   | 694.48             | 2.87   |
+| net       | 103.649   | 448.86             | 4.33   |
+| nginx     | 40.802    | 191.58             | 4.70   |
+| postgresl | 17.584    | 110.12             | 6.26   |
+| redis     | 112.202   | 646.64             | 5.76   |
+| tags      | 11.152 KB | 25.6               | 2.30   |
+​
 
 
 
