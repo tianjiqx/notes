@@ -73,4 +73,8 @@ Doris 中指标列，最终只会存储聚合后的数据，丢失明细数据�
 - [Doris存储文件格式优化](https://doris.apache.org/zh-CN/community/design/doris_storage_optimization)
     - Doris 0.12 版本中实现了新的存储格式：Segment V2，引入词典压缩、bitmap索引、page cache等优化，能够提升系统性能。
 - [Doris 存储层设计介绍 1——存储结构设计解析（索引底层结构）](https://blog.csdn.net/SHWAITME/article/details/136155008) 推荐
- 
+
+
+- [合集·《Apache Doris 源码阅读与解析》 系列直播](https://space.bilibili.com/362350065/channel/collectiondetail?sid=296007) bilibili
+
+- [BE存储引擎部分代码设计文档(2019)](https://wingsgo.github.io/2020/02/24/doris-03-be_refactor_2019.html)

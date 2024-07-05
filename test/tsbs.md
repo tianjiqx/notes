@@ -142,19 +142,23 @@ ck： 类csv   25G
 #### load & storage
 
 
-| 系统                                 | size（GB）   | load time（s） | 压缩比 | 速度（row/s） |
-|--------------------------------------|------------|--------------|--------|-------------|
-| clickhouse                           | 2.95       | 659.041      | 4.0    | 141,596     |
-| doris                                | 741.278 MB | 82.449       | 1.0    | 1,132,427   |
-| clickhouse_tsv                       | 3.02       | 71.305       | 4.1    | 1,308,631   |
-| clickhouse+codec                     | 2.73       | 2673.98      | 3.7    | 34,896      |
-| clickhouse+codec+tsv                 | 2.835      | 1095.85      | 3.8    | 85,150      |
-| clickhouse+codec+tsv 优化            | 1.85       | 460.591      | 2.51   | 202,591     |
-| clickhouse+codec+tsv(LZ4HC)          | 2.42       | 351.65       | 3.34   | 265,354     |
-| clickhouse+codec+tsv(LowCardinality) | 3.05       | 343.001      | 4.21   | 272,045     |
-| doris_tsv                            | 768.334 MB | 126.646      | 1.02   | 736,793     |
-| doris_varint +倒排索引               | 821.751 MB | 229.866      | 1.09   | 405,940     |
-| ES（6.8）                              | 10.8       | 1980         | 14.67  | 47,127      |
+| 系统                                       | size（GB）   | load time（s） | 压缩比 | 速度（row/s） |
+|--------------------------------------------|------------|--------------|--------|-------------|
+| clickhouse                                 | 2.95       | 659.041      | 4.0    | 141,596     |
+| doris                                      | 741.278 MB | 82.449       | 1.0    | 1,132,427   |
+| clickhouse_tsv                             | 3.02       | 71.305       | 4.1    | 1,308,631   |
+| clickhouse+codec                           | 2.73       | 2673.98      | 3.7    | 34,896      |
+| clickhouse+codec+tsv                       | 2.835      | 1095.85      | 3.8    | 85,150      |
+| clickhouse+codec+tsv 优化                  | 1.85       | 460.591      | 2.51   | 202,591     |
+| clickhouse+codec+tsv(LZ4HC)                | 2.42       | 351.65       | 3.34   | 265,354     |
+| clickhouse+codec+tsv(LowCardinality)       | 3.05       | 343.001      | 4.21   | 272,045     |
+| clickhouse+codec+tsv(no partition)         | 2.9        | 342.452      | 4.0    | 272,482     |
+| clickhouse+codec+tsv(no partition+gorilla) | 1.64       | 341.411      | 2.27   | 273,312     |
+| clickhouse+codec+tsv(no partition+gorilla+float32) | 1.412      | 324.719      | 1.95   | 273,312     |
+| clickhouse+codec+tsv(no partition+float32) | 2.21      | 315.087      | 3.06  | 273,312     |
+| doris_tsv                                  | 768.334 MB | 126.646      | 1.02   | 736,793     |
+| doris_varint +倒排索引                     | 821.751 MB | 229.866      | 1.09   | 405,940     |
+| ES（6.8）                                    | 10.8       | 1980         | 14.67  | 47,127      |
 
 
 导入时间，各个系统导入方式不同，参考意义不大
@@ -175,8 +179,15 @@ doris_varint + 倒排索引，使用 variant 存储tag字段，并对 tags 字�
 
 clickhouse+codec 使用 DoubleDelta + Gorilla 编码
 
-doris 默认数据压缩方式  lz4， 60K
+doris 默认数据压缩方式  lz4， 64K (LZ4F_default=LZ4F_max64KB=1 << 16)
 be/src/exec/decompressor.cpp 
+
+
+clickhouse+codec+tsv(LowCardinality) ： 时间 DoubleDelta 编码 + LowCardinality（float64）
+
+clickhouse+codec+tsv(no partition) : 时间 DoubleDelta 编码，lz4， 非分区
+
+clickhouse+codec+tsv(no partition+gorilla) 时间 DoubleDelta + float64 Gorilla + lz4 + 非分区
 
 
 clichouse 默认列压缩方式 lz4， 压缩块大小，最小  min_compress_block_size 65,536=64k， 
@@ -899,6 +910,296 @@ total  156508 KB = 152.84 MB
 0 .additional_tags.bin
 
 
+no partition:
+
+cpu	/var/lib/clickhouse/store/687/687bdaaf-3778-46ae-a76c-ca9a0b8bad36/
+disk	/var/lib/clickhouse/store/953/953cf72c-4077-455b-b7f5-aa8cc83f94f5/
+diskio	/var/lib/clickhouse/store/b5c/b5c20974-fe89-4a20-bfd4-60ffe57bc955/
+kernel	/var/lib/clickhouse/store/ed5/ed5f7740-3fb8-457d-8b83-c6d55301df67/
+mem	/var/lib/clickhouse/store/5cf/5cffdba1-4c2c-454d-a8f0-8b09fd0e52b4/
+net	/var/lib/clickhouse/store/eb6/eb6cf846-1279-417f-8756-f1941cb5bcfa/
+nginx	/var/lib/clickhouse/store/be9/be91f72d-bc0d-4bed-a2ac-70bdf668cd91/
+postgresl	/var/lib/clickhouse/store/2bd/2bd7ee58-1c84-4f5b-a8aa-f06cc0928c1d/
+redis	/var/lib/clickhouse/store/25f/25fac2b9-cc59-4a68-b61b-1b37032a9197/
+tags	/var/lib/clickhouse/store/0e8/0e89e67a-ba09-4abb-addb-4b5ad87da8bf/
+
+273M	/var/lib/clickhouse/store/687/687bdaaf-3778-46ae-a76c-ca9a0b8bad36/
+156M	/var/lib/clickhouse/store/953/953cf72c-4077-455b-b7f5-aa8cc83f94f5/
+364M	/var/lib/clickhouse/store/b5c/b5c20974-fe89-4a20-bfd4-60ffe57bc955/
+269M	/var/lib/clickhouse/store/ed5/ed5f7740-3fb8-457d-8b83-c6d55301df67/
+585M	/var/lib/clickhouse/store/5cf/5cffdba1-4c2c-454d-a8f0-8b09fd0e52b4/
+403M	/var/lib/clickhouse/store/eb6/eb6cf846-1279-417f-8756-f1941cb5bcfa/
+185M	/var/lib/clickhouse/store/be9/be91f72d-bc0d-4bed-a2ac-70bdf668cd91/
+113M	/var/lib/clickhouse/store/2bd/2bd7ee58-1c84-4f5b-a8aa-f06cc0928c1d/
+629M	/var/lib/clickhouse/store/25f/25fac2b9-cc59-4a68-b61b-1b37032a9197/
+76K	/var/lib/clickhouse/store/0e8/0e89e67a-ba09-4abb-addb-4b5ad87da8bf/
+
+
+cpu:
+
+usage_* 219.445 MB
+
+51252 .time.bin
+22484 .usage_idle.bin
+22484 .usage_guest_nice.bin
+22476 .usage_steal.bin
+22476 .usage_iowait.bin
+22472 .usage_user.bin
+22472 .usage_guest.bin
+22468 .usage_nice.bin
+22468 .usage_irq.bin
+22464 .usage_system.bin
+22448 .usage_softirq.bin
+1492 .data.bin
+1312 .created_at.bin
+196 .tags_id.bin
+104 .created_date.bin
+20 .serialization.json
+20 .primary.cidx
+20 .metadata_version.txt
+20 .default_compression_codec.txt
+20 .count.txt
+20 .columns.txt
+20 .checksums.txt
+20 .additional_tags.sparse.idx.bin
+16 .usage_user.cmrk2
+16 .usage_system.cmrk2
+16 .usage_steal.cmrk2
+16 .usage_softirq.cmrk2
+16 .usage_nice.cmrk2
+16 .usage_irq.cmrk2
+16 .usage_iowait.cmrk2
+16 .usage_idle.cmrk2
+16 .usage_guest_nice.cmrk2
+16 .usage_guest.cmrk2
+16 .time.cmrk2
+16 .tags_id.cmrk2
+16 .created_date.cmrk2
+16 .created_at.cmrk2
+16 .additional_tags.sparse.idx.cmrk2
+16 .additional_tags.cmrk2
+4 .format_version.txt
+4 .data.cmrk3
+0 .additional_tags.bin
+
+gorilla + lz4:
+
+cpu	/var/lib/clickhouse/store/e19/e190f911-571a-44db-8e07-e5c27743e2ab/
+disk	/var/lib/clickhouse/store/dc6/dc6c0fff-d76b-4ddb-9266-7b8b75148dab/
+diskio	/var/lib/clickhouse/store/fad/fad49454-f8e8-4cb0-9c5a-2daf5c5bb5d0/
+kernel	/var/lib/clickhouse/store/274/274ddd4d-a94f-4d56-98eb-72d239d94e25/
+mem	/var/lib/clickhouse/store/1ff/1ff64252-1d26-4a33-8f84-a756de6cda14/
+net	/var/lib/clickhouse/store/4d4/4d40377e-3e92-40ce-bfaf-ad49edac3abd/
+nginx	/var/lib/clickhouse/store/00d/00db979e-17fe-419e-b9e2-e7f4b71c4a4e/
+postgresl	/var/lib/clickhouse/store/188/1882842d-a884-4d1a-9556-651306571fb6/
+redis	/var/lib/clickhouse/store/f1e/f1efd317-4996-4d09-9190-19fed51cc290/
+tags	/var/lib/clickhouse/store/1b1/1b148f01-8e1d-4298-9b42-4581dea6a0f9/
+
+
+129M	/var/lib/clickhouse/store/e19/e190f911-571a-44db-8e07-e5c27743e2ab/
+98M	/var/lib/clickhouse/store/dc6/dc6c0fff-d76b-4ddb-9266-7b8b75148dab/
+192M	/var/lib/clickhouse/store/fad/fad49454-f8e8-4cb0-9c5a-2daf5c5bb5d0/
+136M	/var/lib/clickhouse/store/274/274ddd4d-a94f-4d56-98eb-72d239d94e25/
+467M	/var/lib/clickhouse/store/1ff/1ff64252-1d26-4a33-8f84-a756de6cda14/
+207M	/var/lib/clickhouse/store/4d4/4d40377e-3e92-40ce-bfaf-ad49edac3abd/
+105M	/var/lib/clickhouse/store/00d/00db979e-17fe-419e-b9e2-e7f4b71c4a4e/
+75M	/var/lib/clickhouse/store/188/1882842d-a884-4d1a-9556-651306571fb6/
+282M	/var/lib/clickhouse/store/f1e/f1efd317-4996-4d09-9190-19fed51cc290/
+76K	/var/lib/clickhouse/store/1b1/1b148f01-8e1d-4298-9b42-4581dea6a0f9/
+
+
+cpu:
+
+51252 .time.bin
+7732 .usage_steal.bin
+7720 .usage_nice.bin
+7720 .usage_irq.bin
+7716 .usage_system.bin
+7712 .usage_user.bin
+7712 .usage_softirq.bin
+7704 .usage_guest.bin
+7696 .usage_idle.bin
+7696 .usage_guest_nice.bin
+7692 .usage_iowait.bin
+1312 .created_at.bin
+700 .data.bin
+196 .tags_id.bin
+104 .created_date.bin
+20 .serialization.json
+20 .primary.cidx
+20 .metadata_version.txt
+20 .default_compression_codec.txt
+20 .count.txt
+20 .columns.txt
+20 .checksums.txt
+20 .additional_tags.sparse.idx.bin
+16 .usage_user.cmrk2
+16 .usage_system.cmrk2
+16 .usage_steal.cmrk2
+16 .usage_softirq.cmrk2
+16 .usage_nice.cmrk2
+16 .usage_irq.cmrk2
+16 .usage_iowait.cmrk2
+16 .usage_idle.cmrk2
+16 .usage_guest_nice.cmrk2
+16 .usage_guest.cmrk2
+16 .time.cmrk2
+16 .tags_id.cmrk2
+16 .created_date.cmrk2
+16 .created_at.cmrk2
+16 .additional_tags.sparse.idx.cmrk2
+16 .additional_tags.cmrk2
+4 .format_version.txt
+4 .data.cmrk3
+0 .additional_tags.bin
+
+
+float32 + gorilla + lz4
+
+cpu	/var/lib/clickhouse/store/5e7/5e77c159-591c-4382-8441-7d554d2d7cf0/
+disk	/var/lib/clickhouse/store/a41/a4162208-0497-48e0-8e83-43f82865e722/
+diskio	/var/lib/clickhouse/store/c0a/c0ae228b-d2cb-4912-a4f3-8767f77b0a99/
+kernel	/var/lib/clickhouse/store/3ea/3ea514c9-4f5e-4e49-b8d6-90e6f5395264/
+mem	/var/lib/clickhouse/store/0da/0da3903a-46e9-4bb5-8a10-c4a844ed970e/
+net	/var/lib/clickhouse/store/5ce/5ce54c75-9e53-42e3-9831-b806f7f3da8c/
+nginx	/var/lib/clickhouse/store/562/5626ad77-e274-4367-bad9-26879c09a71d/
+postgresl	/var/lib/clickhouse/store/3c2/3c2ede75-322d-44f7-b8df-a284e4671694/
+redis	/var/lib/clickhouse/store/e64/e6400e69-f415-4b2e-a85c-b1f393d25818/
+tags	/var/lib/clickhouse/store/6b4/6b4c3134-e5d7-49b1-8a71-805e01056dc5/
+
+
+210M	/var/lib/clickhouse/store/5e7/5e77c159-591c-4382-8441-7d554d2d7cf0/
+89M	/var/lib/clickhouse/store/a41/a4162208-0497-48e0-8e83-43f82865e722/
+305M	/var/lib/clickhouse/store/c0a/c0ae228b-d2cb-4912-a4f3-8767f77b0a99/
+219M	/var/lib/clickhouse/store/3ea/3ea514c9-4f5e-4e49-b8d6-90e6f5395264/
+603M	/var/lib/clickhouse/store/0da/0da3903a-46e9-4bb5-8a10-c4a844ed970e/
+326M	/var/lib/clickhouse/store/5ce/5ce54c75-9e53-42e3-9831-b806f7f3da8c/
+164M	/var/lib/clickhouse/store/562/5626ad77-e274-4367-bad9-26879c09a71d/
+118M	/var/lib/clickhouse/store/3c2/3c2ede75-322d-44f7-b8df-a284e4671694/
+317M	/var/lib/clickhouse/store/e64/e6400e69-f415-4b2e-a85c-b1f393d25818/
+76K	/var/lib/clickhouse/store/6b4/6b4c3134-e5d7-49b1-8a71-805e01056dc5/
+
+cpu：
+210M 有些符合预期
+
+51252 .time.bin
+22484 .usage_idle.bin
+22484 .usage_guest_nice.bin
+22476 .usage_steal.bin
+22476 .usage_iowait.bin
+22472 .usage_user.bin
+22472 .usage_guest.bin
+22468 .usage_nice.bin
+22468 .usage_irq.bin
+22464 .usage_system.bin
+22448 .usage_softirq.bin
+1492 .data.bin
+1312 .created_at.bin
+196 .tags_id.bin
+104 .created_date.bin
+20 .serialization.json
+20 .primary.cidx
+20 .metadata_version.txt
+20 .default_compression_codec.txt
+20 .count.txt
+20 .columns.txt
+20 .checksums.txt
+20 .additional_tags.sparse.idx.bin
+16 .usage_user.cmrk2
+16 .usage_system.cmrk2
+16 .usage_steal.cmrk2
+16 .usage_softirq.cmrk2
+16 .usage_nice.cmrk2
+16 .usage_irq.cmrk2
+16 .usage_iowait.cmrk2
+16 .usage_idle.cmrk2
+16 .usage_guest_nice.cmrk2
+16 .usage_guest.cmrk2
+16 .time.cmrk2
+16 .tags_id.cmrk2
+16 .created_date.cmrk2
+16 .created_at.cmrk2
+16 .additional_tags.sparse.idx.cmrk2
+16 .additional_tags.cmrk2
+4 .format_version.txt
+4 .data.cmrk3
+0 .additional_tags.bin
+
+usage* 75404 KB = 73.63 MB 
+与 oris (66.115MB) 相差不大了
+
+
+float32 + lz4
+
+cpu	/var/lib/clickhouse/store/875/8750a536-006f-4155-bc5b-be6219ee2a1f/
+disk	/var/lib/clickhouse/store/94e/94e3efa9-bafe-4d61-91f1-9f4f40d65df7/
+diskio	/var/lib/clickhouse/store/52a/52a902a1-4100-4c15-8a8f-b1016251f30d/
+kernel	/var/lib/clickhouse/store/c76/c76450f3-9f60-4883-bdb2-b7bd58ee7854/
+mem	/var/lib/clickhouse/store/1ec/1ecf7109-5f56-4af5-bc0c-c99228cafbcb/
+net	/var/lib/clickhouse/store/ad3/ad32f555-dcc1-4d59-b193-854cddacfe65/
+nginx	/var/lib/clickhouse/store/005/0059d131-6eda-4a7d-812a-45f0e8e7dbf8/
+postgresl	/var/lib/clickhouse/store/aab/aab9845b-9965-4a0a-b590-ef6cd3aa9685/
+redis	/var/lib/clickhouse/store/4f1/4f1e5ace-6970-41d1-b43e-062ae7728a15/
+tags	/var/lib/clickhouse/store/738/7382cf32-bfd4-4fe8-be01-0db6af291a90/
+
+264M	/var/lib/clickhouse/store/875/8750a536-006f-4155-bc5b-be6219ee2a1f/
+56M	/var/lib/clickhouse/store/94e/94e3efa9-bafe-4d61-91f1-9f4f40d65df7/
+328M	/var/lib/clickhouse/store/52a/52a902a1-4100-4c15-8a8f-b1016251f30d/
+247M	/var/lib/clickhouse/store/c76/c76450f3-9f60-4883-bdb2-b7bd58ee7854/
+367M	/var/lib/clickhouse/store/1ec/1ecf7109-5f56-4af5-bc0c-c99228cafbcb/
+366M	/var/lib/clickhouse/store/ad3/ad32f555-dcc1-4d59-b193-854cddacfe65/
+172M	/var/lib/clickhouse/store/005/0059d131-6eda-4a7d-812a-45f0e8e7dbf8/
+100M	/var/lib/clickhouse/store/aab/aab9845b-9965-4a0a-b590-ef6cd3aa9685/
+598M	/var/lib/clickhouse/store/4f1/4f1e5ace-6970-41d1-b43e-062ae7728a15/
+76K	/var/lib/clickhouse/store/738/7382cf32-bfd4-4fe8-be01-0db6af291a90/
+
+
+51248 .time.bin
+21516 .usage_guest_nice.bin
+21512 .usage_iowait.bin
+21508 .usage_idle.bin
+21504 .usage_steal.bin
+21496 .usage_user.bin
+21496 .usage_system.bin
+21496 .usage_guest.bin
+21492 .usage_nice.bin
+21492 .usage_irq.bin
+21472 .usage_softirq.bin
+1444 .data.bin
+1312 .created_at.bin
+196 .tags_id.bin
+104 .created_date.bin
+20 .serialization.json
+20 .primary.cidx
+20 .metadata_version.txt
+20 .default_compression_codec.txt
+20 .count.txt
+20 .columns.txt
+20 .checksums.txt
+20 .additional_tags.sparse.idx.bin
+16 .usage_user.cmrk2
+16 .usage_system.cmrk2
+16 .usage_steal.cmrk2
+16 .usage_softirq.cmrk2
+16 .usage_nice.cmrk2
+16 .usage_irq.cmrk2
+16 .usage_iowait.cmrk2
+16 .usage_idle.cmrk2
+16 .usage_guest_nice.cmrk2
+16 .usage_guest.cmrk2
+16 .time.cmrk2
+16 .tags_id.cmrk2
+16 .created_date.cmrk2
+16 .created_at.cmrk2
+16 .additional_tags.sparse.idx.cmrk2
+16 .additional_tags.cmrk2
+4 .format_version.txt
+4 .data.cmrk3
+0 .additional_tags.bin
+
+
+usage*  214984 KB = 209.9MB
+
 ```
 
 
@@ -978,12 +1279,14 @@ Gorilla 约等于 77.7 MB
 
 字段对比
 
-| 编码格式            | usage_user(KB) | null(KB) | sum (KB)      | 压缩比       |
-| --------------- | ---------- | ------------ | --------- | -------- |
-| Gorilla+nullable | 7956   | 10104     | 18060  | 2.27 |
-| lz4        | 22520  | 56      | 22576 | 2.84  |
-| Gorilla    |  7956  |  0     | 7956 | 1.0 |
-| LZ4HC      |  10236 |  0     | 10236 | 1.29 |
+| 编码格式         | usage_user(KB) | null(KB) | sum (KB) | 压缩比 |
+|------------------|----------------|----------|----------|--------|
+| Gorilla+nullable | 7956           | 10104    | 18060    | 2.27   |
+| lz4              | 22520          | 56       | 22576    | 2.84   |
+| Gorilla          | 7956           | 0        | 7956     | 1.0    |
+| LZ4HC            | 10236          | 0        | 10236    | 1.29   |
+
+
 测试导入时使用 Gorilla编码时，cpu负载不高，也许由于依赖顺序编码未能充分利用多线程工作（并发导入可能写入性能会提高）
 
 
@@ -992,6 +1295,22 @@ ck的其他支持编码优化：
 
 - LowCardinality(String) 低基数，将使用基于字典的编码
 - COLUMN `time` CODEC(Delta, ZSTD)
+
+| 表        | doris     | gorilla | gorilla + lz4 | 压缩比(gorilla/doris) |
+|-----------|-----------|---------|---------------|-----------------------|
+| cpu       | 70.401    | 130     | 129           | 1.85                  |
+| disk      | 8.727     | 110     | 98            | 12.60                 |
+| diskio    | 93.106    | 220     | 192           | 2.36                  |
+| kernel    | 61.714    | 158     | 136           | 2.56                  |
+| mem       | 242.317   | 475     | 467           | 1.96                  |
+| net       | 103.649   | 236     | 207           | 2.28                  |
+| nginx     | 40.802    | 119     | 105           | 2.92                  |
+| postgresl | 17.584    | 103     | 75            | 5.86                  |
+| redis     | 112.202   | 370     | 282           | 3.30                  |
+| tags      | 11.152 KB | 84K     | 76K           | 7.53                  |
+
+
+
 
 
 #### doris 存储分析
@@ -1043,7 +1362,8 @@ LstConsistencyCheckTime: NULL
          CooldownMetaId: 
 
 
-MetaUrl 可观察到 使用默认压缩类型 "compression_type": "LZ4F",
+MetaUrl 可观察到 使用默认压缩类型 "compression_type": "LZ4F", "num_rows_per_row_block": 1024,
+
 
 ```
 
@@ -1061,9 +1381,51 @@ ck和doris 表空间大小对比
 | postgresl | 17.584    | 103        | 5.86   |
 | redis     | 112.202   | 370        | 3.30   |
 | tags      | 11.152 KB | 84K        | 7.53   |
-​
 
-disk表，基本是低基数字段， 字典编码压缩效率可以很高
+
+cpu表：
+
+doris移除掉 float 的fields 字段后， 空间大小为 4.286 MB， 推算可得， doris 在其他字段usage上消耗空间为 66.115。
+
+ck Gorilla 对应的​ usage字段，消耗空间为 77.1719，在 float 类型字段空间消耗差异不大。（ck分区而doris未分区影响？测试无分区的lz4 219.445，影响不大）
+ck lz4 编码 对应的​ usage字段，消耗空间为 220.445。
+
+
+
+手动测试：
+
+usage_user 单列，29M， 10列usage字段，287M。逐一按照列存追加成单文本文件（非float字节数组），手动使用 lz4 压缩
+
+|            | 原始size（MB） | lz4 size（MB） | 压缩 |
+|------------|--------------|--------------|--------|
+| usage_user（4MB） | 29           | 13           | 42.79%/2.23 |
+| usage_*  （4MB）   | 287          | 123          | 42.79%/2.23 |
+| usage_*  （64KB）   | 287          | 133          | 46.20%/2.16 |
+
+
+使用如下sql导出的 usage_user 列大小为 14M， 与 文本lz4压缩大小一致。 
+```
+SELECT usage_user FROM benchmark2.cpu INTO OUTFILE 'usage_user.native.lz4.bin' COMPRESSION 'lz4'  FORMAT Native
+SELECT usage_user FROM benchmark2.cpu INTO OUTFILE 'usage_user.RowBinary.lz4.bin' COMPRESSION 'lz4'  FORMAT RowBinary
+```
+
+ck 默认压缩块大小是 64K， doris 默认也是 64K.
+
+
+对比，实际 ck 压缩大小（220.445MB），未达到 lz4 的理想（133MB）效果。并且，doris (66.115MB) 实际还要比 lz4 理想压缩空间更小一半左右。
+根据手动lz4 对ck 数据 目录执行 打包并lz4 压缩，可以再压缩一半空间。
+
+**问题：**
+- ck 的 lz4 压缩不够理想的原因？（版本实现？）
+- doris 压缩率更高原因？（在lz4 压缩前，是否还执行过其他编码， DecomposedFloat？）
+
+!!! 
+doris 建表语句使用了 FLOAT 默认，是 4 字节， ck float64 类型是 8 字节
+
+
+disk表：
+
+基本是低基数字段， 字典编码压缩效率可以很高
 ```
 select count(distinct(used)),count(distinct(free)),count(distinct(free)) from disk;
 +----------------------+----------------------+----------------------+
@@ -1071,7 +1433,6 @@ select count(distinct(used)),count(distinct(free)),count(distinct(free)) from di
 +----------------------+----------------------+----------------------+
 |                   41 |                   21 |                   21 |
 ```
-
 
 ck Gorilla 编码 disk 各个列文件大小
 ```
@@ -1141,6 +1502,7 @@ LowCardinality(Float64) 未起作用？
 | tags      | 11.152 KB | 25.6               | 2.30   |
 ​
 
+TODO： doris datetime用的编码
 
 
 #### REF

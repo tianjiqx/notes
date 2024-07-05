@@ -316,6 +316,24 @@ SELECT sum(total_bytes)/1024/1024/1024, sum(total_rows) FROM system.tables WHERE
 
 ```
 
+[导出:在ClickHouse中使用原生和二进制格式](https://clickhouse.com/docs/en/integrations/data-formats/binary-native)
+
+```
+SELECT * FROM some_data
+INTO OUTFILE 'data.clickhouse' FORMAT Native
+
+SELECT * FROM some_data
+INTO OUTFILE 'data.clickhouse'
+COMPRESSION 'lz4'
+FORMAT Native
+
+INSERT INTO sometable
+FROM INFILE 'data.clickhouse'
+COMPRESSION 'lz4'
+FORMAT Native
+
+```
+
 
 
 
