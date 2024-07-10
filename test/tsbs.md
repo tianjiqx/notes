@@ -1068,33 +1068,34 @@ redis	/var/lib/clickhouse/store/e64/e6400e69-f415-4b2e-a85c-b1f393d25818/
 tags	/var/lib/clickhouse/store/6b4/6b4c3134-e5d7-49b1-8a71-805e01056dc5/
 
 
-210M	/var/lib/clickhouse/store/5e7/5e77c159-591c-4382-8441-7d554d2d7cf0/
-89M	/var/lib/clickhouse/store/a41/a4162208-0497-48e0-8e83-43f82865e722/
-305M	/var/lib/clickhouse/store/c0a/c0ae228b-d2cb-4912-a4f3-8767f77b0a99/
-219M	/var/lib/clickhouse/store/3ea/3ea514c9-4f5e-4e49-b8d6-90e6f5395264/
-603M	/var/lib/clickhouse/store/0da/0da3903a-46e9-4bb5-8a10-c4a844ed970e/
-326M	/var/lib/clickhouse/store/5ce/5ce54c75-9e53-42e3-9831-b806f7f3da8c/
-164M	/var/lib/clickhouse/store/562/5626ad77-e274-4367-bad9-26879c09a71d/
-118M	/var/lib/clickhouse/store/3c2/3c2ede75-322d-44f7-b8df-a284e4671694/
-317M	/var/lib/clickhouse/store/e64/e6400e69-f415-4b2e-a85c-b1f393d25818/
+127M	/var/lib/clickhouse/store/5e7/5e77c159-591c-4382-8441-7d554d2d7cf0/
+55M	/var/lib/clickhouse/store/a41/a4162208-0497-48e0-8e83-43f82865e722/
+190M	/var/lib/clickhouse/store/c0a/c0ae228b-d2cb-4912-a4f3-8767f77b0a99/
+135M	/var/lib/clickhouse/store/3ea/3ea514c9-4f5e-4e49-b8d6-90e6f5395264/
+371M	/var/lib/clickhouse/store/0da/0da3903a-46e9-4bb5-8a10-c4a844ed970e/
+203M	/var/lib/clickhouse/store/5ce/5ce54c75-9e53-42e3-9831-b806f7f3da8c/
+103M	/var/lib/clickhouse/store/562/5626ad77-e274-4367-bad9-26879c09a71d/
+73M	/var/lib/clickhouse/store/3c2/3c2ede75-322d-44f7-b8df-a284e4671694/
+199M	/var/lib/clickhouse/store/e64/e6400e69-f415-4b2e-a85c-b1f393d25818/
 76K	/var/lib/clickhouse/store/6b4/6b4c3134-e5d7-49b1-8a71-805e01056dc5/
 
+
 cpu：
-210M 有些符合预期
+
 
 51252 .time.bin
-22484 .usage_idle.bin
-22484 .usage_guest_nice.bin
-22476 .usage_steal.bin
-22476 .usage_iowait.bin
-22472 .usage_user.bin
-22472 .usage_guest.bin
-22468 .usage_nice.bin
-22468 .usage_irq.bin
-22464 .usage_system.bin
-22448 .usage_softirq.bin
-1492 .data.bin
+7564 .usage_steal.bin
+7548 .usage_nice.bin
+7544 .usage_irq.bin
+7544 .usage_guest_nice.bin
+7540 .usage_user.bin
+7536 .usage_guest.bin
+7532 .usage_system.bin
+7532 .usage_softirq.bin
+7532 .usage_iowait.bin
+7532 .usage_idle.bin
 1312 .created_at.bin
+696 .data.bin
 196 .tags_id.bin
 104 .created_date.bin
 20 .serialization.json
@@ -1124,6 +1125,7 @@ cpu：
 4 .format_version.txt
 4 .data.cmrk3
 0 .additional_tags.bin
+
 
 usage* 75404 KB = 73.63 MB 
 与 oris (66.115MB) 相差不大了
@@ -1296,21 +1298,55 @@ ck的其他支持编码优化：
 - LowCardinality(String) 低基数，将使用基于字典的编码
 - COLUMN `time` CODEC(Delta, ZSTD)
 
-| 表        | doris     | gorilla | gorilla + lz4 | 压缩比(gorilla/doris) |
-|-----------|-----------|---------|---------------|-----------------------|
-| cpu       | 70.401    | 130     | 129           | 1.85                  |
-| disk      | 8.727     | 110     | 98            | 12.60                 |
-| diskio    | 93.106    | 220     | 192           | 2.36                  |
-| kernel    | 61.714    | 158     | 136           | 2.56                  |
-| mem       | 242.317   | 475     | 467           | 1.96                  |
-| net       | 103.649   | 236     | 207           | 2.28                  |
-| nginx     | 40.802    | 119     | 105           | 2.92                  |
-| postgresl | 17.584    | 103     | 75            | 5.86                  |
-| redis     | 112.202   | 370     | 282           | 3.30                  |
-| tags      | 11.152 KB | 84K     | 76K           | 7.53                  |
+| 表        | doris     | gorilla | gorilla+lz4 | gorilla+lz4+float32 | 压缩比(gorilla/doris) | 压缩比(float32/doris) |
+|-----------|-----------|---------|---------------|-------------------------|-----------------------|-----------------------|
+| cpu       | 70.401    | 130     | 129           | 127                     | 1.85                  | 1.80                  |
+| disk      | 8.727     | 110     | 98            | 56                      | 12.60                 | 6.42                  |
+| diskio    | 93.106    | 220     | 192           | 190                     | 2.36                  | 2.04                  |
+| kernel    | 61.714    | 158     | 136           | 135                     | 2.56                  | 2.19                  |
+| mem       | 242.317   | 475     | 467           | 371                     | 1.96                  | 1.53                  |
+| net       | 103.649   | 236     | 207           | 203                     | 2.28                  | 1.96                  |
+| nginx     | 40.802    | 119     | 105           | 103                     | 2.92                  | 2.52                  |
+| postgresl | 17.584    | 103     | 75            | 73                      | 5.86                  | 4.15                  |
+| redis     | 112.202   | 370     | 282           | 199                     | 3.30                  | 1.77                  |
+| tags      | 11.152 KB | 84K     | 76K           | 76K                     | 7.53                  | 6.81                  |
 
 
 
+
+
+gorilla+lz4+float32编码设置下：
+
+ck time 字段 占据 50MB，
+cpu,disk,kernel，nginx， postgresl，redis 表 接近
+
+diskio reads、writes 字段 变动较大 gorilla 效果不够好，reads 字段 ndv 数量为 1,294,179
+
+mem 表 used_percent（827 6228），available（872 6303） 重复度不高。doris和ck压缩效率都降低。
+（doris bitshuffle + lz4）
+
+
+```
+50888 .time.bin
+40992 .free.bin
+40992 .available.bin
+40960 .cached.bin
+40924 .buffered.bin
+40916 .used.bin
+40572 .available_percent.bin
+40432 .used_percent.bin
+40424 .buffered_percent.bin
+1336 .created_at.bin
+204 .tags_id.bin
+108 .created_date.bin
+60 .total.bin
+24 .additional_tags.sparse.idx.bin
+0 .additional_tags.bin
+
+
+free，40992 字段等 空间开销高
+total 字段 3 个 ndv 值
+```
 
 
 #### doris 存储分析
@@ -1502,7 +1538,26 @@ LowCardinality(Float64) 未起作用？
 | tags      | 11.152 KB | 25.6               | 2.30   |
 ​
 
-TODO： doris datetime用的编码
+
+FCBench: Cross-Domain Benchmarking of Lossless Compression for Floating-Point Data [Experiment, Analysis & Benchmark]
+
+- 压缩效果
+HPC数据使用fpzip
+时间序列数据使用nvCOMP:LZ4
+观察数据使用bitshuffle:zstd
+tpc-x数据库数据使用Chimp
+
+- 压缩、解压速度
+bitshuffle:LZ4、bitshuffle:zstd、MPC和ndzip-CPU/GPU
+
+总体而言，bitshuffle方法由于其更好的鲁棒性和更低的CPU硬件成本而成为首选
+
+doris,kudu 选对了 bitshuffle + lz4 就是好。用tsbs测试 也确实比ck好。
+
+
+
+doris datetime 默认也使用 BIT_SHUFFLE + lz4 编码压缩 
+
 
 
 #### REF

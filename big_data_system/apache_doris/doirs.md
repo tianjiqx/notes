@@ -48,6 +48,71 @@ Doris 中指标列，最终只会存储聚合后的数据，丢失明细数据�
 - BITMAP_UNION：BIMTAP 类型的列的聚合方式，进行位图的并集聚合。
 
 
+## 索引支持
+
+- [前缀索引](https://doris.apache.org/zh-CN/docs/2.0/table-design/index/prefix-index) (类似二级索引，但是要求顺序)
+- bitmap [位图索引](https://www.inlighting.org/archives/what-is-bitmap-indexing) 低基数 多条件过滤
+- [倒排索引](https://doris.apache.org/zh-CN/docs/2.0/table-design/index/inverted-index)
+- [BloomFilter 索引](https://doris.apache.org/zh-CN/docs/dev/table-design/index/bloomfilter) 跳数索引
+- [NGram BloomFilter ](https://doris.apache.org/zh-CN/docs/dev/table-design/index/ngram-bloomfilter-index) 基于 BloomFilter 的跳数索引， 为 like 语句
+
+
+## 编码
+```
+enum EncodingTypePB {
+    UNKNOWN_ENCODING = 0;
+    DEFAULT_ENCODING = 1;
+    PLAIN_ENCODING = 2;
+    PREFIX_ENCODING = 3;
+    RLE = 4;
+    DICT_ENCODING = 5;
+    BIT_SHUFFLE = 6;
+    FOR_ENCODING = 7; // Frame-Of-Reference
+}
+```
+
+
+
+根据 EncodingInfoResolver 构造函数 _add_map 定义顺序，第一次出现的 FieldType 添加的是默认值，可得出 各类型的默认编码方式
+
+
+| Column Type     | Supported Encoding Methods      | Default Encoding Method |
+|-----------------|---------------------------------|-------------------------|
+| TINYINT         | Bit Shuffle, Plain,FOR_ENCODING | Bit Shuffle             |
+| SMALLINT        | Bit Shuffle, Plain,FOR_ENCODING | Bit Shuffle             |
+| INT             | Bit Shuffle, Plain,FOR_ENCODING | Bit Shuffle             |
+| BIGINT          | Bit Shuffle, Plain,FOR_ENCODING | Bit Shuffle             |
+| UNSIGNED BIGINT | Bit Shuffle                     | Bit Shuffle             |
+| UNSIGNED INT    | Bit Shuffle                     | Bit Shuffle             |
+| LARGEINT        | Bit Shuffle, Plain,FOR_ENCODING | Bit Shuffle             |
+| FLOAT           | Bit Shuffle, Plain              | Bit Shuffle             |
+| DOUBLE          | Bit Shuffle, Plain              | Bit Shuffle             |
+| CHAR            | Dictionary, Plain, Prefix       | Dictionary              |
+| VARCHAR         | Dictionary, Plain, Prefix       | Dictionary              |
+| STRING          | Dictionary, Plain, Prefix       | Dictionary              |
+| JSONB           | Dictionary, Plain, Prefix       | Dictionary              |
+| VARIANT         | Dictionary, Plain, Prefix       | Dictionary              |
+| BOOL            | Run Length, Bit Shuffle, Plain  | Run Length              |
+| DATE            | Bit Shuffle, Plain              | Bit Shuffle             |
+| DATEV2          | Bit Shuffle, Plain              | Bit Shuffle             |
+| DATETIMEV2      | Bit Shuffle, Plain              | Bit Shuffle             |
+| DATETIME        | Bit Shuffle, Plain              | Bit Shuffle             |
+| DECIMAL         | Bit Shuffle, Plain              | Bit Shuffle             |
+| DECIMAL32       | Bit Shuffle, Plain              | Bit Shuffle             |
+| DECIMAL64       | Bit Shuffle, Plain              | Bit Shuffle             |
+| DECIMAL128I     | Bit Shuffle, Plain              | Bit Shuffle             |
+| DECIMAL256      | Bit Shuffle, Plain              | Bit Shuffle             |
+| IPV4            | Bit Shuffle, Plain              | Bit Shuffle             |
+| IPV6            | Bit Shuffle, Plain              | Bit Shuffle             |
+| HLL             | Plain                           | Plain                   |
+| OBJECT          | Plain                           | Plain                   |
+| QUANTILE_STATE  | Plain                           | Plain                   |
+| AGG_STATE       | Plain                           | Plain                   |
+
+
+[CREATE-TABLE](https://doris.apache.org/zh-CN/docs/dev/sql-manual/sql-statements/Data-Definition-Statements/Create/CREATE-TABLE) 中未找到如何定义列的codingType 语法，也许是todo状态
+
+
 ## REF
 
 - [Apache Doris 用于网易中的日志和时间序列数据分析，为什么不是 Elasticsearch 和 InfluxDB](https://doris.apache.org/blog/apache-doris-for-log-and-time-series-data-analysis-in-netease/)
@@ -78,3 +143,33 @@ Doris 中指标列，最终只会存储聚合后的数据，丢失明细数据�
 - [合集·《Apache Doris 源码阅读与解析》 系列直播](https://space.bilibili.com/362350065/channel/collectiondetail?sid=296007) bilibili
 
 - [BE存储引擎部分代码设计文档(2019)](https://wingsgo.github.io/2020/02/24/doris-03-be_refactor_2019.html)
+
+- [Doris 实现原理之高效存取 varchar 字符串](https://cloud.baidu.com/article/3319774) 推荐
+    - 字典编码,plain 编码 存储 字典页
+        - Doris 采用的是试探法，优先先采用字典编码，随着数据增加， 如果字典大小超过一定的阈值退回 plan 编码，目前这个阈值是 dict_page 大小超过 64KB
+    - 数字优化：引入 Bitshuffle 算法来对数字按照 bit 重新进行打散排序 提高 lz4 压缩效率
+        - Bitshuffle 重新排列一组值以存储每个值的最高有效位，其次是每个值的第二个最高有效位，依此类推。
+
+    - [字符串编码/解码](https://www.cnblogs.com/bitetheddddt/p/15210062.html)
+        - 字典编码+bitshuffle+lz4压缩
+
+    -  根据 [pr](https://github.com/apache/doris/pull/1304) 应当是参考了 kudu 的 bitshuffle 实现
+    - EncodingInfoResolver 类定义的各类型支持编码方式
+
+- [文本检索性能提升 40 倍，Apache Doris 倒排索引深度解读](https://selectdb.com/blog/158)
+    - 倒排索引: 
+        - 大规模数据非主键列点查场景
+        - 短文本分布比较集中（如大量文本相似，少量文本不同）
+        - 长文本列的文本搜索场景
+    - Ngram Bloom Filter 索引: like 场景，短文本分布比较离散（即文本之间相似度低）
+- [Apache Doris 如何基于自增列满足高效字典编码等典型场景需求](https://selectdb.com/blog/194)
+
+- [Apache Doris 巨大飞跃：存算分离新架构](https://selectdb.com/blog/101)
+    - 基于共享存储系统的主数据存储(HDFS/对象存储)
+    - 基于本地高速缓存的性能优化
+        - 缓存系统替代原来的节点内存储系统（mem？disk cache）
+    - 多计算集群实现工作负载隔离
+        - 物理隔离，snowflake vm
+
+
+- [StarRocks 完美开发环境搭建](https://www.inlighting.org/archives/setup-perfect-starrocks-dev-env)

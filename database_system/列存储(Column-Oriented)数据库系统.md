@@ -400,7 +400,78 @@ Schema-on-Read (Hadoop)：
 
 ## 3. 编码与压缩
 
+### 3.1 lz4 压缩算法
 
+#### 原理
+
+LZ4利用滑动窗口的概念以及一个哈希表来寻找重复的数据模式。当在数据流中发现重复的模式时，LZ4不会再次存储这些数据，而是存储一个“回溯”到之前出现该模式的位置的指针（偏移量）和重复模式的长度。这种指针通常称为匹配（Match）或重复（Literal）。
+
+##### 压缩过程
+- 初始化：
+初始化一个16KB大小的哈希表，用于存储最近访问的字节序列及其位置。
+设置一个滑动窗口，通常不超过64KB，用于在其中寻找重复模式。
+数据读取与匹配：
+读取输入数据中的一个字节序列。
+使用哈希函数计算当前字节序列的哈希值，并查询哈希表中是否存在相同的序列。
+如果存在，则获取对应的偏移量（距离当前位置的距离）和最长的匹配长度。
+- 编码：
+如果找到匹配，将偏移量和匹配长度编码成压缩流的一部分。
+如果没有找到匹配，将当前字节序列直接写入压缩流中，这被称为字面量（Literal）。
+- 更新哈希表：
+在处理完一个字节序列后，更新哈希表，将当前序列及其位置添加进去。
+移除超出滑动窗口范围的旧条目。
+重复步骤2至4，直到所有输入数据被处理完毕。
+
+##### 解压缩过程
+- 读取压缩数据：
+从压缩流中读取下一个数据块。
+
+- 解码：
+解析读取的数据块，确定其是字面量还是匹配。
+如果是字面量，直接将其写入输出缓冲区。
+如果是匹配，使用偏移量和长度从之前的输出数据中复制相应的字节序列到输出缓冲区。
+重复步骤1至2，直到压缩流结束。
+
+
+##### 特点
+- LZ4使用小的哈希表（16KB），这使得它在内存受限的环境中也能有效运行。
+- 偏移量通常限制在64KB以内，这意味着它**适合于压缩具有局部重复性的数据**。
+- LZ4的解压缩速度非常快，接近内存拷贝操作的速度。
+- LZ4的压缩速度可以通过调整算法中的某些参数来优化，例如增加或减少扫描窗口的大小。
+- LZ4因其高速性能而在多种场景下得到广泛应用，包括操作系统内存压缩、网络传输、实时数据处理等。
+
+
+[LZ4](https://github.com/LuXugang/Lucene-7.x-9.x/blob/master/blog/Lucene/%E5%8E%8B%E7%BC%A9%E5%AD%98%E5%82%A8/LZ4/LZ4Fast.md)
+
+
+
+### 3.2 Bitshuffle
+
+
+- [Doris 实现原理之高效存取 varchar 字符串](https://cloud.baidu.com/article/3319774) 推荐
+    - 字典编码,plain 编码 存储 字典页
+        - Doris 采用的是试探法，优先先采用字典编码，随着数据增加， 如果字典大小超过一定的阈值退回 plan 编码，目前这个阈值是 dict_page 大小超过 64KB
+    - 数字优化：引入 Bitshuffle 算法来对数字按照 bit 重新进行打散排序 提高 lz4 压缩效率
+        - Bitshuffle 重新排列一组值以存储每个值的最高有效位，其次是每个值的第二个最高有效位，依此类推。
+
+    - [字符串编码/解码](https://www.cnblogs.com/bitetheddddt/p/15210062.html)
+        - 字典编码+bitshuffle+lz4压缩
+    
+
+
+- [Kudu笔记](https://yx91490.github.io/bigdata/kudu/kudu_note.html) 
+
+kudu 列编码方式：
+
+| Column类型                  | 支持的编码方式                       | 默认编码方式     |
+| ------------------------- | ----------------------------- | ---------- |
+| int8, int16, int32, int64 | plain, bitshuffle, run length | bitshuffle |
+| date, unixtime_micros     | plain, bitshuffle, run length | bitshuffle |
+| float, double, decimal    | plain, bitshuffle             | bitshuffle |
+| bool                      | plain, run length             | run length |
+| string, varchar, binary   | plain, prefix, dictionary     | dictionary |
+
+Bitshuffle编码：重新排列一个值块，以存储每个值的最高有效位，然后第二个最高有效位，依此类推。适合具有许多重复值，或者具有高局部相关性的情况，例如连续的浮点值变化不大的列。
 
 
 
@@ -422,6 +493,23 @@ Schema-on-Read (Hadoop)：
 
 以[Intel(R) Xeon(R) Platinum 8269CY ](https://ark.intel.com/content/www/cn/zh/ark/products/192474/intel-xeon-platinum-8260-processor-35-75m-cache-2-40-ghz.html) CPU cache L3 大小35.75 MB  [Intel Xeon Platinum 8176](https://www.spec.org/cpu2017/results/res2018q3/cpu2017-20180820-08541.html) L1 CPU cache 32KB L2 1024KB L3  CPU cache 35.75 MB，int64列，1k行的大小是 8  * 1000 = 8KB 大小，不超过L1 的Cache， 因此，因此列存散列，按列进行处理的开销并不大，但是尽量应该在控制在4K行以内。L1 cache 0.5us，而L2 cache在7us，相对还是差距较大。
 
+
+
+## 7. 实现
+
+### apache iot  tsfile
+
+| 数据类型    | 推荐编码       | 推荐压缩算法 |
+|---------|------------|--------|
+| INT32   | TS_2DIFF   | LZ4    |
+| INT64   | TS_2DIFF   | LZ4    |
+| FLOAT   | GORILLA    | LZ4    |
+| DOUBLE  | GORILLA    | LZ4    |
+| BOOLEAN | RLE        | LZ4    |
+| TEXT    | DICTIONARY | LZ4    |
+
+
+[more](https://iotdb.apache.org/zh/UserGuide/latest/Basic-Concept/Encoding-and-Compression.html#%E5%9F%BA%E6%9C%AC%E7%BC%96%E7%A0%81%E6%96%B9%E5%BC%8F)
 
 
 ## REF
@@ -449,4 +537,17 @@ Schema-on-Read (Hadoop)：
 - [Schema-on-Read vs Schema-on-Write](https://luminousmen.com/post/schema-on-read-vs-schema-on-write)
 - [What is the difference between schema on Read and Schema on Write?](https://data-flair.training/forums/topic/what-is-the-difference-between-schema-on-read-and-schema-on-write/)
 - [什么是 Hadoop 中的 Schema On Read 和 Schema On Write](https://www.geeksforgeeks.org/what-is-schema-on-read-and-schema-on-write-in-hadoop/)
+
+
+- [2.0 解析系列 | OceanBase 2.0的高级数据压缩特性](https://github.com/alibaba-developer/DataBase/blob/master/OceanBase/2.0%20%E8%A7%A3%E6%9E%90%E7%B3%BB%E5%88%97%20%7C%20OceanBase%202.0%E7%9A%84%E9%AB%98%E7%BA%A7%E6%95%B0%E6%8D%AE%E5%8E%8B%E7%BC%A9%E7%89%B9%E6%80%A7.md)
+  - RLE编码
+  - 常量编码
+  - 差值（数值型）编码 : 连续生成的时间类型数据
+  - 差值（定长字符型）编码:  适用于定长的、有确定业务规则的字符型数据，通过构造公共串,将数据中只记录差异部分. 订单号、用户账号
+  - 前缀（字符型）编码 
+
+
+- [压缩算法实验室](https://github.com/compression-algorithm-research-lab)  
+
+- [apache/tsfile](https://github.com/apache/tsfile/blob/develop/README-zh.md)
 
