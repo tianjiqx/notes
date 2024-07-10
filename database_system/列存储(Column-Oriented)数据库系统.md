@@ -474,6 +474,8 @@ kudu 列编码方式：
 Bitshuffle编码：重新排列一个值块，以存储每个值的最高有效位，然后第二个最高有效位，依此类推。适合具有许多重复值，或者具有高局部相关性的情况，例如连续的浮点值变化不大的列。
 
 
+根据 FCBench: Cross-Domain Benchmarking of Lossless Compression for Floating-Point Data [Experiment, Analysis & Benchmark] 论文显示，综合下来  Bitshuffle + lz4/zstd 压缩浮点数据效果最好  
+
 
 ## 4. 索引
 
@@ -510,6 +512,12 @@ Bitshuffle编码：重新排列一个值块，以存储每个值的最高有效�
 
 
 [more](https://iotdb.apache.org/zh/UserGuide/latest/Basic-Concept/Encoding-and-Compression.html#%E5%9F%BA%E6%9C%AC%E7%BC%96%E7%A0%81%E6%96%B9%E5%BC%8F)
+
+
+CHIMP 是一种无损编码。它是一种新的流式浮点数据压缩算法，可以节省存储空间。这个编码适用于前后值比较接近的数值序列，对波动小和随机噪声少的序列数据更加友好。
+
+使用限制：如果对 INT32 类型数据使用 CHIMP 编码，需要确保数据点中没有 Integer.MIN_VALUE。 如果对 INT64 类型数据使用 CHIMP 编码，需要确保数据点中没有 Long.MIN_VALUE。
+
 
 
 ## REF

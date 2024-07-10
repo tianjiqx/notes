@@ -7,6 +7,8 @@
 原始： 18 G
 扩展字段(常量，时间戳字段)： 26G
 行数：8229 3702 rows
+（ES 82,292,414 rows）
+
 
 | 系统         | size（GB）   | load time（s） | 压缩比 | 速度(MB/s) |
 | ---------- | ---------- | ------------ | --- | --------- |
@@ -16,9 +18,108 @@
 | ES（6.8，zstd-1-60k，无全文索引，无source字段） | 4.3gb | 1430.504 | 1.9 | 12.88 |
 | ES（6.8，lz4-16k，无全文索引，无source字段） | 5.2gb | 1966.465 | 2.3 | 9.37 |
 
-（zstd-1 和 zstd-3 不影响空间大小）
 
-### hdfs 测试2
+zstd-3 表示 level 级别在3
+
+ck表：
+
+```
+CREATE TABLE logs.test_hdfs
+(
+    `_time` Int64,
+    `_indexTime` Int64,
+    `host` FixedString(50),
+    `repo` FixedString(50),
+    `sourcetype` FixedString(256),
+    `origin` FixedString(256),
+    `_raw` String
+)
+ENGINE = MergeTree
+PARTITION BY toDate(toDateTime(_time))
+PRIMARY KEY _time
+ORDER BY _time
+SETTINGS index_granularity = 8192
+
+```
+
+
+
+### ES 6.8 (lunce 7.7)
+
+#### lz4
+
+5.2 GB
+
+| field         | type           | total   | total_pct | inverted_index | stored_field | doc_values | points  | term_vectors | norms |
+|---------------|----------------|---------|-----------|----------------|--------------|------------|---------|--------------|-------|
+| _raw          | string         | 2.8gb   | 53.85%    | 0b             | 2.8gb        | 0b         | 0b      | 0b           | 0b    |
+| _id           | unknown        | 1.1gb   | 20.49%    | 749.9mb        | 353.4mb      | 0b         | 0b      | 0b           | 0b    |
+| _seq_no       | unknown        | 547.9mb | 10.18%    | 0b             | 0b           | 225.4mb    | 322.5mb | 0b           | 0b    |
+| _time         | long           | 497.5mb | 9.24%     | 0b             | 0b           | 180.7mb    | 316.8mb | 0b           | 0b    |
+| _indexTime    | long           | 326.2mb | 6.06%     | 0b             | 0b           | 167.8mb    | 158.4mb | 0b           | 0b    |
+| origin        | string         | 1.9mb   | 0.04%     | 1.9mb          | 0b           | 1.2kb      | 0b      | 0b           | 0b    |
+| repo          | string         | 1.9mb   | 0.04%     | 1.9mb          | 0b           | 408b       | 0b      | 0b           | 0b    |
+| host_ip       | array\<string> | 1.9mb   | 0.04%     | 1.9mb          | 0b           | 384b       | 0b      | 0b           | 0b    |
+| host          | string         | 1.9mb   | 0.04%     | 1.9mb          | 0b           | 312b       | 0b      | 0b           | 0b    |
+| sourcetype    | string         | 1.9mb   | 0.04%     | 1.9mb          | 0b           | 192b       | 0b      | 0b           | 0b    |
+| _primary_term | unknown        | 0b      | 0.00%     | 0b             | 0b           | 0b         | 0b      | 0b           | 0b    |
+| _version      | unknown        | 0b      | 0.00%     | 0b             | 0b           | 0b         | 0b      | 0b           | 0b    |
+​
+
+_id, _seq_no 列占据 30% 冗余空间 
+_indexTime, _time 15% 
+
+#### zstd1-60k
+
+4.3gb
+
+| field         | type           | total   | total_pct | inverted_index | stored_field | doc_values | points  | term_vectors | norms |
+|---------------|----------------|---------|-----------|----------------|--------------|------------|---------|--------------|-------|
+| _raw          | string         | 2.0gb   | 46.28%    | 0b             | 2.0gb        | 0b         | 0b      | 0b           | 0b    |
+| _id           | unknown        | 994.6mb | 22.50%    | 741.5mb        | 253.1mb      | 0b         | 0b      | 0b           | 0b    |
+| _seq_no       | unknown        | 549.3mb | 12.43%    | 0b             | 0b           | 230.4mb    | 318.9mb | 0b           | 0b    |
+| _time         | long           | 500.2mb | 11.32%    | 0b             | 0b           | 184.4mb    | 315.9mb | 0b           | 0b    |
+| _indexTime    | long           | 320.7mb | 7.25%     | 0b             | 0b           | 161.9mb    | 158.8mb | 0b           | 0b    |
+| origin        | string         | 2.0mb   | 0.04%     | 2.0mb          | 0b           | 1.4kb      | 0b      | 0b           | 0b    |
+| repo          | string         | 2.0mb   | 0.04%     | 2.0mb          | 0b           | 448b       | 0b      | 0b           | 0b    |
+| host_ip       | array\<string> | 2.0mb   | 0.04%     | 2.0mb          | 0b           | 448b       | 0b      | 0b           | 0b    |
+| host          | string         | 2.0mb   | 0.04%     | 2.0mb          | 0b           | 364b       | 0b      | 0b           | 0b    |
+| sourcetype    | string         | 2.0mb   | 0.04%     | 2.0mb          | 0b           | 224b       | 0b      | 0b           | 0b    |
+| _primary_term | unknown        | 0b      | 0.00%     | 0b             | 0b           | 0b         | 0b      | 0b           | 0b    |
+| _version      | unknown        | 0b      | 0.00%     | 0b             | 0b           | 0b         | 0b      | 0b           | 0b    |
+
+_id, _seq_no 列占据 34% 冗余空间 
+_indexTime, _time 18% 
+
+
+### zstd3 + source
+
+| field         | type          | total   | total_pct | inverted_index | stored_field | doc_values | points  | term_vectors | norms |
+| ------------- | ------------- | ------- | --------- | -------------- | ------------ | ---------- | ------- | ------------ | ----- |
+| _raw          | string        | 1.5gb   | 28.98%    | 0b             | 1.5gb        | 0b         | 0b      | 0b           | 0b    |
+| _source       | unknown       | 1.5gb   | 28.68%    | 0b             | 1.5gb        | 0b         | 0b      | 0b           | 0b    |
+| _id           | unknown       | 927.2mb | 17.19%    | 738.1mb        | 189.1mb      | 0b         | 0b      | 0b           | 0b    |
+| _seq_no       | unknown       | 530.7mb | 9.84%     | 0b             | 0b           | 213.4mb    | 317.3mb | 0b           | 0b    |
+| _time         | long          | 503.1mb | 9.33%     | 0b             | 0b           | 186.6mb    | 316.5mb | 0b           | 0b    |
+| _indexTime    | long          | 310.8mb | 5.76%     | 0b             | 0b           | 152.7mb    | 158.1mb | 0b           | 0b    |
+| origin        | string        | 2.3mb   | 0.04%     | 2.3mb          | 0b           | 1.2kb      | 0b      | 0b           | 0b    |
+| repo          | string        | 2.3mb   | 0.04%     | 2.3mb          | 0b           | 400b       | 0b      | 0b           | 0b    |
+| host_ip       | array\<string> | 2.3mb   | 0.04%     | 2.3mb          | 0b           | 400b       | 0b      | 0b           | 0b    |
+| host          | string        | 2.3mb   | 0.04%     | 2.3mb          | 0b           | 325b       | 0b      | 0b           | 0b    |
+| sourcetype    | string        | 2.3mb   | 0.04%     | 2.3mb          | 0b           | 200b       | 0b      | 0b           | 0b    |
+| _primary_term | unknown       | 0b      | 0.00%     | 0b             | 0b           | 0b         | 0b      | 0b           | 0b    |
+| _version      | unknown       | 0b      | 0.00%     | 0b             | 0b           | 0b         | 0b      | 0b           | 0b    |
+
+
+_source 字段 与 _raw 字段数据重复
+
+
+#### 结论
+
+ck，doris 对 日志类型数据 比 es 存储空间 更少在于， es 额外辅助结构 _id, _seq_no ，_source 等空间开销， long 时间戳可以进一步优化
+
+
+## hdfs 测试2
 
 [HDFS_v2](https://zenodo.org/records/8196385/files/HDFS_v2.zip) (17gb)
 
@@ -399,6 +500,6 @@ lucene 比 ck 存储空间 x1.61
 
 总结：
 _time 占比 12 % 
-inverted_index raw的倒排索引占比2.1gb
+inverted_index raw的倒排索引占比 60% 2.1gb
 
 
