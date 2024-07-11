@@ -1213,11 +1213,9 @@ clickhouse time 字段（2016-01-01 08:00:00 +0800）空间开销过高
 
 DoubleDelta vs lz4:
 
-对于时间戳类型 DoubleDelta 更有优势 (9.35X) ，created_date 日期类型 lz4 压缩更好  
+使用 cpu 表分析
 
-调优：
-1340 .created_at.bin
-120 .created_date.bin
+对于时间戳类型 DoubleDelta 更有优势 (9.35X) ，created_date 日期类型 lz4 压缩更好  
 
 
 | 编码格式        | created_at(KB) | created_date(KB) | sum       | 比例     |
@@ -1226,15 +1224,8 @@ DoubleDelta vs lz4:
 | lz4<br>         | 12528<br>      | 100<br>          | 12628<br> | 8.65<br> |
 | 混合优化<br>    | 1340<br>       | 120<br>          | 1460<br>  | 1.0<br>  |
 
+ES： _time 字段   418.2mb / 9 table = 47581 KB   35X (created_at)
 
-DoubleDelta：
-
-1340 .created_at.bin
-1300 .created_date.bin
-
-lz4：
-12528 .created_at.bin
-100 .created_date.bin
 
 ##### double 类型
 
@@ -1260,7 +1251,8 @@ lz4:
 
 usage_user:  22520 + 56 = 22576 KB
 
-10字段 大约 
+
+估计 10 字段 大约 
 
 lz4 空间消耗是 Gorilla 1.25X, Gorilla null文件为什么开销大？
 
@@ -1289,7 +1281,16 @@ Gorilla 约等于 77.7 MB
 | LZ4HC            | 10236          | 0        | 10236    | 1.29   |
 
 
-测试导入时使用 Gorilla编码时，cpu负载不高，也许由于依赖顺序编码未能充分利用多线程工作（并发导入可能写入性能会提高）
+导入性能：测试导入时使用 Gorilla编码时，cpu负载不高，也许由于依赖顺序编码未能充分利用多线程工作（并发导入可能写入性能会提高）
+
+
+
+
+ES 6.8：
+usage_user 79.4mb   10X Gorilla 存储空间
+usage_system 79.4mb
+usage_steal 79.4mb
+
 
 
 
@@ -1557,6 +1558,148 @@ doris,kudu 选对了 bitshuffle + lz4 就是好。用tsbs测试 也确实比ck�
 
 
 doris datetime 默认也使用 BIT_SHUFFLE + lz4 编码压缩 
+
+
+### ES 存储分析
+
+基于 ES 6.8 的指标存储实现
+
+total 10.8 GB
+
+| field                             | type          | total    | total_pct | inverted_index | stored_field | doc_values | points  | term_vectors | norms |
+| --------------------------------- | ------------- | -------- | --------- | -------------- | ------------ | ---------- | ------- | ------------ | ----- |
+| _id                               | unknown       | 1.3gb    | 12.30%    | 899.6mb        | 469.1mb      | 0b         | 0b      | 0b           | 0b    |
+| _tag_names                        | array\<string> | 1.2gb    | 11.19%    | 0b             | 0b           | 1.2gb      | 0b      | 0b           | 0b    |
+| _metric_names                     | array\<string> | 1012.2mb | 9.10%     | 0b             | 0b           | 1012.2mb   | 0b      | 0b           | 0b    |
+| _seq_no                           | unknown       | 698.5mb  | 6.28%     | 0b             | 0b           | 296.1mb    | 402.4mb | 0b           | 0b    |
+| _time                             | long          | 418.2mb  | 3.76%     | 0b             | 0b           | 167.7mb    | 250.5mb | 0b           | 0b    |
+| host                              | string        | 150.6mb  | 1.35%     | 17.1mb         | 0b           | 133.5mb    | 0b      | 0b           | 0b    |
+| _series                           | string        | 134.6mb  | 1.21%     | 0b             | 0b           | 134.6mb    | 0b      | 0b           | 0b    |
+| rack                              | array\<string> | 104.3mb  | 0.94%     | 15.3mb         | 0b           | 89.0mb     | 0b      | 0b           | 0b    |
+| datacenter                        | array\<string> | 102.5mb  | 0.92%     | 13.5mb         | 0b           | 89.0mb     | 0b      | 0b           | 0b    |
+| service                           | array\<string> | 102.2mb  | 0.92%     | 13.2mb         | 0b           | 89.0mb     | 0b      | 0b           | 0b    |
+| mem_buffered                      | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| mem_cached                        | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| mem_used                          | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| mem_buffered_percent              | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| mem_free                          | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| mem_used_percent                  | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| mem_available_percent             | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| mem_available                     | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| cpu_usage_system                  | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| cpu_usage_irq                     | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| cpu_usage_user                    | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| cpu_usage_idle                    | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| cpu_usage_guest_nice              | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| cpu_usage_iowait                  | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| cpu_usage_softirq                 | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| cpu_usage_steal                   | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| cpu_usage_guest                   | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| cpu_usage_nice                    | double        | 79.4mb   | 0.71%     | 0b             | 0b           | 79.4mb     | 0b      | 0b           | 0b    |
+| redis_instantaneous_output_kbps   | double        | 74.2mb   | 0.67%     | 0b             | 0b           | 74.2mb     | 0b      | 0b           | 0b    |
+| redis_instantaneous_input_kbps    | double        | 74.2mb   | 0.67%     | 0b             | 0b           | 74.2mb     | 0b      | 0b           | 0b    |
+| redis_instantaneous_ops_per_sec   | double        | 74.2mb   | 0.67%     | 0b             | 0b           | 74.2mb     | 0b      | 0b           | 0b    |
+| postgresl_temp_bytes              | double        | 74.1mb   | 0.67%     | 0b             | 0b           | 74.1mb     | 0b      | 0b           | 0b    |
+| kernel_processes_forked           | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| kernel_interrupts                 | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| kernel_disk_pages_out             | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| kernel_context_switches           | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| kernel_disk_pages_in              | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| redis_keyspace_hits               | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| redis_expired_keys                | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| redis_evicted_keys                | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| redis_keyspace_misses             | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| redis_total_connections_received  | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| diskio_io_time                    | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| diskio_writes                     | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| diskio_read_bytes                 | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| diskio_reads                      | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| diskio_read_time                  | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| diskio_write_time                 | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| diskio_write_bytes                | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| net_err_in                        | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| net_bytes_sent                    | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| net_packets_recv                  | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| net_err_out                       | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| net_packets_sent                  | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| net_drop_in                       | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| net_bytes_recv                    | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| net_drop_out                      | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| nginx_handled                     | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| nginx_accepts                     | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| nginx_requests                    | double        | 74.0mb   | 0.67%     | 0b             | 0b           | 74.0mb     | 0b      | 0b           | 0b    |
+| redis_uptime_in_seconds           | double        | 73.3mb   | 0.66%     | 0b             | 0b           | 73.3mb     | 0b      | 0b           | 0b    |
+| region                            | array\<string> | 56.3mb   | 0.51%     | 11.8mb         | 0b           | 44.5mb     | 0b      | 0b           | 0b    |
+| redis_used_memory_rss             | double        | 49.6mb   | 0.45%     | 0b             | 0b           | 49.6mb     | 0b      | 0b           | 0b    |
+| redis_used_memory_peak            | double        | 49.6mb   | 0.45%     | 0b             | 0b           | 49.6mb     | 0b      | 0b           | 0b    |
+| redis_used_memory                 | double        | 49.6mb   | 0.45%     | 0b             | 0b           | 49.6mb     | 0b      | 0b           | 0b    |
+| redis_used_memory_lua             | double        | 49.6mb   | 0.45%     | 0b             | 0b           | 49.6mb     | 0b      | 0b           | 0b    |
+| origin                            | string        | 48.4mb   | 0.43%     | 3.9mb          | 0b           | 44.5mb     | 0b      | 0b           | 0b    |
+| disk_used                         | double        | 46.2mb   | 0.42%     | 0b             | 0b           | 46.2mb     | 0b      | 0b           | 0b    |
+| disk_free                         | double        | 44.4mb   | 0.40%     | 0b             | 0b           | 44.4mb     | 0b      | 0b           | 0b    |
+| postgresl_numbackends             | double        | 38.7mb   | 0.35%     | 0b             | 0b           | 38.7mb     | 0b      | 0b           | 0b    |
+| redis_connected_slaves            | double        | 38.6mb   | 0.35%     | 0b             | 0b           | 38.6mb     | 0b      | 0b           | 0b    |
+| postgresl_tup_deleted             | double        | 38.5mb   | 0.35%     | 0b             | 0b           | 38.5mb     | 0b      | 0b           | 0b    |
+| redis_sync_partial_err            | double        | 38.5mb   | 0.35%     | 0b             | 0b           | 38.5mb     | 0b      | 0b           | 0b    |
+| redis_used_cpu_user               | double        | 38.5mb   | 0.35%     | 0b             | 0b           | 38.5mb     | 0b      | 0b           | 0b    |
+| redis_used_cpu_sys_children       | double        | 38.5mb   | 0.35%     | 0b             | 0b           | 38.5mb     | 0b      | 0b           | 0b    |
+| postgresl_blks_read               | double        | 38.5mb   | 0.35%     | 0b             | 0b           | 38.5mb     | 0b      | 0b           | 0b    |
+| postgresl_tup_fetched             | double        | 38.5mb   | 0.35%     | 0b             | 0b           | 38.5mb     | 0b      | 0b           | 0b    |
+| postgresl_blk_write_time          | double        | 38.5mb   | 0.35%     | 0b             | 0b           | 38.5mb     | 0b      | 0b           | 0b    |
+| postgresl_temp_files              | double        | 38.4mb   | 0.35%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| redis_latest_fork_usec            | double        | 38.4mb   | 0.35%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| redis_repl_backlog_histlen        | double        | 38.4mb   | 0.35%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| redis_repl_backlog_active         | double        | 38.4mb   | 0.35%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| redis_pubsub_patterns             | double        | 38.4mb   | 0.35%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| redis_master_repl_offset          | double        | 38.4mb   | 0.35%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| postgresl_deadlocks               | double        | 38.4mb   | 0.34%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| postgresl_tup_returned            | double        | 38.4mb   | 0.34%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| postgresl_xact_commit             | double        | 38.4mb   | 0.34%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| postgresl_conflicts               | double        | 38.4mb   | 0.34%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| postgresl_blks_hit                | double        | 38.4mb   | 0.34%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| postgresl_blk_read_time           | double        | 38.4mb   | 0.34%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| redis_used_cpu_user_children      | double        | 38.4mb   | 0.34%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| redis_used_cpu_sys                | double        | 38.4mb   | 0.34%     | 0b             | 0b           | 38.4mb     | 0b      | 0b           | 0b    |
+| postgresl_tup_inserted            | double        | 38.3mb   | 0.34%     | 0b             | 0b           | 38.3mb     | 0b      | 0b           | 0b    |
+| postgresl_tup_updated             | double        | 38.3mb   | 0.34%     | 0b             | 0b           | 38.3mb     | 0b      | 0b           | 0b    |
+| postgresl_xact_rollback           | double        | 38.3mb   | 0.34%     | 0b             | 0b           | 38.3mb     | 0b      | 0b           | 0b    |
+| redis_sync_partial_ok             | double        | 38.3mb   | 0.34%     | 0b             | 0b           | 38.3mb     | 0b      | 0b           | 0b    |
+| redis_connected_clients           | double        | 38.3mb   | 0.34%     | 0b             | 0b           | 38.3mb     | 0b      | 0b           | 0b    |
+| redis_repl_backlog_size           | double        | 38.3mb   | 0.34%     | 0b             | 0b           | 38.3mb     | 0b      | 0b           | 0b    |
+| redis_sync_full                   | double        | 38.3mb   | 0.34%     | 0b             | 0b           | 38.3mb     | 0b      | 0b           | 0b    |
+| redis_rdb_changes_since_last_save | double        | 38.3mb   | 0.34%     | 0b             | 0b           | 38.3mb     | 0b      | 0b           | 0b    |
+| redis_pubsub_channels             | double        | 38.3mb   | 0.34%     | 0b             | 0b           | 38.3mb     | 0b      | 0b           | 0b    |
+| server                            | array\<string> | 34.6mb   | 0.31%     | 4.4mb          | 0b           | 30.2mb     | 0b      | 0b           | 0b    |
+| port                              | array\<string> | 34.6mb   | 0.31%     | 4.4mb          | 0b           | 30.2mb     | 0b      | 0b           | 0b    |
+| team                              | array\<string> | 31.8mb   | 0.29%     | 9.6mb          | 0b           | 22.2mb     | 0b      | 0b           | 0b    |
+| os                                | array\<string> | 30.6mb   | 0.27%     | 8.3mb          | 0b           | 22.2mb     | 0b      | 0b           | 0b    |
+| service_environment               | array\<string> | 30.4mb   | 0.27%     | 8.2mb          | 0b           | 22.2mb     | 0b      | 0b           | 0b    |
+| serial                            | array\<string> | 17.5mb   | 0.16%     | 2.3mb          | 0b           | 15.2mb     | 0b      | 0b           | 0b    |
+| arch                              | array\<string> | 17.4mb   | 0.16%     | 6.2mb          | 0b           | 11.1mb     | 0b      | 0b           | 0b    |
+| service_version                   | array\<string> | 17.4mb   | 0.16%     | 6.2mb          | 0b           | 11.1mb     | 0b      | 0b           | 0b    |
+| kernel_boot_time                  | double        | 10.2mb   | 0.09%     | 0b             | 0b           | 10.2mb     | 0b      | 0b           | 0b    |
+| disk_inodes_used                  | double        | 9.9mb    | 0.09%     | 0b             | 0b           | 9.9mb      | 0b      | 0b           | 0b    |
+| disk_inodes_free                  | double        | 9.9mb    | 0.09%     | 0b             | 0b           | 9.9mb      | 0b      | 0b           | 0b    |
+| path                              | array\<string> | 6.5mb    | 0.06%     | 1.3mb          | 0b           | 5.1mb      | 0b      | 0b           | 0b    |
+| nginx_active                      | double        | 5.3mb    | 0.05%     | 0b             | 0b           | 5.3mb      | 0b      | 0b           | 0b    |
+| nginx_reading                     | double        | 5.2mb    | 0.05%     | 0b             | 0b           | 5.2mb      | 0b      | 0b           | 0b    |
+| nginx_waiting                     | double        | 5.1mb    | 0.05%     | 0b             | 0b           | 5.1mb      | 0b      | 0b           | 0b    |
+| redis_mem_fragmentation_ratio     | double        | 5.0mb    | 0.05%     | 0b             | 0b           | 5.0mb      | 0b      | 0b           | 0b    |
+| nginx_writing                     | double        | 5.0mb    | 0.05%     | 0b             | 0b           | 5.0mb      | 0b      | 0b           | 0b    |
+| interface                         | array\<string> | 3.9mb    | 0.03%     | 1.1mb          | 0b           | 2.7mb      | 0b      | 0b           | 0b    |
+| fstype                            | array\<string> | 3.6mb    | 0.03%     | 959.4kb        | 0b           | 2.6mb      | 0b      | 0b           | 0b    |
+| mem_total                         | double        | 2.7mb    | 0.02%     | 0b             | 0b           | 2.7mb      | 0b      | 0b           | 0b    |
+| host_ip                           | array\<string> | 2.7mb    | 0.02%     | 2.7mb          | 0b           | 416b       | 0b      | 0b           | 0b    |
+| repo                              | string        | 2.7mb    | 0.02%     | 2.7mb          | 0b           | 182b       | 0b      | 0b           | 0b    |
+| sourcetype                        | string        | 2.7mb    | 0.02%     | 2.7mb          | 0b           | 182b       | 0b      | 0b           | 0b    |
+| disk_used_percent                 | double        | 788.3kb  | 0.01%     | 0b             | 0b           | 788.3kb    | 0b      | 0b           | 0b    |
+| disk_total                        | double        | 180.1kb  | 0.00%     | 0b             | 0b           | 180.1kb    | 0b      | 0b           | 0b    |
+| disk_inodes_total                 | double        | 180.1kb  | 0.00%     | 0b             | 0b           | 180.1kb    | 0b      | 0b           | 0b    |
+| _primary_term                     | unknown       | 0b       | 0.00%     | 0b             | 0b           | 0b         | 0b      | 0b           | 0b    |
+
+
+tags 字段：占据空间 492.85 MB  百分比 4.43% 
+
 
 
 
