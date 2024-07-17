@@ -1224,7 +1224,7 @@ DoubleDelta vs lz4:
 | lz4<br>         | 12528<br>      | 100<br>          | 12628<br> | 8.65<br> |
 | 混合优化<br>    | 1340<br>       | 120<br>          | 1460<br>  | 1.0<br>  |
 
-ES： _time 字段   418.2mb / 9 table = 47581 KB   35X (created_at)
+
 
 
 ##### double 类型
@@ -1282,15 +1282,6 @@ Gorilla 约等于 77.7 MB
 
 
 导入性能：测试导入时使用 Gorilla编码时，cpu负载不高，也许由于依赖顺序编码未能充分利用多线程工作（并发导入可能写入性能会提高）
-
-
-
-
-ES 6.8：
-usage_user 79.4mb   10X Gorilla 存储空间
-usage_system 79.4mb
-usage_steal 79.4mb
-
 
 
 
@@ -1699,8 +1690,11 @@ total 10.8 GB
 
 
 tags 字段：占据空间 492.85 MB  百分比 4.43% 
+_time 字段   418.2mb / 9 table = 47581 KB   35X (created_at)
 
-
+usage_user 79.4mb   10X Gorilla 存储空间
+usage_system 79.4mb
+usage_steal 79.4mb
 
 
 #### REF

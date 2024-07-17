@@ -4,7 +4,7 @@
 
 Materialize 是用于实时应用程序的**流式数据库**，当前还在活跃状态中。同类[noria](https://github.com/mit-pdos/noria)（原型系统，未继续在开发），[Timely Dataflow](https://github.com/TimelyDataflow/timely-dataflow) ，[Differential Dataflow](https://github.com/timelydataflow/differential-dataflow/blob/master/differentialdataflow.pdf) ，[Singularity data](https://www.singularity-data.com/)。
 
-功能上与stream + OLAP的实时数仓（Flink）很接近，但是背后的实现原理，具有更强的流处理理论的指导。
+功能上与stream + OLAP的实时数仓（Flink）很接近，但是背后的实现原理，具有更强的流处理理论的指导。类似竟品 [risingwave](https://github.com/risingwavelabs/risingwave)
 
 
 
@@ -52,3 +52,4 @@ Materialize 是用于实时应用程序的**流式数据库**，当前还在活�
 - [paper:noria](https://www.usenix.org/system/files/osdi18-gjengset.pdf) Noria: dynamic, partially-stateful data-flow for high-performance web applications
 - [【论文】Dataflow 模型：一种能平衡准确性、延迟、成本的大规模、无限、乱序的数据处理的实践方法](https://zhuanlan.zhihu.com/p/59876058)
 
+- [materialize blog](https://materialize.com/blog/)
