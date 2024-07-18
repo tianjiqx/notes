@@ -76,3 +76,6 @@
 
 - [[合作]一次RAG技术调研](https://zhuanlan.zhihu.com/p/703596693)
 
+- GrapRAG：处理 推理多个概念之间关系问题 
+    - [微软 GraphRAG ：原理、本地部署与数据可视化——提升问答效率的图谱增强策略](https://zhuanlan.zhihu.com/p/709216702) 推荐
+    - [基于 tidb 的 GraphRAG 的方式](https://zhuanlan.zhihu.com/p/709499871)
