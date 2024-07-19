@@ -8,8 +8,6 @@ Databend(Datafuse: 曾用名) 是一个开源的**弹性**和**可扩展的**云
 
 面向云环境的OLAP系统。最开始根据TensorBase作者的评价，以为对标的是rust的Clickhouse，但是根据最近Datafuse博客，它其实对标Snowflake，AWS Redshift。
 
-
-
 特点：
 
 - Rust语言编写
@@ -22,63 +20,51 @@ Databend(Datafuse: 曾用名) 是一个开源的**弹性**和**可扩展的**云
     - K8S RBAC（Role-based access control）
 - 支持MySQL，clickhouse 客户端
 
-
-
 （PS：注意目前0.4.x版本， 一些特点可能还只是期望，或者实现中，无法用于生产）
-
-
 
 Datafuse 对传统数仓架构的批评：
 
 - Sharding Warehouse
-
+  
   - 类似share nothing架构的，没有将计算和存储分离，不适合云环境（资源粒度控制）
     - (根据OB 的tpch测试报告，其也算是计算与存储分离，有专门的OFS文件系统作为其存储支持，ObServer节点只保留少量的的SSD)
   - 容易发生数据热点问题
   - 扩容，数据均衡，需要花费时间进行副本迁移
 
 - Presto/spark + Shared Storage(AWS S3，Blob Storage)
-
+  
   - 共享存储服务存在延迟、抖动问题
     - （OLTP型数据库要更重视这个问题，OLAP其实应该并不太需要在意才是）
-
-  
-
-
 
   **设计理念**：
 
   Cloud Warehouse里的状态：
 
-  - Persistent data
-    - 用户数据，存储在Shared Storage
-  - Intermediate data
-    - 排序、join shuffle中间结果文件
-  - Metadata
-    - object catalogs, table schema, user 等元数据
-
-  
+- Persistent data
+  - 用户数据，存储在Shared Storage
+- Intermediate data
+  - 排序、join shuffle中间结果文件
+- Metadata
+  - object catalogs, table schema, user 等元数据
 
   设计：
 
 - 通过cache Shared Storage上的数据到计算层节点，避免网络延迟。
-
+  
   - 失效，从S3查询，新增Latency抖动。
   - Snowflake 在计算和存储之间加了一个共享的Distributed Ephemeral Storage 存储Intermediate data
     - （snowflake的论文中cache模块是随着VM的工作节点分配的，并且使用一致性hash，减轻节点变化缓存失效的影响）
     - 多租户资源隔离问题
       - （这是未理解datafuse的看法，如果单纯根据论文中的内容，VM是单用户的，非多租户的，而多租户只是云服务层，是后来snowflake实现有改变吗？）
+
 - Datafuse状态分离
+  
   - 为Persistent data生成足够多的索引放到Metadata Service，计算节点进行订阅，更新本地cache
     - 问题：海量索引块的同步
     - （这里的设计与snowflake的区别是，增加了索引，snowflake不使用索引，下图只有index，但是架构图中存在数据的索引，和snowflake一样）
     - （另外，索引不是在计算节点的cache中吗，怎么是“放到Metadata Service”？笔误?）
 
 ![](datafuse笔记图片/v2-56d66f4cf2971f9c111342ac4d444d64_720w.jpg)
-
-
-
-
 
 ## 2. 架构与设计
 
@@ -132,8 +118,6 @@ Datafuse 对传统数仓架构的批评：
     - 块存储集群
       - 提供读取，写入API
 
-
-
 ## 3. 实现
 
 源码版本（2021.08.27）：
@@ -163,13 +147,12 @@ Datafuse 对传统数仓架构的批评：
 - test
   - 集成测试，性能测试
 
-
-
 ### 3.1 元信息管理
 
 查询引擎的元信息：
 
 - `Database` trait
+  
   - `query/src/datasources/database.rs`
   - 数据库对象，提供表，函数等元信息
   - 实现 `query/src/datasources/`
@@ -181,14 +164,19 @@ Datafuse 对传统数仓架构的批评：
       - 系统表，系统元信息
 
 - `SystemDatabase` 系统数据库
+  
   - `query/src/datasources/system/system_database.rs`
   - 包含的表
     - dummy、functions、settings、databases、tables、clusters、tracing（执行时间trace）、processes（从sessionManager中获取的处理过、处理中的query信息）等
     - numbers表，似乎是测试表
     - 彩蛋：`contributors` 贡献者表，从环境变量`FUSE_COMMIT_AUTHORS` 中获取。
+
 - `LocalDataBase` 本地数据库
+
 - `RemoteDatabase` 远程数据库
+
 - `DatabaseCatalog` 包含所有database的元信息
+  
   - `query/src/catalogs/impls/database_catalog.rs`
   - `SessionManager` 中调用创建
   - `try_create()`
@@ -203,17 +191,13 @@ Datafuse 对传统数仓架构的批评：
   - `get_database()`
     - 先查看本地数据库，没有根据远程数据库客户端获取数据库
 
-
-
 元信息服务层
 
 `store/src/meta_service/`
 
 与tensorbase类似，包装使用了 `sled` 作为 kv存储库。 并且通过raft机制支持高可用。
 
-
-
-###  3.2 查询引擎
+### 3.2 查询引擎
 
 [data-shuffle](https://databend.rs/doc/contributing/rfcs/data-shuffle)
 
@@ -248,11 +232,9 @@ Datafuse 对传统数仓架构的批评：
                   - `query/src/servers/mysql/mysql_interactive_worker.rs`
                     - `do_query` 处理查询语句
 
-
-
 - `InteractiveWorkerBase::do_query`
   - `query/src/servers/mysql/mysql_interactive_worker.rs` or `query/src/servers/clickhouse/interactive_worker.rs`
-  -  `query/src/sql/plan_parser.rs`语法解析 
+  - `query/src/sql/plan_parser.rs`语法解析 
     - `PlanParser.build_with_hint_from_sql()`  字符串转 `PlanNode` 树
       - PlanNode: `common/planners/src/plan_node.rs`
       - `DfParser::parse_sql(query);` 解析成`Statement`
@@ -313,8 +295,6 @@ Datafuse 对传统数仓架构的批评：
     - clickhouse `query/src/servers/clickhouse/writers/query_writer.rs`
       - `QueryWriter.write()`
 
-
-
 `PlanScheduler`  计划调度器
 
 - `query/src/interpreters/plan_scheduler.rs`
@@ -339,7 +319,7 @@ Datafuse 对传统数仓架构的批评：
     - 根据`context: DatafuseQueryContextRef` 查询上下文创建，并初始化
   - `reschedule()`  调度计划入口
     - `visit_plan_node()` 后序遍历处理输入的单节点计划PlanNode tree
-  -  `visit_plan_node`
+  - `visit_plan_node`
     - `visit_aggr_part` ，`visit_aggr_final` 等
     - `visit_data_source` 读取数据源
       - `repartition` 数据重分区
@@ -376,8 +356,6 @@ Datafuse 对传统数仓架构的批评：
           - 为每个节点创建remote plan node
             - `fetch_nodes` 全部集群节点
 
-
-
 `Tasks`
 
 - `query/src/interpreters/plan_scheduler.rs`
@@ -393,8 +371,6 @@ Datafuse 对传统数仓架构的批评：
   - `get_local_task` 获取`plan` ，执行计划树根节点
   - `get_tasks` actions 相同内容，但是是Vec结构
   - `add_task` 添加 <nodename, flightaction>
-
-
 
 `pipeline`
 
@@ -424,8 +400,11 @@ Datafuse 对传统数仓架构的批评：
 `DatafuseQueryFlightService`
 
 - `query/src/api/rpc/flight_service.rs`
+
 - flight action 处理服务
+
 - 当前处理三种action
+  
   - `CancelAction` 关闭会话
   - `BroadcastAction` 广播数据到其他节点
   - `PrepareShuffleAction` 更据分区表达式，shuffle 数据到其他节点
@@ -437,23 +416,25 @@ Datafuse 对传统数仓架构的批评：
           - `mpsc::channel(5);`
         - `action_with_scatter` 
           - 更据执行计划，构建pipeline，异步等待结果（数据流），然后将数据发送到目标通道
+
 - 获取数据
+  
   - `do_get`
     - `DatafuseQueryFlightDispatcher.get_stream()` 
       - 根据`StreamTicket` 查询数据流数据Receiver端
         - `query_id`,`stage_id`,`stream` name
       - 根据通道的Receiver 端构建读取数据流
+
 - Client 接口
+  
   - `fetch_stream`  do_get
+    
     - `query/src/pipelines/transforms/transform_remote.rs`
     - `RemoteTransform` 
-
+  
   - `execute_action` do_action
 
-
 使用的是arrow flight rpc 框架，观察其实现，构建通道，异步io，通过 do_action 写数据到 flight  服务器，do_get 从服务下载数据。数据流临时存储在通道中，并不落盘。每个数据流具有`query_id`,`stage_id`,`stream`  构成的名字唯一标识。相对的，另一个分布式执行框架[Ballista](https://github.com/apache/arrow-datafusion) 是spark 风格，通过磁盘文件进行数据共享（详细，可参考arrow笔记，tensorbase笔记）。
-
-
 
 比较两种实现，给予思考：MPP框架容错
 
@@ -463,13 +444,9 @@ MPP相对MR，一个较大缺陷是，对于大批量任务查询，或者查询
 
 （TODO，HAWQ的 MMP和MR融合）
 
-
-
 ### 3.3 存储引擎
 
 DatafuseQuery(client) ---->(rpc)  DatafuseStore{flightServer ---> ActionHandler -->  IFileSystem  写文件 }
-
-
 
 - `RemoteTable` 远程表
   - `read_plan` 创建 `ReadDataSourcePlan()` 执行计划
@@ -479,8 +456,6 @@ DatafuseQuery(client) ---->(rpc)  DatafuseStore{flightServer ---> ActionHandler 
       - `common/dal/src/impls/aws_s3/s3_input_stream.rs`
   - `append_data()` 写数据
     - `StoreApisProvider.append_data()`
-
-
 
 - `store/src/bin/datafuse-store.rs` 入口 main()
   - `init_sled_db()` 初始化元信息
@@ -494,8 +469,6 @@ DatafuseQuery(client) ---->(rpc)  DatafuseStore{flightServer ---> ActionHandler 
           - `ActionHandler.do_pull_file()`
         - `do_put`
           - `ActionHandler.do_put()`
-
-
 
 - `ActionHandler`
   - `store/src/executor/action_handler.rs`
@@ -521,22 +494,50 @@ DatafuseQuery(client) ---->(rpc)  DatafuseStore{flightServer ---> ActionHandler 
 
 
 
+### 缓存设计
+
+![](./datafuse%E7%AC%94%E8%AE%B0%E5%9B%BE%E7%89%87/cache-e43bd6e25f1724a23c6ae4bde8b788d7.png)
+
+3 类数据缓存服务：
+
+- Persist Services：所有数据将被持久化，直到用户删除它们。
+- Cache Services：后端可能有自己的 GC 或后台自动回收逻辑，这意味着缓存服务是非持久的，即易失的。
+- Temporary Services：后端将配置有 TTL 并定时删除旧数据。
+
+
+查询将维护三个 OpenDAL 操作符：
+
+- Persist Operator：直接从/向存储服务读写持久数据。
+- Cache Operator：通过透明缓存读写数据。
+- Temporary Operator：从/向临时存储读写临时数据，该存储仅存储带有 TTL 的数据。
+
+
+
 ## REF
 
- - [github:databend](https://github.com/datafuselabs/databend)
-- [doc:datafuse](https://datafuse.rs/overview/architecture/)
-- [Rust, Datafuse and the Cloud Warehouse（1）云时代数仓架构设计](https://zhuanlan.zhihu.com/p/402092313) 设计理念
-- [Rust, Datafuse and the Cloud Warehouse（2）Datafuse 架构概览](https://zhuanlan.zhihu.com/p/402093492)
-- [Databend 设计概述 | 白皮书](https://segmentfault.com/a/1190000040965859)
-- [Best Software to Build a Data Warehouse in the Cloud: Features, Benefits, Costs](https://www.scnsoft.com/analytics/data-warehouse/cloud)
-- [未来数据库应具备什么核心能力？](https://pingcap.com/zh/blog/core-competence-of-future-database)
-- [云原生数据库设计新思路](https://pingcap.com/zh/blog/new-ideas-for-designing-cloud-native-database)
-- [[Snowflake核心技术解读系列一]架构设计](https://developer.aliyun.com/article/780125)
-- [存算分离/DB on K8s 论文/blog收集](https://zhuanlan.zhihu.com/p/377755864) 与palardb 架构对比
-
+- [github:databend](https://github.com/datafuselabs/databend)
+  - [doc:datafuse](https://datafuse.rs/overview/architecture/)
+  - [Rust, Datafuse and the Cloud Warehouse（1）云时代数仓架构设计](https://zhuanlan.zhihu.com/p/402092313) 设计理念
+  - [Rust, Datafuse and the Cloud Warehouse（2）Datafuse 架构概览](https://zhuanlan.zhihu.com/p/402093492)
+  - [Databend 设计概述 | 白皮书](https://segmentfault.com/a/1190000040965859)
+  - [Best Software to Build a Data Warehouse in the Cloud: Features, Benefits, Costs](https://www.scnsoft.com/analytics/data-warehouse/cloud)
+  - [未来数据库应具备什么核心能力？](https://pingcap.com/zh/blog/core-competence-of-future-database)
+  - [云原生数据库设计新思路](https://pingcap.com/zh/blog/new-ideas-for-designing-cloud-native-database)
+  - [[Snowflake核心技术解读系列一]架构设计](https://developer.aliyun.com/article/780125)
+  - [存算分离/DB on K8s 论文/blog收集](https://zhuanlan.zhihu.com/p/377755864) 与palardb 架构对比
 
 - [Ballista 分布式查询引擎 - 分布式执行计划](https://zhuanlan.zhihu.com/p/693963072)
+
 - [Ballista 分布式查询引擎 - 事件驱动调度](https://zhuanlan.zhihu.com/p/694217331)
 
 - [DataBend vs Rockset DataBend 与 Rockset](https://www.influxdata.com/comparison/databend-vs-rockset/)
+
 - [Databend 倒排索引的设计与实现](https://zhuanlan.zhihu.com/p/699366157)
+
+- [cache](https://docs.databend.cn/guides/community/rfcs/cache)
+
+- [⾯向现代分层存储的 Caching 技术漫谈｜Data Infra 研究社第十九期（含资料发布）](https://zhuanlan.zhihu.com/p/709599893)
+
+- opendal
+
+  - [Apache OpenDAL™ 内部实现：数据读取](https://xuanwo.io/2023/02-how-opendal-read-data/)

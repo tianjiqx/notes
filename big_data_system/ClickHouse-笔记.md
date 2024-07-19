@@ -332,6 +332,11 @@ FROM INFILE 'data.clickhouse'
 COMPRESSION 'lz4'
 FORMAT Native
 
+
+SELECT * FROM some_data
+INTO OUTFILE 'data.binary' FORMAT RowBinary
+
+
 ```
 
 
