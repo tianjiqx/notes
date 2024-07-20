@@ -11,8 +11,6 @@ InfluxDB数据模型将时间序列数据组织到桶buckets和度量measurement
         - Tags 标签：存储每个点的元数据字符串值的键值对，例如，标识或区分数据源或上下文的值，例如主机、位置、工作站等。tag值可以为空。
         - Fields 字段：存储每个点的数据的键值对，例如温度、压力、股票价格等。字段值可以为空，但在任何给定行上至少有一个字段值不为空。
         - Timestamp 时间戳：与数据关联的时间戳。当存储在磁盘上并进行查询时，所有数据都按时间排序。在InfluxDB中，时间戳是UTC中的纳秒级Unix时间戳。
-
-
     - 主键
       - 行的主键是点的时间戳和tag集的组合-tag keys和tag values的集合
 
@@ -95,6 +93,6 @@ InfluxDB数据模型将时间序列数据组织到桶buckets和度量measurement
   
 
 
-- [influxdb storage_engine TSM](https://influxdb-v1-docs-cn.cnosdb.com/influxdb/v1.8/concepts/storage_engine/) 中文
+- [influxdb storage_engine TSM](https://jasper-zhang1.gitbooks.io/influxdb/content/Concepts/storage_engine.html) 中文
   - 时间序列数据的属性
   - TSM的产生

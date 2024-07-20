@@ -11,6 +11,8 @@
   
   # 拉取远程分支到本地
   git pull origin <远程分支名>:<本地分支名>
+
+  git checkout -b branch_name origin/branch_name
   ```
 
 - 同步远程分支
