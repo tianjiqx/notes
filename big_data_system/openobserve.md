@@ -53,6 +53,13 @@ Features:
 
 - 每隔 ZO_FILE_PUSH_INTERVAL=10 秒，我们检查本地拼花文件，如果任何分区的总大小超过 ZO_MAX_FILE_SIZE_ON_DISK=128 MB或任何文件已 ZO_MAX_FILE_RETENTION_TIME=600 秒前，所有这样的小文件在一个分区将合并成一个大文件（每个大文件将最大 ZO_COMPACT_MAX_FILE_SIZE=256 MB），这将被移动到对象存储。
 
+
+高可用问题：
+- 只有 meta（PG） HA 备份
+- 存在 WAL，并且数据存放S3 保证，持久化数据可以不丢，但是似乎无日志多副本机制，存在单机崩溃，磁盘损坏，丢失新数据问题
+
+
+
 ### 查询
 
 Querier 查询器

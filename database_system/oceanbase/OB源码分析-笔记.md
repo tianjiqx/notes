@@ -211,3 +211,8 @@ todo：统计信息的推导，应当是按分区，一一连接。
 - [TPC-H 性能测试排行](http://tpc.org/tpch/results/tpch_perf_results5.asp?resulttype=all)
 - [TPC-DS V3性能测试排行](http://www.tpc.org/tpcds/results/tpcds_perf_results5.asp?resulttype=all)
 
+- [杨传辉：从一体化架构，到一体化产品，为关键业务负载打造一体化数据库](https://open.oceanbase.com/blog/7747032352)
+  - 基线数据共享存储，总的接近一份数据的存储成本 
+- [基于OceanStor Dorado的OceanBase数据库存算分离最佳实践.pdf](https://www.modb.pro/doc/128811)
+- [OceanBase、腾讯云、华为云联合发布《数据库存算分离最佳实践》！](https://www.modb.pro/db/1782671167769833472)
+  - 创建 LUN 并映射给主机方式使用远端存储，数据库不感知存储

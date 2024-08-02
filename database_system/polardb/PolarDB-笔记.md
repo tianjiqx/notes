@@ -88,3 +88,9 @@ PS:
 - [深度干货｜云原生分布式数据库 PolarDB-X 的技术演进](https://zhuanlan.zhihu.com/p/420195295)
 - [数据库内核那些事｜分布式数据库，挂掉两台机器会发生什么？](https://zhuanlan.zhihu.com/p/627920111)
   - 与其高概率少量不可用，不如不可用时（一个组挂两台）全体（分组内的分片）不可用，令分片数与可用性无关
+- [PolarDB Serverless: A Cloud Native Database for Disaggregated Data Centers](https://nan01ab.github.io/2021/06/PolarDB-Serverless.html)
+  - 写入/RW节点只有一个，写操作操作flush redolog到下层的fs之后，事务即可以commit
+  - 异步将redolog最新的LSN信息广播给其它的read-only/RO的节点
+  - RO节点在收到这个信息之后，从fs拉取新的redo log来在本地重放来实现对本地buffer pool中的数据进行更新
+  - RO也需要将自己目前redolog消费到哪里的信息提供给RW节点，这样RO节点都消费了的redolog就可以安全地删除(要dirty pages被flush到下层的fs)
+- [全新存算分离架构——[SIGMOD2021] PolarDB Serverless: A Cloud Native Database for Disaggregated Data Centers 笔记](https://zhuanlan.zhihu.com/p/382109937)

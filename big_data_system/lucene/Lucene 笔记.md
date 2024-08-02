@@ -124,6 +124,8 @@ https://lucene.apache.org/core/9_10_0/core/org/apache/lucene/codecs/lucene99/pac
     - [github: lucene-7.5.0](https://github.com/LuXugang/Lucene-7.5.0)
     - [索引文件生成（一）](https://www.amazingkoala.com.cn/Lucene/Index/2019/1226/121.html)
   - [lucene 8.6.2](https://kkewwei.github.io/elasticsearch_learning/categories/Lucene/) 中文博客
+  - [Elasticsearch Lucene 数据写入原理 | ES 核心篇](https://www.cnblogs.com/Alandre/p/11358954.html)
+
 - 架构
   - [Elasticsearch分布式一致性原理剖析(一)-节点篇](https://zhuanlan.zhihu.com/p/34858035)
   - [Elasticsearch分布式一致性原理剖析(二)-Meta篇](https://zhuanlan.zhihu.com/p/35283785)
@@ -132,7 +134,7 @@ https://lucene.apache.org/core/9_10_0/core/org/apache/lucene/codecs/lucene99/pac
 - 源码分析
   - [Lucene解析 - IndexWriter](https://zhuanlan.zhihu.com/p/35795070)
   - [Lucene的部分源码阅读](https://zhuanlan.zhihu.com/p/367391355)
-
+  - [从源码看 Lucene 的文档写入流程](https://juejin.cn/post/7137453263795781639) 
 
 - 开发
   - [ZSTD Compressor support in Lucene [LUCENE-8739]](https://github.com/apache/lucene/issues/9784) 关于zstd 压缩的支持，主要一直未成功原因是 zstd 是C++，管理者 不想在内核引入 jni 依赖，glibc等可移植问题

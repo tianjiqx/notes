@@ -444,6 +444,25 @@ MPP相对MR，一个较大缺陷是，对于大批量任务查询，或者查询
 
 （TODO，HAWQ的 MMP和MR融合）
 
+
+#### Processor 设计
+
+- Processor 是承载 Databend 所有重计算任务的并行计算引擎。
+
+- 受启发于： Morsel-Driven Parallelism: A NUMA-Aware Query Evaluation Framework for
+the Many-Core Age
+  - 相对 基于 xchange 算子的pipeline, 避免shuffle 导致的数据倾斜问题，更好的缓存局部性，获得更好的吞吐率
+
+- 每个 Processor 都是一个计算单元，多个 Processor 组成一个 Pipeline，多个 Pipeline 组成一个
+QueryGraph。而 QueryGraph 则是对应一个完整的计算 Job。
+
+- Processor 由 Scheduler 调度器驱动，不同 Processor 之间通过 Port 进行通信，每个 Port 为一
+个 DataBlock 的 Buffer。
+
+
+[morsel-driven-parallelism-numa-aware-query-evaluation](https://frankma.me/posts/papers/morsel-driven-parallelism-numa-aware-query-evaluation/)
+
+
 ### 3.3 存储引擎
 
 DatafuseQuery(client) ---->(rpc)  DatafuseStore{flightServer ---> ActionHandler -->  IFileSystem  写文件 }
@@ -537,7 +556,15 @@ DatafuseQuery(client) ---->(rpc)  DatafuseStore{flightServer ---> ActionHandler 
 - [cache](https://docs.databend.cn/guides/community/rfcs/cache)
 
 - [⾯向现代分层存储的 Caching 技术漫谈｜Data Infra 研究社第十九期（含资料发布）](https://zhuanlan.zhihu.com/p/709599893)
+  - FIFO-like 变得受欢迎
 
+- [databend blogs](https://www.databend.cn/blog/category-engineering)
+- [Databend 存储架构总览](https://www.cnblogs.com/databend/p/16814420.html)
+  - 基于 Snapshot 的保证 写入事务性，每次写入生成一个快照
+  - 数据的持久化安全，依赖于底层的对象存储
+  - 触发小 block 合并（databend 属于OLAP，对于批量写入，非流式写入，即使流式写入，可以通过消息队列进行缓冲转为批量写入，所以可以避免小文件问题）
+    - （近）实时性系统，似乎难以避免小文件问题，依然需要存储引擎层写多副本日志，或者说需要一个高性能、全内存的处理热数据(内存数据库) + 异步 OLAP 读写分离的后端处理，某种程度上可以说又是OB这样系统的增量数据+基线数据。存储引擎层即为，原来架构的UpdateServer集群，ChunkServer 集群为对象存储
+- [Databend 特性系列（1）｜Databend 数据生命周期](https://www.cnblogs.com/databend/p/16695955.html)
 - opendal
 
   - [Apache OpenDAL™ 内部实现：数据读取](https://xuanwo.io/2023/02-how-opendal-read-data/)

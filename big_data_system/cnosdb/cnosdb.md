@@ -135,4 +135,5 @@ SDT压缩算法
 
 ## REF
 
-- [tskv 存储引起设计](https://docs.cnosdb.com/docs/reference/concept_design/tskv)
+- [tskv 存储引擎设计](https://docs.cnosdb.com/docs/reference/concept_design/tskv)
+- [存算分离](https://docs.cnosdb.com/docs/2.3.2/reference/concept_design/separation_mod/)

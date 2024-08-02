@@ -112,6 +112,17 @@ enum EncodingTypePB {
 
 [CREATE-TABLE](https://doris.apache.org/zh-CN/docs/dev/sql-manual/sql-statements/Data-Definition-Statements/Create/CREATE-TABLE) 中未找到如何定义列的codingType 语法，也许是todo状态
 
+## 存算分离
+
+- 冷热数据分层，实现冷数据存储分离
+    - 热数据本地 Cache，全量数据在对象存储
+    - 云磁盘的价格通常是对象存储的 5-10 倍，如果可以将 80% 的冷数据保存到对象存储中，存储成本至少可降低 70% ;
+- 弹性计算节点，实现计算分离，无状态
+
+- 独立的读集群，读取S3数据
+
+主要的问题：实时性无法保证
+
 
 ## REF
 

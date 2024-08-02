@@ -96,3 +96,5 @@ InfluxDB数据模型将时间序列数据组织到桶buckets和度量measurement
 - [influxdb storage_engine TSM](https://jasper-zhang1.gitbooks.io/influxdb/content/Concepts/storage_engine.html) 中文
   - 时间序列数据的属性
   - TSM的产生
+
+- [InfluxDB 模型和存储引擎入门](http://47.241.45.216/2022/03/17/InfluxDB-%E7%9B%B8%E5%85%B3%E6%9D%90%E6%96%99/)
