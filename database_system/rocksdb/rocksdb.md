@@ -44,6 +44,33 @@ key-value 的存储文件. DB 目录下的 0000xx.sst 形态.
 
 ![计算-计算分离的Rockset架构](./images/2024-08-09_18-04.png)
 
+#### Rockset的leader-follower架构 
+实现一致性和持续性
+
+![](./images/2024-08-10_03-05.png)
+
+- 摄入数据input流是**一致且持久的**。它实际上是一个持久的逻辑重做日志，使Rockset能够在发生故障时返回日志以检索新生成的数据。
+- Rockset使用外部强一致性元数据存储来执行领导者选举, 每次选出领导者时，它都会选择一个cookie
+- Cookie确保即使旧的leader仍在运行，其S3写入也不会干扰新的leader，并且其操作将被followers忽略
+- 持久逻辑重做日志的输入日志位置, 存储在RocksDB键中，以确保输入流只处理一次。
+
+- 复制日志是RocksDB写前日志的超集，用诸如leader election之类的附加事件来扩充WAL条目。
+    - 复制日志中的键/值更改直接插入到follower的memtable中。
+    - 不需要写WAL到磁盘上
+    - 当日志指示leader已经将memtable写入磁盘（S3）时，follower可以开始阅读leader创建的文件-leader已经在共享存储上创建了文件。
+    - 类似地，当跟随器得到压缩已经完成的通知时，它可以直接开始使用新的压缩结果，而不进行任何压缩工作。
+- 共享热存储完成RocksDB SST文件字节的实时物理复制，包括压缩导致的物理文件更改，而leader/follower复制日志仅携带逻辑更改。
+
+![](./images/2024-08-10_03-05_1.png)
+
+- 使用之前的cookie 找到S3上最近的一个快照
+- 订阅输入流，起始位置从rocksDB数据中读取
+- 从摄取的数据分钟构造memtable
+
+![](./images/2024-08-10_03-06.png)
+
+- 追随者使用领导者的cookie在共享热存储中查找最新的RocksDB快照，并订阅领导者的复制日志。
+- follower使用leader的复制日志中最近生成的数据构造一个memtable。
 
 ## REF
 
@@ -80,8 +107,28 @@ key-value 的存储文件. DB 目录下的 0000xx.sst 形态.
 - [How Rockset Separates Compute and Storage Using RocksDB](https://rockset.com/blog/separate-compute-storage-rocksdb/)
 
     - Rendezvous hashing  哈希算法，在热存储层中分发RocksDB数据
-    - 基于持久性二级缓存（PSC））来扩展计算节点上可用的缓存空间，缓存层
+    - 基于持久性二级缓存（PSC persistent secondary cache）来扩展计算节点上可用的缓存空间，缓存层
     - 计算节点包含内存块缓存和PSC
+    - 保持性能
+        - 提高缓存层命中率
+            - 每次创建新SST文件时，计算节点都会向热存储层发送同步预取请求
+            - 当存储节点发现新切片时，由于计算节点发送针对属于该切片的文件的预取或读取块请求，它主动扫描S3以下载该切片的其余文件。一个切片的所有文件在S3中共享相同的前缀。
+            - 存储节点定期扫描S3以保持它们拥有的切片同步。将下载本地丢失的任何文件，并删除本地可用的过时文件。
+        - 查询执行被设计为使用预取和并行来限制通过网络的请求的性能损失
+            - 计算节点可以并行地从本地PSC（可能使SSD带宽饱和）和从热存储层（使网络带宽饱和）获取块
+        - 保证可靠性而冗余副本
+            - 在热存储层的不同存储节点上存储多达两个文件副本
+                - 主所有者使用由计算节点发出的预取RPC并通过扫描S3
+                - 第二所有者仅在计算节点读取文件后才下载文件
+            - 热存储层中分配固定数量的磁盘空间作为二级副本文件的LRU缓存
+            - 除了计算节点上的内存块缓存和PSC之外，存储约30-40%数据的辅助副本足以避免转到S3检索数据，即使在存储节点崩溃的情况下也是如此
+    - 缓存层设计优点
+        - 通过其热存储层实现与紧耦合系统相似的性能
+        - 可以在共享的实时数据上运行多个应用程序，新的虚拟实例可以立即启动或关闭，以满足不断变化的摄取和查询需求
+
+- [How We Use RocksDB at Rockset](https://rockset.com/blog/how-we-use-rocksdb-at-rockset/)       
+
+- [Remote Compactions in RocksDB-Cloud](https://rockset.com/blog/remote-compactions-in-rocksdb-cloud/)
 
 - [Rocksdb Secondary Instances 使用调研](https://juejin.cn/post/7299668106132619316)
     - Secondary 实例可以共享 Primary 实例的 SST 文件
@@ -95,4 +142,3 @@ key-value 的存储文件. DB 目录下的 0000xx.sst 形态.
 - [从 SIGMOD 23 看 RocksDB 的存算分离实践](https://blog.csdn.net/weixin_43778179/article/details/134281246)
 
 
-How Rockset Separates Compute and Storage Using RocksDB | Rockset
