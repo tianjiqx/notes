@@ -54,9 +54,23 @@ cd /usr/lib/virtualbox/
 
 ```
 
+- [Linux中获得AMD显卡的状态信息](https://www.small09.top/posts/210719-gpuinfoinlinux/)
+    - amd 查看gpu 工具： radeontop，类似nvidia-smi工具，但是独立显卡，核显查看不了 
+        - 实际可以，如果查看不了，可能是amdgpu 模块未加载 
+        - `lsmod | grep amdgpu ` 检查 AMDGPU 模块是否已加载, 之后 `lspci -v -s <xx> ` 命令也可以检查使用了amdgpu
+        - `sudo modprobe amdgpu` 手动加载 AMDGPU 内核模块 （会注销用户）
+    - 另一个监控工具 [amdgpu_top](https://github.com/Umio-Yasuno/amdgpu_top)
+
+    - [ollama: Enable AMD iGPU 780M in Linux](https://github.com/ollama/ollama/pull/5426/files#diff-7ee7b1925642f957e6b8274a2abdd37661c060e369669cbe8e6dad6cddf01bc2) 有人折腾出用 780M 核显 运行 llm 模型
+
+
 
 
 # 技巧
+
+## Ubuntu22.04 注意使用 Xog11 (腾讯会议， 各远程桌面)
+
+默认 Wayland 很多程序不怎么支持
 
 ## 调整swap大小
 
