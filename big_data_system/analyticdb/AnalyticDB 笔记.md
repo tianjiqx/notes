@@ -453,6 +453,8 @@ Q3延时增长，是因为计算更多数据，高并发，频繁上下文切换
 - [如何通过数据仓库实现湖仓一体数据分析？](https://mp.weixin.qq.com/s/Cy5UIpGg0oGxvU5nonM9CA)
 - [关于AnalyticDB 3.0的调研和分析](https://blog.microdba.com/database/2020/01/15/about-aliyun-analyticdb-for-mysql/)
 
+- [[笔记] AnalyticDB: Real-time OLAP Database System at Alibaba Cloud](https://fuzhe1989.github.io/2020/11/24/analyticdb-real-time-olap-database-system-at-alibaba-cloud/)
+
 扩展阅读材料：
 
 - [slides:Data warehousing in the cloud](https://bostonsql.org/wp-content/uploads/2017/04/2017-04-Dewitt.pptx)

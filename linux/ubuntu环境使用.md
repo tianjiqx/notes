@@ -70,7 +70,7 @@ cd /usr/lib/virtualbox/
 
 ## Ubuntu22.04 注意使用 Xog11 (腾讯会议， 各远程桌面)
 
-默认 Wayland 很多程序不怎么支持
+默认 Wayland 很多程序不怎么支持。
 
 ## 调整swap大小
 

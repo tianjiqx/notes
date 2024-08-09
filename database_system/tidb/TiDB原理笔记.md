@@ -357,3 +357,9 @@ TiDB 云原生的目的：降低用户成本
 - [TiDB 4.0 为解决热点问题做了哪些改进？](https://pingcap.com/zh/blog/improvements-made-by-tidb-4.0-to-solve-hot-spot-issues) AutoRandom 
 - [tidb 表结构设计最佳实践](https://book.tidb.io/session1/chapter7/tidb-schema-design.html)
 - [PingCAP王鹏飞：返璞归真？如何架构云原生数据库的新范式？](https://zhuanlan.zhihu.com/p/432986358)
+  - 
+
+- [云原生数据库设计新思路](https://cn.pingcap.com/blog/new-ideas-for-designing-cloud-native-database/)
+
+- [黄东旭：The Future of Database，掀开 TiDB Serverless 的引擎盖](https://cn.pingcap.com/blog/the-future-of-database-2023/)
+

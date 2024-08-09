@@ -37,6 +37,16 @@ Storage engine：
     - 为parquet文件建立额外索引以提高查询效率
 
 
+[灾难恢复（DR）](https://docs.greptime.com/user-guide/operations/disaster-recovery/overview)
+
+- WAL：它可以是基于本地磁盘的（本地WAL）或基于Kafka集群的（[远程WAL](https://docs.greptime.com/user-guide/operations/remote-wal/quick-start)）
+    - WAL组件是可插拔的，例如使用Kafka作为提供成熟DR解决方案的WAL服务
+
+- SST: 对象存储中
+
+- Active-Active Failover 主主同步复制
+
+
 #### 智能索引
 
 在时间序列的分析场景中，最常见的查询模式是根据给定的标签和时间范围来定位拟合序列。
@@ -92,3 +102,11 @@ GreptimeDB 如何解决高基数问题？（各自实现不同，高基数具体
 - [2022-12-08-GreptimeDB-internal-design](https://greptime.com/blogs/2022-12-08-GreptimeDB-internal-design)
 
 - [GreptimeDB存储引擎设计-迎合时间序列场景](https://greptime.com/blogs/2022-12-21-storage-engine-design)
+
+
+- [GreptimeDB 0.9.1 vs. InfluxDB 2.77 性能测试报告](https://zhuanlan.zhihu.com/p/713321666)
+    - GreptimeDB (23w/s) 的写入吞吐是 InfluxDB (10w/s)的 2 倍以上,  InfluxDB Line protocol 写入 
+        - CK 14w/s
+    - GreptimeDB 的查询性能在处理大数据量或者重运算场景时优势明显，部分查询速度可达 InfluxDB 的 11 倍以上
+    - 查询涉及少量数据时，InfluxDB 查询略快，但两者查询时间都很短，在同一数量级
+    - GreptimeDB 在 S3 上的读写性能与本地存储相当，建议使用对象存储时启用本地缓存
