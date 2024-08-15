@@ -13,6 +13,10 @@
 ## AWS S3（Simple Storage Service）
 
 
+## CubeFS
+
+## MinIO
+
 
 ## 支持面向对象存储的系统
 
@@ -25,3 +29,6 @@
 
 
 - [[VLDB'22] CloudJump: 存储层上云优化](http://47.241.45.216/2023/01/01/VLDB-22-CloudJump-optimizing-cloud-databases-for-cloud-storages/)
+
+
+- [CubeFS 文件系统架构 设计及应用｜Data Infra 研究社第20期](https://www.bilibili.com/video/BV1XCafe8ECS/)

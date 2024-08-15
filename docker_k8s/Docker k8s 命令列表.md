@@ -170,3 +170,10 @@ kubectl get events --sort-by=.metadata.creationTimestamp | grep inceptor
    - **Node IP**：如果 Pod 是运行在特定节点上的，你也可以看到节点的 IP 地址，但这通常不是通过 `get pod` 命令直接获取的。
 
 总结来说，`get service` 命令返回的是服务的 IP 地址，它提供了一种稳定的访问后端 Pod 的方式，而 `get pod` 命令返回的是 Pod 自身的 IP 地址，这个地址是动态的，可能会变化。服务的 IP 地址（ClusterIP）用于集群内部通信，而 Pod 的 IP 地址通常用于调试和内部组件间的通信。如果你需要从集群外部访问应用程序，你可能需要查看服务的 NodePort 或 LoadBalancer IP 地址。
+
+
+
+## blogs:
+
+- [aarch cpu架构下 docker 安装](https://www.cnblogs.com/leozhanggg/p/16660866.html)
+

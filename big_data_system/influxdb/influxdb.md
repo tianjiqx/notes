@@ -59,7 +59,7 @@ InfluxDB数据模型将时间序列数据组织到桶buckets和度量measurement
 ### 高基数（Cardinality）问题
 高基数（Cardinality）问题是指在时序数据库中，标签（tag）的数量过多，导致每个数据点都有大量不同的标签组合，这种现象称为时间线膨胀（time series cardinality explosion）。这对TSM（Time-Structured Merge Tree）存储引擎的影响主要体现在以下几个方面：
 
-- 索引性能下降：TSM存储引擎依赖于索引来快速检索数据。当存在高基数问题时，索引的大小会急剧增加，导致索引检索性能下降。尤其是在Series Segment Index中，检索性能的下降更为明显
+- 索引性能下降：TSM存储引擎依赖于时间序列的倒排索引来快速检索数据。当存在高基数问题时，索引的大小会急剧增加，导致索引检索性能下降。尤其是在Series Segment Index中，检索性能的下降更为明显
   - TSI（Time Series Index）检索Measurement，tag，tagval，time
   - TSM（Time-Structured Merge Tree）用来检索time-series -> value
   - Series Segment Index 用来检索 time-series key <–> time-series Id, Series ID 在 InfluxDB 中是一个唯一的标识符，用于识别和索引单个时间序列数据。
@@ -98,3 +98,14 @@ InfluxDB数据模型将时间序列数据组织到桶buckets和度量measurement
   - TSM的产生
 
 - [InfluxDB 模型和存储引擎入门](http://47.241.45.216/2022/03/17/InfluxDB-%E7%9B%B8%E5%85%B3%E6%9D%90%E6%96%99/)
+
+- [解读 InfluxDB IOx：基于列存的时序数据库](https://liujiacai.net/blog/2021/01/21/thoughts-of-influxdb-iox/)
+  - 对于时间线膨胀问题，IOx 不再单独维护倒排索引，取而代之的是每个分区的概要文件。在分区选择合理的情况下，概要文件的大小是比较可控的。相当于对之前的倒排索引做了分片。
+
+- [开源时序数据库解析 - InfluxDB IOx](https://zhuanlan.zhihu.com/p/534035337)
+  - 问题：
+    - 1）当时间线基数变大，索引大小会膨胀，会导致查询性能的急剧下降；
+    - 2）某些场景下索引大小会远大于数据大小（例如 Trace 场景，单条时间线包含极少数据点，时间线基数非常大），导致存储效率大大降低；
+    - 3）某些时间线规模较大且较低索引筛选率的查询场景，索引几乎无效甚至会导致查询性能的严重下降。
+  - 解决问题的方式就是干脆把整个时间线索引给去除
+  - PS：与 Rockset 实现路径很相近

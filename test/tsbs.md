@@ -1415,6 +1415,8 @@ cpu表：
 
 doris移除掉 float 的fields 字段后， 空间大小为 4.286 MB， 推算可得， doris 在其他字段usage上消耗空间为 66.115。
 
+cpu 表 单列 usage_user 减去base 计算得 6.576 MB，比下面 lz4 直接压缩更低。
+
 ck Gorilla 对应的​ usage字段，消耗空间为 77.1719，在 float 类型字段空间消耗差异不大。（ck分区而doris未分区影响？测试无分区的lz4 219.445，影响不大）
 ck lz4 编码 对应的​ usage字段，消耗空间为 220.445。
 
