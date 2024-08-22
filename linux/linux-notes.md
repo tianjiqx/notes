@@ -100,7 +100,8 @@
 
 
 - 授权，访问 /var/lib/clickhouse 权限 clickhouse:clickhouse
-  ```shell
+
+```shell
 # 将tianjiqx加入到clickhouse
 sudo usermod -a -G clickhouse tianjiqx
 
@@ -109,7 +110,6 @@ sudo chmod 770 /var/lib/clickhouse
 
 # 更新 clickhouse 用户组
 newgrp clickhouse
-
 ```
 
 
