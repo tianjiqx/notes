@@ -1465,8 +1465,48 @@ usage_user 列：
 | lz4 size（1MB块） | 23M             | 1.7    |
 | bigshuffle+lz4 size（1MB块） | 6.3M   | 6.3    |
 
-bigshuffle+lz4 测试 6.3M 与 doris 的大小 6.576 MB 基本一致
+bigshuffle+lz4 测试 6.3M 与 doris 的大小 6.576 MB 基本一致，每个 float 数据占据6.3MB / 10368000 = 0.637 B
+（注意，实际usage_user字段，是int类型）
 
+VictoriaMetrics的改进Gorilla声称将典型的node_exporter时间序列数据压缩到每个数据点0.4字节。
+
+
+用随机数生成(最坏情况，高熵数据（即具有大量小数位的随机数），真实情况两个值会接近)，100个不同的1M flaot 值：
+```java
+private static float[] generateFloatData(int size) {
+    Random random = new Random();
+    float[] data = new float[size];
+    for (int i = 0; i < size; i++) {
+        data[i] = random.nextLong() % 100 / 10.0f;
+    }
+    return data;
+}
+
+/*
+Original size: 4000000 bytes
+LZ4 size: 2337920 bytes
+BitShuffle + LZ4 size: 1955675 bytes
+LZ4 compression ratio: 1.71
+BitShuffle + LZ4 compression ratio: 2.05
+LZ4 compression time: 31.51 ms
+BitShuffle + LZ4 compression time: 19.70 ms
+LZ4 compression speed: 121.06 MB/s
+BitShuffle + LZ4 compression speed: 193.60 MB/s
+
+// 去除 / 10.0f 后
+Original size: 4000000 bytes
+LZ4 size: 2070649 bytes
+BitShuffle + LZ4 size: 1363041 bytes
+LZ4 compression ratio: 1.93
+BitShuffle + LZ4 compression ratio: 2.93
+LZ4 compression time: 30.32 ms
+BitShuffle + LZ4 compression time: 19.70 ms
+LZ4 compression speed: 125.82 MB/s
+BitShuffle + LZ4 compression speed: 193.69 MB/s
+
+*/
+```
+BitShuffle 额外增加的bit转换，甚至可以提升lz4执行效率！
 
 disk表：
 
