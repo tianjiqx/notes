@@ -137,3 +137,17 @@ echo 1 > /proc/sys/kernel/perf_event_paranoid
 - [arthas](https://arthas.aliyun.com/doc/download.html)
 - [看看我给Arthas官方提供的容器中生成火焰图问题解决方案](https://my.oschina.net/u/1760791/blog/4773494)
 - [Arthas使用教程(8大分类)](https://www.cnblogs.com/lydms/p/16549145.html)
+- [Arthas 之通过 thread 命令定位线程问题](https://jueee.github.io/2020/08/2020-08-13-Arthas%E4%B9%8B%E9%80%9A%E8%BF%87thread%E5%91%BD%E4%BB%A4%E5%AE%9A%E4%BD%8D%E7%BA%BF%E7%A8%8B%E9%97%AE%E9%A2%98/)
+  - 定位 CPU 使用较高的线程
+    -  thread -n 5 top5 高使用率线程
+  - 定位线程阻塞
+    -  thread | grep pool 
+  - 定位线程死锁
+    - thread -b 
+- [Arthas 之定位方法调用问题](https://jueee.github.io/2020/08/2020-08-14-Arthas%E4%B9%8B%E5%AE%9A%E4%BD%8D%E6%96%B9%E6%B3%95%E8%B0%83%E7%94%A8%E9%97%AE%E9%A2%98/)
+  - trace 命令 定位耗时问题
+    - ``
+  - monitor 统计方法耗时
+    - `monitor -c 10 sample.demo.controller.UserController getUser`
+  - stack 方法调用路径
+    - `stack sample.demo.controller.UserController getUser`
