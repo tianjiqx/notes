@@ -1456,16 +1456,16 @@ ck 默认压缩块大小是 64K， doris 默认也是 64K.
 doris 建表语句使用了 FLOAT 默认，是 4 字节， ck float64 类型是 8 字节
 
 
-// 完全使用float32二进制存储，空间 10368000*4/1024/1024 = 39.5MB
+// 使用float32二进制存储usage_user字段，空间 10368000*4/1024/1024 = 39.5MB
 
 usage_user 列：
 
 |                 | 压缩结果 | 压缩比 |
 |-----------------|-----------------|--------|
 | lz4 size（1MB块） | 23M             | 1.7    |
-| bigshuffle+lz4 size（1MB块） | 6.3M   | 1.7    |
+| bigshuffle+lz4 size（1MB块） | 6.3M   | 6.3    |
 
-bigshuffle+lz4 测试 6.3M 与 doris 的大小 6.576 MB 基本一直
+bigshuffle+lz4 测试 6.3M 与 doris 的大小 6.576 MB 基本一致
 
 
 disk表：
