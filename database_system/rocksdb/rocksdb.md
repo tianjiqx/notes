@@ -72,6 +72,62 @@ key-value 的存储文件. DB 目录下的 0000xx.sst 形态.
 - 追随者使用领导者的cookie在共享热存储中查找最新的RocksDB快照，并订阅领导者的复制日志。
 - follower使用leader的复制日志中最近生成的数据构造一个memtable。
 
+
+## SourceCode
+
+idea clion 配置，可以参考[pika](https://github.com/OpenAtomFoundation/pika/blob/unstable/docs/ops/SetUpDevEnvironment.md)
+
+可能缺少相关依赖（libgflags-dev），需要参考INSTALL.md文件自行安装
+
+```
+rocksdb-cloud：
+
+db/db_impl/db_impl_write.cc
+
+DBImpl::WriteImpl()
+
+immutable_db_options_.replication_log_listener->OnReplicationLogRecord()
+
+// leader
+ReplicationLogListener
+
+
+// ReplicationLogListener provides a mechanism to implement physical replication
+// in RocksDB. A leader registers the ReplicationLogListener through which it
+// captures the replication events, which are then applied on the follower
+// using DB::ApplyReplicationLogRecord().
+// What is replicated in this method?
+// * Manifest writes, which means the LSM trees of the leader and follower are
+// identical.
+// * Memtable writes.
+// * Memtable switches.
+//
+// S3 files are not replicated. Follower needs to be able to locate the leader's
+// SST files, which is usually done by overriding its Env.
+//
+// The support for physical replication is experimental and currently does not
+// support any of the following options:
+// * unordered_write
+// * enable_pipelined_write
+// * two_write_queues
+// * write-ahead logging, i.e. WriteOptions::disableWAL needs to be set to true.
+// Replication log provides write durability.
+//
+// In addition, atomic_flush needs to be true and any manual Flush() call will
+// flush all the existing column families.
+//
+// Follower DB should not be written to and compaction and flushes should be
+// disabled. The only changes to its internal state should happen through
+// ApplyReplicationLogRecord().
+
+// follower 应用日志
+db/db_impl/db_impl.cc
+DBImpl::ApplyReplicationLogRecord()
+
+
+```
+
+
 ## REF
 
 - [tikv rocksdb-overview](https://docs.pingcap.com/zh/tidb/stable/rocksdb-overview)

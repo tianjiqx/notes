@@ -56,7 +56,7 @@ redis,uptime_in_seconds,total_connections_received,expired_keys,evicted_keys,key
 
 --scale=400
 
-400 * 3 * 24 * 60 * 6 * 9 = 9331 2000 行数据
+400 * 3 * 24 * 60 * 6 * 9 = 9331 2000 行数据 (400设备 * 天数 * 单设备一天 * 指标族 )
 
 
 单设备一天 24 * 60 * 6 = 8640

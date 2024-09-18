@@ -1,5 +1,17 @@
 # VictoriaMetrics
 
+时序数据库应用：
+
+- DevOps - CPU, RAM, network, rps, errors count
+- IoT - temperature, pressure, geo coordinates
+- Finance - stock prices
+- Industrial monitoring - sensors in wind turbines, factories, robots
+- Cars - engine health, tire pressure, speed, distance
+- Aircraft and aerospace - black box, spaceship telemetry
+- Healthcare - cardiogram, blood pressure
+
+
+
 ## Tech
 
 ### small 文件合并
@@ -68,3 +80,12 @@ index 空间： 17M
 
 - [Evaluating Performance and Correctness](https://www.robustperception.io/evaluating-performance-and-correctness/):  Prometheus 社区对 VictoriaMetrics PromQL 语义不兼容问题
 - [Evaluating Performance and Correctness](https://valyala.medium.com/evaluating-performance-and-correctness-victoriametrics-response-e27315627e87): VictoriaMetrics response
+
+- [Victoria Metrics 写入流程分析（上篇）](https://liujiacai.net/blog/2024/07/01/vm-write-analysis/)
+    - 分治解决时间线膨胀问题，按照time进行划分（与按照segment划分对比？）
+        - 按segment缺点：duplicates inverted index data for long-living time series
+        - perday：timeseries_ids，优点是只存一次，缺点是更大的ids set
+
+- [slide: Go optimizations in VictoriaMetrics](https://docs.google.com/presentation/d/1k7OjHvxTHA7669MFwsNTCx8hII-a8lNvpmQetLxmrEU/edit#slide=id.g623cf286f0_0_76) 介绍了一些TSDB实现原理，主要倒排索引实现
+    - (label=value) timeseries_id1  vs Optimized row：(label=value) timeseries_id1, timeseries_id2, … timeseries_idN
+    - Timeseries_ids intersection: customized bitset
