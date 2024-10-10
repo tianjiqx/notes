@@ -19,6 +19,9 @@
 某类似系统：
 > 对只读的历史数据, 通过 force merge, 将每个分片内多个 segments 合并为单个 segment, 可有效降低存储成本. 目前测试数据表明, 这可以降低指标历史存储成本 20%~40%.
 
+需要合并原因：采集写入一批数据时，涉及到的是大量不同时间序列的数据，将更长时间范围的segment文件合并，有利于将相同时间序列的数据物理组织在一起，提高数据压缩率，以及查询性能。
+
+
 ###  Gorilla 编码优化
 
 步骤：
@@ -89,3 +92,6 @@ index 空间： 17M
 - [slide: Go optimizations in VictoriaMetrics](https://docs.google.com/presentation/d/1k7OjHvxTHA7669MFwsNTCx8hII-a8lNvpmQetLxmrEU/edit#slide=id.g623cf286f0_0_76) 介绍了一些TSDB实现原理，主要倒排索引实现
     - (label=value) timeseries_id1  vs Optimized row：(label=value) timeseries_id1, timeseries_id2, … timeseries_idN
     - Timeseries_ids intersection: customized bitset
+
+
+- [小红书可观测 Metrics 架构演进，如何实现数十倍性能提升？](https://xie.infoq.cn/article/f7ce46d8a02df660fb6ece63f)

@@ -44,6 +44,32 @@ PacificA类算法  < 7.x
 
 raft 
 
+
+### TSDB
+
+ES做时序引擎：
+
+- [Add better support for metric data types (TSDB)](https://github.com/elastic/elasticsearch/issues/74660)
+- [TSDB dimensions encoding](https://github.com/elastic/elasticsearch/pull/99747)
+    - 
+- [TSDB numeric compression](https://github.com/elastic/elasticsearch/pull/92045)
+
+- [基于Elasticsearch的指标可观测实践](https://zhuanlan.zhihu.com/p/562493025)
+    - Setting中增加了一个index.mode=time_series的设置，这个设置告诉ES在内部去实现时序场景的最佳实践。
+    - Mapping 字段配置增加了2个关键字：time_series_dimension和time_series_metric，这两个设置是为了告诉ES哪些字段用作维度字段，哪些字段用作指标字段，有这两个配置再结合index.mode=time_series，ES会把所有的维度字段生成一个_tsid（时间线ID）内部字段，用_tsid和timestamp去做 index sorting。
+
+
+实现
+
+- ES87TSDBDocValuesConsumer
+- ES87TSDBDocValuesProducer
+
+#### 编码
+
+- timestamp：delta coding + GCD compression + bit-packing
+
+
+
 ## REF
 
 -  [es blog cn](https://www.elastic.co/cn/blog/)

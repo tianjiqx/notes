@@ -39,6 +39,13 @@ curl -X GET "localhost:9200/_cluster/allocation/explain?pretty" -H 'Content-Type
 '
 
 
+// alias
+
+GET  _cat/_aliases?v
+
+GET _alias/alias-logs_keta
+
+
 // 分片
 // 名字降序
 _cat/shards?v&s=index:desc

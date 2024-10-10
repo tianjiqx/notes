@@ -12,7 +12,7 @@
 
 具有唯一的ID，docID。
 
-### 1.3 字段 Field
+### 1.3 字段(域) Field
 
 一个Document会由一个或多个Field组成，Field是Lucene中**数据索引**（非1.1的索引）的最小定义单位。
 
@@ -41,8 +41,18 @@ Lucene中的数据写入会先写内存的一个Buffer（类似LSM的MemTable，
 
 ### 1.6 DocValues
 
+DocValues是Lucene在构建索引时，会额外建立一个有序的基于document => field value的映射列表；（正向索引） 
+
 DocValues 提供了对一系列docId所对应的一个filed的一组值（一列数据），根据field类型()可以使用不同类型的DocValues。不分词，正排索引结构，面向列式存储格式。
 
+
+- [Lucene源码解析——DocValue存储方式](https://zhuanlan.zhihu.com/p/384487150) 推荐
+
+  - sorted并不是说将field value排序后，存储value -> docid的映射（这个就是mysql的索引了!），而是另外一层意思， 对于SortedNumericDocValue来说就是一个field中的多个值是有序的， 而对于SortedDocValues来说，这个sorted是指将字符串按照字典顺序排序转成的value
+  - 但 NumericDocValues，或者SortedNumericDocValues 所使用的编码方式（v - min）/gcd 缩减v的值域范围，再通过bit-packing缩减需要存储的bits来进行存储压缩，实际对于float,double类型类型，基本不工作。
+
+-  [Lucene源码解析——StoredField存储方式](https://zhuanlan.zhihu.com/p/384486147)
+  - ZFloat：Float类型，会尝试精简编码成int
 - [BinaryDocValues](https://www.amazingkoala.com.cn/Lucene/DocValues/2019/0412/49.html) 
   - 二进制类型值对应不同的codes最大值可能超过32766字节
 - [SortedDocValues](https://www.amazingkoala.com.cn/Lucene/DocValues/2019/0219/34.html)
@@ -57,7 +67,30 @@ DocValues 提供了对一系列docId所对应的一个filed的一组值（一列
 
 缩略词dvd(DocValueData)，dvm(DocValueMeta)
 
+
+- [浅谈Lucene中的DocValues](https://cloud.tencent.com/developer/article/1122277)
+- [lucene DocValues之NumericDocValues](https://zhuanlan.zhihu.com/p/631980445)
+- [lucene DocValues之SortedDocValues](https://zhuanlan.zhihu.com/p/654522546)
+
+- [lucene 编码技术 - DirectWriter](https://zhuanlan.zhihu.com/p/588900849)
+  - 将 long[] 型数据集编码存储到 byte[] 使用 固定bits编码（bit-packing） bitPerValue
+
+- [DocValues](https://www.amazingkoala.com.cn/tags/DocValues/)
+
+
+
+
+
+### 1.7 StoredField & StoreValues （行存）
+ 
 StoreValues 提供行存格式。 比如`_source` 字段存储原始数据。
+
+
+- [Lucene StoredField 原理](https://zhuanlan.zhihu.com/p/713532844)
+
+### 1.8 InvertedIndex 倒排索引
+
+
 
 ## 2. 原理
 
@@ -78,6 +111,11 @@ StoreValues 提供行存格式。 比如`_source` 字段存储原始数据。
 
 从 lucene 读取 5w/s
 
+
+
+- [https://zhuanlan.zhihu.com/p/671225495](Lucene 倒排索引之 FST)
+  - 倒排索引的实现，HashMap -> Trie 前缀树 -> FST（Finite State Transducer）
+  - FST，不但能共享前缀还能共享后缀。不但能判断查找的key是否存在，还能给出响应的输入output。
 
 ## System requirements 
 - Lucene 9.0 requires JDK 11 or newer
