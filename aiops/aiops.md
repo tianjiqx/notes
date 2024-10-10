@@ -40,6 +40,8 @@
 
 - [京东科技全链路故障诊断智能运维实践](https://dbaplus.cn/news-131-5890-1.html)
 
+- [AIOps在小红书的探索与实践——故障定位与诊断](https://mp.weixin.qq.com/s/5KOpCFJ0SuWQ-qe9_U4Qyg)
+
 
 ## OpenAiops
 - [课程](), [Advanced Network Management (AIOps) - 裴丹](https://netman.aiops.org/courses/advanced-network-management-spring2023-syllabus/) 论文,材料

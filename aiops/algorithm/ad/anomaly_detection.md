@@ -63,6 +63,10 @@
 - [基于数据流的异常检测：Robust Random Cut Forest](https://developer.aliyun.com/article/722280)
 - [智能运维 | 异常检测：百度是这样做的](https://mp.weixin.qq.com/s?__biz=MzA5NTQ5MzE5OQ==&mid=2653057356&idx=1&sn=85d82226c7f66685ec8cf486569976dc)
 
+
+- [张静-京东 解密StarDB国产数据库智能运维的核心算法](https://www.modb.pro/doc/48841)
+- [张静 京东科技全链路故障诊断智能运维实践]()
+
 ### 领域知识
 
 KDDCPU99
