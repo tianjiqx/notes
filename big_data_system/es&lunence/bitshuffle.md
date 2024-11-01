@@ -18,7 +18,7 @@ deltaEncode基本思想，缩减值域空间用更少的bits存储，gcd + bit-p
 基于 influxdb-comparisons 的 devops测试集(9331 2000行)，BitShuffle + lz4，块大小为4K*8B。
 
 
-- float 类型的指标，例如cpu_xxx bitshuffle 可以减少了一半的存储空间
+- float 类型的指标（保留2位精度），例如cpu_xxx bitshuffle 可以减少了一半的存储空间
 - 部分单调递增，或者值域变化不大情况下，例如diskio_read_bytes，net_bytes_recv等，deltaEncode更好，比是BitShuffle进一步减少一半。
 - 由于 block size 是128，导致对于string类型的字段，压缩率很低
 - 整体压缩情况，BitShuffle + lz4 编码，比deltaEncode 压缩空间可以减少31.6%（1.9GB -> 1.3GB）

@@ -51,19 +51,33 @@ DocValues 提供了对一系列docId所对应的一个filed的一组值（一列
   - sorted并不是说将field value排序后，存储value -> docid的映射（这个就是mysql的索引了!），而是另外一层意思， 对于SortedNumericDocValue来说就是一个field中的多个值是有序的， 而对于SortedDocValues来说，这个sorted是指将字符串按照字典顺序排序转成的value
   - 但 NumericDocValues，或者SortedNumericDocValues 所使用的编码方式（v - min）/gcd 缩减v的值域范围，再通过bit-packing缩减需要存储的bits来进行存储压缩，实际对于float,double类型类型，基本不工作。
 
+
+  - SortedDocValues 
+  - SortedSetDocValues
+
 -  [Lucene源码解析——StoredField存储方式](https://zhuanlan.zhihu.com/p/384486147)
   - ZFloat：Float类型，会尝试精简编码成int
 - [BinaryDocValues](https://www.amazingkoala.com.cn/Lucene/DocValues/2019/0412/49.html) 
   - 二进制类型值对应不同的codes最大值可能超过32766字节
 - [SortedDocValues](https://www.amazingkoala.com.cn/Lucene/DocValues/2019/0219/34.html)
-  - 字符串+单值
+  - 字符串+单值， termID 原始docid顺序
+  - 将字符串按照字典序排序后termID的顺序 sortedValues， Ord -> TermID
+  - 字典大小顺序Ord， ordMap：TermID->Ord 数组，下标是termID,值是Ord，用DirectWriter压缩无序列表
+  - TermDict：该字段下所有的term，顺序的，采取前缀压缩
+  - TermIndex：稀疏term索引
 - [SortedSetDocValues](https://www.amazingkoala.com.cn/Lucene/DocValues/2019/0412/48.html)
   - 同一个文档同一个域可以存储多值域的docvalue值，但返回时，仅仅只能返回多值域的第一个docvalue
+  - 比SortedDocValues额外多OrdAddress字段
 - [NumericDocValues](https://www.amazingkoala.com.cn/Lucene/DocValues/2019/0409/46.html)
   - 单个数值类型的docvalue主要包括（int，long，float，double）
+  - docid->value
 - [SortedNumericDocValues](https://www.amazingkoala.com.cn/Lucene/DocValues/2019/0410/47.html)
   - 存储数值类型的有序数组列表   数值或日期或枚举字段+多值
+  - docid->values， 并且 values 有序
+  - 有序数组压缩：DirectMonotonicWriter
 - [BinaryDocValues-8.7.0](https://www.amazingkoala.com.cn/Lucene/DocValues/2020/1121/179.html)
+
+
 
 缩略词dvd(DocValueData)，dvm(DocValueMeta)
 

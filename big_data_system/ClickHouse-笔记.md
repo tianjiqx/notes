@@ -307,12 +307,26 @@ clickhouse-client  --database benchmark6 --multiquery < create.sql
 clickhouse-client --time --query "INSERT INTO benchmark5.cpu FORMAT TSV" < /home/tianjiqx/newdisk/devops/devops-cpu
 
 # 查看 表的物理路径
-select name,data_paths from tables where database='benchmark5';
+select name,data_paths from system.tables where database='benchmark5';
 
 # 查看 数据库整体大小
 SELECT sum(total_bytes)/1024/1024/1024, sum(total_rows) FROM system.tables WHERE  database = 'benchmark5'
 
 
+# 分区使用
+select  
+  partition, 
+  database, 
+    table,  
+    sum(rows) as row,  
+    formatReadableSize(sum(bytes_on_disk)) as used_disk,  
+    formatReadableSize(sum(data_uncompressed_bytes)) as before_compress,  
+    formatReadableSize(sum(data_compressed_bytes)) as after_compress,  
+    round(sum(data_compressed_bytes) / sum(data_uncompressed_bytes) * 100, 0) compress_rate  
+from system.parts  
+--and database = 'system' 
+group by table,database,partition 
+order by row desc limit 10;
 
 ```
 
@@ -336,6 +350,10 @@ FORMAT Native
 SELECT * FROM some_data
 INTO OUTFILE 'data.binary' FORMAT RowBinary
 
+
+clickhouse-client --query="SELECT usage_user FROM benchmark.cpu FORMAT Binary "  >> usage_user.bin
+
+clickhouse-client --time --query "INSERT INTO benchmark.cpu FORMAT TSV" < devops-cpu2
 
 ```
 
