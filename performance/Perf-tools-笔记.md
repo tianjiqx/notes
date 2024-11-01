@@ -5,6 +5,12 @@
 用于 Linux ftrace 和 perf_events（又名“perf”命令）的各种开发中和不受支持的性能分析工具的集合。
 
 
+```
+sudo apt install linux-tools-$(uname -r) linux-tools-common
+
+mount -t debugfs none /sys/kernel/debug
+
+```
 
 ## 2.常用分析命令
 
@@ -102,6 +108,10 @@ stalled-cycles-backend：指令执行步骤，发生停滞的时钟周期。
 instructions：执行了多少条指令。IPC为平均每个cpu cycle执行了多少条指令。
 branches：遇到的分支指令数。branch-misses是预测错误的分支指令数。
 ```
+
+-p pid  指定特定进程
+
+--timeout <ms> 指定运行时间
 
 ### 2.3 Disk 分析
 

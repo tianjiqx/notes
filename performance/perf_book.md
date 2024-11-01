@@ -155,7 +155,7 @@ perf stat: 这是 perf 工具的一个子命令，用于统计和报告程序运
 
 由于我们已经使用taskset -c 0将基准测试固定到核心0，因此我们只需要关注与S 0-C 0对应的行。我们可以丢弃其他行，因为它们正在运行其他任务或保持空闲。
 
-Linux perf只支持1级TMA指标，因此要访问2级、3级TMA指标，我们将使用由Andi Kleen编写的[pmu-tools](https://github.com/andikleen/pmu-to)中的toplev工具
+Linux perf只支持1级TMA指标，因此要访问2级、3级TMA指标，我们将使用由Andi Kleen编写的[pmu-tools](https://github.com/andikleen/pmu-tools)中的toplev工具
 
 ```
 $ ~/pmu-tools/toplev.py --core S0-C0 -l3 -v --no-desc taskset -c 0 ./benchmark.exe
@@ -317,3 +317,4 @@ foo(a, random_int);
     sudo apt-get install texmaker
     ```
  
+- [[论文阅读] A Top-Down Method for Performance Analysis](https://www.bluepuni.com/archives/paper-reading-a-top-down-method-for-performance-analysis/) Intel (amd cpu似乎不支持)

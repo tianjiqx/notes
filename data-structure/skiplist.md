@@ -19,3 +19,4 @@
 
 ## REF
 - [skip-lists](https://zhenghe.gitbook.io/open-courses/mit-6.046/skip-lists)
+- [skiplist简介](https://izualzhy.cn/skiplist-intro)
