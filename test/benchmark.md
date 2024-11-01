@@ -40,7 +40,6 @@ chmod u+x download.sh
 ### TPCx-IOT
 
 
-
 - [Analysis of TPCx-IoT: The First Industry Standard Benchmark for IoT Gateway Systems](https://hpi.de/fileadmin/user_upload/fachgebiete/rabl/publications/2018/TPCx_IOT-ICDE2018.pdf) icde 2018
 - [TPCx-IOT](https://www.tpc.org/tpcx-iot/default5.asp)
 
