@@ -82,6 +82,9 @@ sc io.tianjiqx.ClassPrefix*
 
 ### 2.2 火焰图
 
+profiler 之前 允许 
+sudo sysctl kernel.perf_event_paranoid=1
+
 ```shell
 # 生成火焰图：
 profiler start  （默认cpu）
@@ -89,10 +92,13 @@ profiler start  （默认cpu）
 # 指定采样事件
 --event alloc
 
+
+profiler start --event wall
+
 $ profiler list
 Basic events:
   cpu
-  alloc
+  alloc 分析内存
   lock
   wall
   itimer
@@ -115,7 +121,23 @@ Perf events:
 profiler status
 
 # 停止火焰图
+profiler stop --format html 
+
 profiler stop --format html --file /tmp/result.html
+
+# 指定执行时间(s)， -d 10
+profiler start --duration 10
+
+
+# 指定cpu和 wall 时间， 采样间隔 10ms 和 100ms
+profiler start -e cpu -i 10 --wall 100 -f out.jfr
+
+生成的结果可以用支持 jfr 格式的工具来查看。比如：
+
+JDK Mission Control ： https://github.com/openjdk/jmc
+JProfiler ： https://github.com/alibaba/arthas/issues/1416
+
+
 ```
 
 ## 3.问题
@@ -135,6 +157,8 @@ echo 1 > /proc/sys/kernel/perf_event_paranoid
 ## REF
 
 - [arthas](https://arthas.aliyun.com/doc/download.html)
+  - [profiler](https://arthas.aliyun.com/doc/profiler.html)
+
 - [看看我给Arthas官方提供的容器中生成火焰图问题解决方案](https://my.oschina.net/u/1760791/blog/4773494)
 - [Arthas使用教程(8大分类)](https://www.cnblogs.com/lydms/p/16549145.html)
 - [Arthas 之通过 thread 命令定位线程问题](https://jueee.github.io/2020/08/2020-08-13-Arthas%E4%B9%8B%E9%80%9A%E8%BF%87thread%E5%91%BD%E4%BB%A4%E5%AE%9A%E4%BD%8D%E7%BA%BF%E7%A8%8B%E9%97%AE%E9%A2%98/)

@@ -42,7 +42,7 @@ targets : prerequisites
 
 - targets 文件名/伪目标
 
-- prerequisites 依赖文件，
+- prerequisites 依赖文件
 
 ## REF
 

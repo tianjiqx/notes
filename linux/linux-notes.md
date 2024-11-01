@@ -113,6 +113,23 @@ newgrp clickhouse
 ```
 
 
+- fuser 命令 kill D+ io 阻塞异常状态进程
+```
+# 检查进程状态，D+ (Disk Sleep)：表示进程在等待I/O操作，处于不可中断睡眠状态。用kill -9 无法杀死
+ps -aux | grep <key>
+
+# lsof 检查磁盘路径占用进程
+lsof /media/tianjiqx/ExtendDisk
+
+# fuser -km 终止占用指定路径或端口的进程。
+fuser -km /media/tianjiqx/ExtendDisk
+
+fuser -k port/tcp
+
+```
+
+
+
 ## linux 工具blog 链接
 
 - [木子的搬砖工具](https://blog.k8s.li/My-brick-lifting-tools.html)

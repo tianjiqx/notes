@@ -78,4 +78,8 @@ awk  '{print length($0)}' /log/hadoop_template1.log | sort -n -r | head
 
 | awk '{sum+=$1} END {print sum}'
 
+
+# 3. 采样 
+awk 'NR % 10 == 0' input.txt
+
 ```
