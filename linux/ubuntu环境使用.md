@@ -11,11 +11,47 @@
 多设备鼠标键盘共享: [barrier](https://github.com/debauchee/barrier)
 > [神器！多台计算机共享使用键盘鼠标！](https://zhuanlan.zhihu.com/p/438815960)
 
+```
+# ubuntu 环境 支持直接 apt 安装
+sudo apt install barrier --fix-missing
+```
+
 
 终端： [terminator](https://gnome-terminator.readthedocs.io/en/latest/gettingstarted.html)
 
 > https://segmentfault.com/a/1190000014992947
 > https://zhuanlan.zhihu.com/p/346665734
+
+
+基础软件
+
+```shell
+
+# 终端
+sudo apt install terminator
+
+# 负载显示器
+sudo apt install indicator-multiload
+
+# 关闭 tab 补全时的提示声
+cat /etc/inputrc | grep bell-style
+sed -i 's/# set bell-style none/set bell-style none/g' /etc/inputrc
+
+# fonts-powerline for zsh 配置
+sudo apt-get install fonts-powerline
+
+# terminator zsh git路径字体问题
+# 配置首选项，字体为 带有 for powerline 字体，例如 Ubuntu Mono derivative Powerline
+
+# universal-ctags
+
+# axel 线程下载
+sudo apt-get install axel
+
+# 搜索
+sudo apt install silversearcher-ag
+
+```
 
 
 # 问题

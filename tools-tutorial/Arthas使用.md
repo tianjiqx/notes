@@ -48,8 +48,13 @@ thread
 # watch 命令, 观察方法的参数和返回值, -x 指定 属性的显示级别层次
 watch io.tianjiqx.ClassName methodName  "{params,returnObj}" -x 4
 
+# 指定过滤条件
+watch sun.nio.fs.UnixPath encode "{params, returnObj, throwExp}" -x 2 "params[1].contains('TiDB')"
+
 # trace 命令, 查看子调用用时，同时知道在哪一步抛出了异常
 trace class-pattern method-pattern
+
+trace sun.nio.fs.UnixPath encode  "params[1].contains('TiDB')" --skipJDKMethod false
 
 # getstatic 命令获取静态成员值
 getstatic 类名 属性名
