@@ -8,6 +8,10 @@
 输入法： 搜狗依赖低版本fcitx版本，默认版本过高，手动安装fcitx5, 使用其他输入法（maybe 退使用低版本更好） 
  > [ubuntu22.04安装中文输入法问题及解决集合](https://zhuanlan.zhihu.com/p/563224248)
 
+intel 正常，但是 amd cpu 回退到fcitx4 似乎依然不行，可以切换成 谷歌输入法`sudo apt install fcitx-googlepinyin`
+
+
+
 多设备鼠标键盘共享: [barrier](https://github.com/debauchee/barrier)
 > [神器！多台计算机共享使用键盘鼠标！](https://zhuanlan.zhihu.com/p/438815960)
 
@@ -32,6 +36,8 @@ sudo apt install terminator
 
 # 负载显示器
 sudo apt install indicator-multiload
+# 设置文本显示内容 CPU $(percent(cpu.inuse))Mem $(size(mem.user))
+
 
 # 关闭 tab 补全时的提示声
 cat /etc/inputrc | grep bell-style
