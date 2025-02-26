@@ -92,6 +92,25 @@ GreptimeDB 如何解决高基数问题？（各自实现不同，高基数具体
 
 
 
+## 性能
+
+
+- [GreptimeDB vs. ClickHouse vs. ElasticSearch 日志引擎性能对比报告](https://greptime.cn/blogs/2024-08-21-report)
+    -  v0.9 日志数据 
+
+- [GreptimeDB vs. InfluxDB 性能测试报告](https://greptime.cn/blogs/2024-08-08-report)
+
+    - tsbs 测试
+        - GreptimeDB 的写入吞吐是 InfluxDB 的 2 倍以上。(scale=4000)
+        - GreptimeDB 的查询性能在处理大数据量或者重运算场景时优势明显，部分查询速度可达 InfluxDB 的 11 倍以上。
+        - GreptimeDB 在 S3 上的读写性能与本地存储相当，建议使用对象存储时启用本地缓存。
+    ```
+    数据库	写入吞吐(行/秒)
+    InfluxDB	109356.73
+    GreptimeDB 基于 EBS	234620.19
+    GreptimeDB 基于 S3	231038.35
+    ```
+
 ## REF
 
 - [GreptimeTeam/greptimedb](https://github.com/GreptimeTeam/greptimedb)

@@ -200,7 +200,29 @@ PUT /_cluster/settings
 // 分片再平衡会花一些时间。一直等到集群变成 绿色 状态后再继续。
 // 7.重复第 2 到 6 步操作剩余节点。
 // 8.恢复索引数据。
+
+
+
+// 动态调整日志级别
+
+PUT /_cluster/settings
+{
+  "persistent": {
+    "logger.org.elasticsearch.discovery.zen.NodesFaultDetection": "TRACE",
+    "logger.org.elasticsearch.discovery.zen.MasterFaultDetection": "TRACE"
+  }
+}
+
+PUT /_cluster/settings
+{
+  "persistent": {
+    "logger.org.elasticsearch.discovery.zen.NodesFaultDetection": null,
+    "logger.org.elasticsearch.discovery.zen.MasterFaultDetection": null
+  }
+}
+
 ```
+
 
 ## 2.常见问题处理
 ### ES 节点 磁盘 高水位，导致节点上的索引 read_only / delete 状态

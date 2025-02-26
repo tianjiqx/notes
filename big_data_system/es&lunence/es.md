@@ -96,6 +96,15 @@ ES做时序引擎：
 
 - [业界使用 ES 的一些工程实践](https://www.cnblogs.com/hapjin/p/17892378.html)
 
+- [百度对ES的改进](https://github.com/baidu/Elasticsearch/blob/master/docs/overview.md)
+    - distribute log 替换 zen 元信息一致，translog （old） 衣国垒，如今selectdb的联合创始人
+
 - mapping
     - [一文搞懂 Elasticsearch 之 Mapping](https://www.cnblogs.com/wupeixuan/p/12514843.html)  数据类型
     - [Elasticsearch中mapping全解实战](https://www.cnblogs.com/youngdeng/p/12867728.html)
+
+
+
+- discovery
+    - [elasticsearch之discovery节点探测](https://www.cnblogs.com/Neeo/articles/10945722.html)
+    - [Elasticsearch - ES的集群通信机制transport](https://www.cnblogs.com/Neeo/articles/10943474.html)  ping 

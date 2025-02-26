@@ -681,12 +681,48 @@ shuffle 算子
 shuffle reader 对各个map task 输出有序FileSegement，建立最小（大）堆，可以输出更大范围的有序的文件（如果只有一个，那么即全局有序）。
 
 
-
 #### REF
 
 - [彻底搞懂spark的shuffle过程（shuffle write）](https://mp.weixin.qq.com/s/6zvUHOa935xaEKpp_KCyGA?)
 - [Spark性能优化指南——高级篇](https://tech.meituan.com/2016/05/12/spark-tuning-pro.html)
 - [Spark Shuffle 详解](https://zhuanlan.zhihu.com/p/67061627)
+
+
+
+### 2.8 任务调度
+
+#### 作业划分（Job Splitting）
+- 作业（Job）：当用户提交一个 Spark 作业（例如，一个 collect 操作）时，Spark 会将这个作业划分为多个阶段（stages）。通常，阶段的划分是根据数据依赖关系，特别是 **Shuffle 操作**（如 groupByKey、reduceByKey 等）来划分的。
+
+- 阶段（Stage）：每个阶段包含一组任务（tasks），这些任务可以在集群中的不同节点上并行执行。阶段可以分为 **Shuffle 阶段** 和**动作操作阶段**（如 collect、count 等）。
+
+
+#### 调度器（Scheduler）
+- DAGScheduler：Spark 的 DAGScheduler 负责将作业分解成多个阶段，并确定这些阶段之间的依赖关系。DAGScheduler 还负责处理容错，例如在任务失败时重新提交任务。
+
+- TaskScheduler：TaskScheduler 负责将任务分配到具体的执行器（executor）上。Spark 提供了不同的调度模式，如 FIFO（先到先得） 和 FAIR（公平调度）。
+
+
+#### 调度逻辑
+
+- Application 是用户提交给集群的一个完整的Spark应用程序实例。
+Job 是由Action操作触发的一系列计算任务。每个Job都是独立的，并且可以包含一个或多个Stage。
+- Stage 是Job的一部分，它是由一组并行执行的任务组成的集合。Stages通过宽依赖（Shuffle Dependency）进行划分。
+- Task 是Stage的基本执行单元，对应于单个分区的数据处理工作。
+
+
+当用户提交一个Spark Application时，Driver程序会启动并且负责解析用户的代码逻辑，创建SparkContext对象，并初始化包括DAGScheduler在内的几个关键组件。一旦遇到Action算子，就会触发一个Job的计算，这个Job会被交给DAGScheduler来处理。
+DAGScheduler的主要职责是从最终的RDD开始反向解析RDD之间的依赖关系，构建出整个作业的DAG，并根据这些依赖关系将Job划分为若干个Stage。具体来说，如果遇到了宽依赖，则会在该点切断，形成新的Stage边界；而窄依赖则允许pipeline式的连续计算，因此会被归入同一个Stage中。
+
+对于每一个划分好的Stage，DAGScheduler会将其转换为TaskSet，并传递给TaskScheduler。
+TaskScheduler负责管理Task级别的调度，它会依据可用资源的情况决定如何分配Task给不同的Executor节点去执行。
+
+#### 调度模式（Scheduling Modes）
+- FIFO 模式：作业按照提交的顺序排队执行，先提交的作业优先执行。
+- FAIR 模式：试图使所有作业获得公平的资源分配，适合多用户环境。
+
+
+
 
 ## 3.开放生态
 
@@ -904,3 +940,16 @@ Spark Operator集成了Spark on K8s的方案，遵循K8S的 [operator](https://c
   - Nvidia  GPU加速 部分执行算子
   - 第四范式 LLVM-based Spark Native Execution Engine，llvm ir代码
 
+- [blaze](https://github.com/kwai/blaze) 
+  - [Blaze：快手自研 Spark 向量化引擎从生产实践到社区开源](https://zhuanlan.zhihu.com/p/13029531659) 
+    - 相比原生的 Spark3.3 和 Spark3.5 的速度，两次 Benchmark 分别提升 300% 和 220%
+    - 原理：翻译物理执行计划 ，使用 arrow-fusion（后续自己重写） + 动态链接库方式引用的 native 向量化算子 代替
+
+
+- [基于 Native 技术加速 Spark 计算引擎](https://zhuanlan.zhihu.com/p/705082271)
+  - ClickHouse 动态链接库 +  JNI   
+
+- [gluten](https://github.com/apache/incubator-gluten) 将本地库与SparkSQL“粘合”在一起,受益于Spark SQL框架的高可扩展性和原生库的高性能。
+  - Gluten仅支持Clickhouse后端和Velox后端。Velox是一个C++数据库加速库，提供可重用、可扩展和高性能的数据处理组件
+
+- [Spark Velox](https://github.com/facebookincubator/velox) facebook 

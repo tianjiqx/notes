@@ -38,6 +38,15 @@ Gorilla为典型的时间序列数据提供3x-8x压缩，即它将每个16字节
 - 整形越界，通过除以10^M来规范化整数，其中M是允许将所有时间序列值拟合到64位并删除常见尾随十进制零的最小值。
 
 
+### 采集
+
+#### victoriametrics-remote-write-protocol 协议
+
+vmagent 可以采用 victoriametrics-remote-write-protocol 发送到vm后端，节约 2x-5x的带宽，相比 Prometheus Remote Write协议主要的优化，是用zstd 代替 Snappy 压缩算法。在带宽是瓶颈时，可以有3x的的吞吐提升。
+
+- [victoriametrics-remote-write](https://victoriametrics.com/blog/victoriametrics-remote-write/) 
+- [doc](https://docs.victoriametrics.com/vmagent/#victoriametrics-remote-write-protocol)
+
 ## 部署
 docker pull victoriametrics/victoria-metrics:latest
 docker run -it --rm -v `pwd`/victoria-metrics-data:/victoria-metrics-data -p 8428:8428 victoriametrics/victoria-metrics:latest
@@ -95,3 +104,13 @@ index 空间： 17M
 
 
 - [小红书可观测 Metrics 架构演进，如何实现数十倍性能提升？](https://xie.infoq.cn/article/f7ce46d8a02df660fb6ece63f)
+
+
+- [高基数时间序列数据库基准测试：VictoriaMetrics vs TimescaleDB vs InfluxDB](https://valyala.medium.com/high-cardinality-tsdb-benchmarks-victoriametrics-vs-timescaledb-vs-influxdb-13e6ee64dd6b)
+
+    - 高基数变得容易，每主机暴露数千个独特的指标， 400K， 4M，40M 乃至上亿的时间序列，TSDB 应该单台服务器上处理数百万个唯一的时间序列数据
+    
+- [Benchmarking InfluxDB vs. VictoriaMetrics: 选择合适的时序数据库](https://soufianebouchaara.com/benchmarking-influxdb-vs-victoriametrics-choosing-the-right-time-series-database/)
+    - VictoriaMetrics 在所有测试中的插入性能优于 InfluxDB。VictoriaMetrics 和 InfluxDB 之间的性能差距随着基数的增加而增大。 2X
+    - VictoriaMetrics 在高基数时间序列上的内存使用量比 InfluxDB 少。
+    - InfluxDB 无法将超过 2M 唯一时间序列放入 16GB 内存中,而VictoriaMetrics 支持 10M。

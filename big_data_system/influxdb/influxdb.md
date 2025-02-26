@@ -91,7 +91,7 @@ InfluxDB数据模型将时间序列数据组织到桶buckets和度量measurement
 - [Time Series Index (TSI) details](https://docs.influxdata.com/influxdb/v1/concepts/tsi-details/)
 - [InfluxDB的存储引擎演化过程](https://developer.aliyun.com/article/727640)
   
-
+- [时间序列数据的存储和计算 - 开源时序数据库解析（三）](https://zhuanlan.zhihu.com/p/32710333) TSM Engine
 
 - [influxdb storage_engine TSM](https://jasper-zhang1.gitbooks.io/influxdb/content/Concepts/storage_engine.html) 中文
   - 时间序列数据的属性
@@ -101,6 +101,10 @@ InfluxDB数据模型将时间序列数据组织到桶buckets和度量measurement
 
 - [解读 InfluxDB IOx：基于列存的时序数据库](https://liujiacai.net/blog/2021/01/21/thoughts-of-influxdb-iox/)
   - 对于时间线膨胀问题，IOx 不再单独维护倒排索引，取而代之的是每个分区的概要文件。在分区选择合理的情况下，概要文件的大小是比较可控的。相当于对之前的倒排索引做了分片。
+  - 列式存储。数据按 "列" 存储
+    - 减少索引大小: 列式存储更适合分析型查询，它不再需要像 TSM 那样为每个 series 构建庞大的倒排索引。
+    - 高效的聚合和扫描: 列式存储在执行聚合操作 (例如 AVG, SUM) 和扫描特定列时效率更高，因为它可以直接读取需要的列数据，而无需读取整行数据。
+    - Parquet 格式: IOx 使用 Parquet 这种列式存储格式，Parquet 自身就具备高效压缩和编码的特性，进一步降低了存储空间和 I/O 开销。
 
 - [开源时序数据库解析 - InfluxDB IOx](https://zhuanlan.zhihu.com/p/534035337)
   - 问题：
