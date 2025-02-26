@@ -88,8 +88,9 @@ bitsandbytes 确实推理更慢，并且 vllm 暂时支持的不好，最新版�
 
 - [AGI掘金知识库](https://agijuejin.feishu.cn/wiki/EtoiwSfomiHnmukOCDncsdnenYd) 一些blog
 
-
-
-
-
+- [LLM 推理加速方式汇总](https://zhuanlan.zhihu.com/p/688736901)
+  - 修改模型，可以采用MQA或者GQA的方式重新训练模型，此外，也可以采用无需训练的 flash attention，page attention对推理进行提速
+  - Multi-Query Attention (MQA) 效果基本不变，训练速度不变。推理速度中，encoder的推理速度基本不变，decoder的推理快了很多
+  - flash attention 优化的是self-attention的运算（和input token强相关），因此当输入序列更长，效果更明显。在输入token短时，没有明显提速
+  - Page attention 将每个序列的KV缓存分成若干块，每块负责固定数量的令牌的键和值。在进行注意力计算时，PagedAttention算法能够高效地识别并获取这些块，从而提高了内存使用的效率。vllm支持，额外显存开销 1.5x。
 
