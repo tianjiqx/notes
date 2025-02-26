@@ -141,6 +141,17 @@ UUID=xxxx-xxxx /    ext4   errors=remount-ro 0       1
 ```
 
 
+## 防火墙
+
+```
+# 查看防火墙状态
+sudo ufw status
+# 详细状态
+sudo ufw status verbose
+
+
+
+```
 
 
 

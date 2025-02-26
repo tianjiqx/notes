@@ -48,6 +48,12 @@ docker commit <container_id> <image_name>:<image_tag>
 // 获取构建信息
 docker history --format {{.CreatedBy}} --no-trunc=true <imagesid>
 
+// 保存镜像
+docker save -o myimage.tar myimage:latest
+
+// 恢复镜像
+docker load -i myimage.tar
+
 ===============
 //拷贝 (文件，目录相同，不需要参数-r)
 docker cp 7264139ea7eb:/usr/lib/inceptor/lib/idbc-core-8.1.0.jar idbc-core-8.1.0.jar
@@ -177,3 +183,15 @@ kubectl get events --sort-by=.metadata.creationTimestamp | grep inceptor
 
 - [aarch cpu架构下 docker 安装](https://www.cnblogs.com/leozhanggg/p/16660866.html)
 
+## install
+
+- [aliyun docker](https://help.aliyun.com/zh/ecs/use-cases/install-and-use-docker#8dca4cfa3dn0e)
+
+普通用户权限配置：
+```
+# 将当前用户添加到 docker 组：
+sudo usermod -aG docker $USER
+# 刷新用户组信息
+newgrp docker
+
+```

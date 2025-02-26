@@ -111,6 +111,7 @@ TODO：更现代化的vim8 配置，[如何在 Linux 下利用 Vim 搭建 C/C++ 
 
 [将vim与系统剪贴板的交互使用](https://zhuanlan.zhihu.com/p/73984381)
 
+[一文搞懂vim复制粘贴](https://www.cnblogs.com/huahuayu/p/12235242.html)
 
 ## vim 命令
 

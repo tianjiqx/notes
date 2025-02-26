@@ -45,7 +45,7 @@ cls——清空当前屏幕区域
 thread
 # thread 1会打印线程ID 1的栈
 
-# watch 命令, 观察方法的参数和返回值, -x 指定 属性的显示级别层次
+# watch 命令, 观察方法的参数和返回值, -x 指定 属性的显示级别层次, -n 10 指定观察次数
 watch io.tianjiqx.ClassName methodName  "{params,returnObj}" -x 4
 
 # 指定过滤条件
@@ -53,6 +53,10 @@ watch sun.nio.fs.UnixPath encode "{params, returnObj, throwExp}" -x 2 "params[1]
 
 # trace 命令, 查看子调用用时，同时知道在哪一步抛出了异常
 trace class-pattern method-pattern
+
+# 运行在后台, 并将结果输出到指定文件
+trace Test t  >> /tmp/test.log &
+
 
 trace sun.nio.fs.UnixPath encode  "params[1].contains('TiDB')" --skipJDKMethod false
 

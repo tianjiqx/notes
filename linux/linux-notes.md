@@ -49,6 +49,10 @@
 - ss 命令
   ss -tnl 查看主机监听的端口
 
+- netstat -ant 显示所有当前的TCP连接
+
+- telnet IP port 检测端口是否有开启监听
+
 - du 统计大小
   - du -ah . 统计当前目录下所有文件的大小(包括目录)
   - du  -ah  -t 100M 过滤大于100M
