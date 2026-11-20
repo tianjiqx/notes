@@ -163,3 +163,13 @@
   git push
 
   ```
+
+- gh 
+  ```
+  # 1. clone
+  gh repo clone pingcap/tidb -- --depth 1
+
+  # 2. 只克隆特定分支
+  gh repo clone 用户名/仓库名 -- --single-branch --branch main
+
+  ```

@@ -207,7 +207,126 @@ Chunk、Slice、Block:
 
 ## 测试
 
-类ES系统的数据目录，直接使用 juicefs，对象存储服务，元数据服务，位于本地时，（聚合）读、写性能基本损失微小。
+类ES系统的数据目录，直接使用 juicefs，对象存储服务，元数据服务，位于本地时，读性能差异不大。
+写性能，日志数据，下降明显，事件，指标类数据，性能损失较小。
+
+根据 JuiceFS 提供的 Profiling 统计的各个操作开销：
+```
+cat /home/tianjiqx/workspace/juicefs/data2/.accesslog > juicefs.accesslog
+
+juicefs profile juicefs.accesslog --interval 0
+```
+
+
+```
+
+日志数据enwiki： 
+
+|                                        | index tps(MB/s) | ratio          |
+| -------------------------------------- | --------------- | -------------- |
+| juicefs(10cpu agent,4 shard 10s)       | 6.33            | 0.145 (-0.854) |
+| ssd(10cpu agent,4 shard 10s)           | 43.53           | 1.0            |
+| juicefs(10cpu agent,4 shard 10s) 无全文索引 | 22.8            | 0.523 (-0.476) |
+
+
+10M 数据， 无全文检索
+
+> JuiceFS Profiling                Refresh: 440 seconds  2025-02-27T16:08:02
+
+Operation           Count     Average(us)          Total(us)     Percent(%)
+write             6719991             324         2176492275          495.1
+flush               21703           11751          255026399           58.0
+create               8458           17763          150239492           34.2
+unlink               7661           15492          118683322           27.0
+fsync                5238           18241           95544306           21.7
+read              2494543              18           45321749           10.3
+lookup              54350             516           28059716            6.4
+getattr             30635             607           18593868            4.2
+open                13284             549            7291895            1.7
+rename                263           16992            4468830            1.0
+copy_file_range        198           11559            2288707            0.5
+readdir              2511             539            1352317            0.3
+statfs                 54            4390             237041            0.1
+mkdir                  18            8077             145381            0.0
+release             21622               6             121020            0.0
+setlk                  20            3701              74023            0.0
+opendir              1007               3               2963            0.0
+releasedir           1007               2               1742            0.0
+
+
+6.7M 次写入
+
+
+10M 数据， 全文检索
+
+> JuiceFS Profiling                Refresh: 1352 seconds  2025-02-27T16:44:54
+
+Operation           Count     Average(us)          Total(us)     Percent(%)
+write             9588220            1392        13344543000          987.2
+flush               78209           16081         1257715257           93.0
+create              29030           19446          564504777           41.8
+unlink              28255           18640          526659451           39.0
+fsync               19018           10355          196925633           14.6
+lookup             191077             564          107672368            8.0
+read              2593855              31           80122124            5.9
+getattr             97911             615           60176230            4.5
+open                49218             530           26083747            1.9
+rename                424           22431            9510603            0.7
+readdir              8523             530            4515394            0.3
+copy_file_range        258           16377            4225387            0.3
+statfs                147            4766             700635            0.1
+release             77961               6             467281            0.0
+mkdir                  18            4922              88590            0.0
+setlk                  20            3749              74977            0.0
+opendir              2129               4               7675            0.0
+releasedir           2129               2               4202            0.0
+
+
+9.5M 次写入, 平均 耗时增加， create & unlink 次数也大幅度增加 3X 以上
+
+
+ny taix：
+事件格式，列存
+
+|                                  | index tps(MB/s) |
+| -------------------------------- | --------------- |
+| juicefs (1cpu agent, 4shard,1s)  | 15.53           |
+| juicefs (1cpu agent,4shard,10s)  | 15.347          |
+| ssd(1cpu agent,4 shard 1s)       | 16.93           |
+| ssd(1cpu agent,4 shard 10s)      | 17.045          |
+| ssd(10cpu agent,4 shard 10s)     | 56.75           |
+| juicefs(10cpu agent,4 shard 10s) | 53.084          |
+
+
+tsbs 数据，指标：
+
+> JuiceFS Profiling                Refresh: 1293 seconds  2025-02-27T15:46:31
+
+Operation           Count     Average(us)          Total(us)     Percent(%)
+flush               98895           11310         1118539871           86.5
+unlink              41158           14984          616729132           47.7
+create              41386           14605          604459851           46.8
+fsync               21655           14280          309244146           23.9
+lookup             210972             659          139054373           10.8
+getattr            168602             716          120764833            9.3
+write            11145719               4           48310402            3.7
+open                57475             641           36821506            2.8
+read                64955             540           35082655            2.7
+rename               1333           15572           20757825            1.6
+copy_file_range       1192            9853           11744768            0.9
+readdir              6621             751            4972801            0.4
+statfs                138            5833             804928            0.1
+release             98819               7             675805            0.1
+opendir              2611               4              10306            0.0
+releasedir           2611               2               6255            0.0
+
+
+写入 98M 行， 写 11M 次，对比 enwiki，index-bench 要少，可能数据量关系平均耗时也更少。
+
+```
+
+
+
 
 
 

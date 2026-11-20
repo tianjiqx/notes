@@ -108,3 +108,7 @@ ES做时序引擎：
 - discovery
     - [elasticsearch之discovery节点探测](https://www.cnblogs.com/Neeo/articles/10945722.html)
     - [Elasticsearch - ES的集群通信机制transport](https://www.cnblogs.com/Neeo/articles/10943474.html)  ping 
+
+
+- translog
+    - [Elasticsearch深入：数据持久化过程](https://www.cnblogs.com/jelly12345/p/15060133.html)

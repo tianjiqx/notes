@@ -183,9 +183,28 @@ kubectl get events --sort-by=.metadata.creationTimestamp | grep inceptor
 
 - [aarch cpu架构下 docker 安装](https://www.cnblogs.com/leozhanggg/p/16660866.html)
 
-## install
+## 阿里云镜像 install docker
+
+```
+#更新包管理工具
+sudo apt-get update
+#添加Docker软件包源
+sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common
+sudo curl -fsSL http://mirrors.cloud.aliyuncs.com/docker-ce/linux/ubuntu/gpg | sudo apt-key add -
+sudo add-apt-repository -y "deb [arch=$(dpkg --print-architecture)] http://mirrors.cloud.aliyuncs.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable"
+#安装Docker社区版本，容器运行时containerd.io，以及Docker构建和Compose插件
+sudo apt-get -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+#启动Docker
+sudo systemctl start docker
+#设置Docker守护进程在系统启动时自动启动
+sudo systemctl enable docker
+
+```
+
 
 - [aliyun docker](https://help.aliyun.com/zh/ecs/use-cases/install-and-use-docker#8dca4cfa3dn0e)
+
+- [ubuntu 20.04 国内源安装docker](https://www.cnblogs.com/lqqgis/p/18276118)
 
 普通用户权限配置：
 ```

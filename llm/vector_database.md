@@ -55,3 +55,6 @@ int64 标识
 
 - [矢量数据库对比和选择指南](https://zhuanlan.zhihu.com/p/641822949)
 - [Milvus 、Qdrant、Waeviate、Pinecone、ElasticSearch矢量数据库对比](https://zhuanlan.zhihu.com/p/641268774)
+
+- [Vector 搜索性能基准测试比较 SingleStore、Pinecone 和 Zilliz](https://benchant.com/blog/single-store-vector-vs-pinecone-zilliz-2025)
+  - 

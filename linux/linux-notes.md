@@ -4,7 +4,8 @@
 
 - [磁盘满了，为啥du却显示还有很大空间？](https://mp.weixin.qq.com/s?__biz=MjM5ODYxMDA5OQ==&mid=2651961840&idx=1&sn=d3f2600d0c01b926285c244e54be55f0&chksm=bd2d0c2c8a5a853a3bb8465a75878c9c3e25705fd8e1b9a33f60ca621b1bdb012a9609b6f5a)
   
-  学习到的命令：`lsof |grep deleted` 获取已经删除但仍然在被引用的文件，发现后可以尝试杀死进程
+  - 学习到的命令：`lsof |grep deleted` 获取已经删除但仍然在被引用的文件，发现后可以尝试杀死进程
+  - 端口占用 lsof -i:80
 
 - [Linux下查看电脑硬件环境的命令](https://blog.csdn.net/wjlwangluo/article/details/77511692)
   
@@ -50,6 +51,7 @@
   ss -tnl 查看主机监听的端口
 
 - netstat -ant 显示所有当前的TCP连接
+  - netstat -tunlp | grep 8080 查看端口占用进程 （可能需要sudo）
 
 - telnet IP port 检测端口是否有开启监听
 
@@ -62,6 +64,9 @@
 
 
 - [ifstat命令_统计网络接口活动状态的工具](https://www.cnblogs.com/friday0502/p/9450562.html)
+
+
+- `watch -n 1 'nstat TcpRetransSegs'`监控TCP重传
 
 - [使用jstack命令查看CPU高占用的问题记录](https://www.cnblogs.com/xujanus/p/11275413.html)
   
@@ -121,6 +126,9 @@ newgrp clickhouse
 ```
 # 检查进程状态，D+ (Disk Sleep)：表示进程在等待I/O操作，处于不可中断睡眠状态。用kill -9 无法杀死
 ps -aux | grep <key>
+
+# 进程 按照启动时间排序
+ps -ef --sort=start_time
 
 # lsof 检查磁盘路径占用进程
 lsof /media/tianjiqx/ExtendDisk

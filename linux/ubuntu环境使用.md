@@ -11,6 +11,8 @@
 intel 正常，但是 amd cpu 回退到fcitx4 似乎依然不行，可以切换成 谷歌输入法`sudo apt install fcitx-googlepinyin`
 
 
+使用 `sudo apt install fcitx fcitx-rime` 效果可以
+
 
 多设备鼠标键盘共享: [barrier](https://github.com/debauchee/barrier)
 > [神器！多台计算机共享使用键盘鼠标！](https://zhuanlan.zhihu.com/p/438815960)
